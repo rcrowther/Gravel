@@ -1,0 +1,57 @@
+  #movreg a, c
+  #return 20 
+
+  # Comment here!
+  ## Multiline comment
+  Can go on for a bit, these. Textfull.
+  ...and have newlines.
+  ...and newlines...
+  #
+  
+  # Identifier, begins with alphabetic
+  a34$#'"£
+  
+  # ...stopped by punctuation
+    abiggy34{bfraggle:type.func
+    
+  # Punctuations
+  []
+  
+  # Numbers
+  9989
+  
+  # Float numbers
+  0.45
+  
+  # ...not a number after second period
+  0.45.func
+   
+  # Strings
+  # Single line
+  "C'est facile, non?
+  
+  # Multiline String
+  ""Can go on for a bit, these. Textfull.
+  ...and have newlines.
+  ...and newlines...
+  "
+
+
+  
+  # Operaters
+  # ...stopped by whitespace
+  ~~~>>  @tag
+  
+  # ...stopped by punctuation
+  ~~~>>()
+  
+  # ...stopped by numbers
+  ~~~>>45
+  
+  # ...versatile
+  ???
+  
+  # Crashes
+  # Start string with one inverted comma
+  # start multiline string or comment but not close
+  ""I was going to say---..."

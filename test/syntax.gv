@@ -1,0 +1,15 @@
+# Gravel Syntax set
+
+
+## Function definition
+#
+
+# must have explicit parameter list, even if empty
+fnc filter()
+
+# ...and have kinded parameters
+fnc filter(dom: Int node: Float)
+
+# ...and handle trailing kinds
+fnc filter(dom: Int node: Float) : Float
+

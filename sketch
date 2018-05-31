@@ -1,0 +1,39 @@
+val mit: int8
+val mig: int16
+val mut: int32
+val mag: int64
+val meg: int128
+
+# (keyword params description body)(
+     (lambda (x)
+       "Return the hyperbolic cosine of X."
+       (* 0.5 (+ (exp x) (exp (- x)))))
+
+# (keyword name params description body)
+      (defun capitalize-backwards ()
+            "Upcase the last letter of the word at point."
+            (interactive)
+            (backward-word 1)
+            (forward-word 1)
+            (backward-char 1)
+            (capitalize-word 1))
+
+# invoke
+  (concat "a" "b")
+  
+# assign
+   (let ((x 1)
+                (x 2)) ... )
+
+
+# This is interesting though, using curry type notation
+# LISPy
++(5, \(4, 3))
+# curry notate
+5.+(4)./(3)
+# drop points
+5 +(4) /(3)
+# assume brackets
+5 + 4 / 3
+
+There a connection between a partially applied function, and a data structure being partially filled. Explore...

@@ -1,0 +1,31 @@
+
+class CodePointIterator:
+    '''
+    Iterate codepoints from some source.  
+    Should:
+    ++
+    - return unicode codepoints
+    - throw StopIteration
+    - do any tidy, such as filedescriptor closing
+    +
+    '''
+    def __iter__(self):
+        return self
+        
+        
+        
+class File(CodePointIterator):
+    # Changes the syntax from read-a-char
+    # to __next__-for-a-char iteration
+    def __init__(self, path):
+        self.path = path
+        self.fd = open(path, 'r')
+        line = self.fd
+        
+    def __next__(self):
+        c = None
+        c = self.fd.read(1)
+        if (not c):
+            self.fd.close()
+            raise StopIteration
+        return ord(c)

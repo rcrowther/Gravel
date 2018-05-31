@@ -1,0 +1,47 @@
+
+= IO
+== File
+from gio.CodepointIterators import File
+it = File('/home/rob/Code/python/x64_compiler/test/test.gv')
+for cp in it:
+    print(cp)
+    print(type(cp))
+
+  
+== Tracking
+from gio.CodepointIterators import File
+from gio.TrackingIterator import TrackingIterator
+it = File('/home/rob/Code/python/x64_compiler/test/test.gv')
+it = TrackingIterator(it)
+for cp in it:
+    print("[{},{}] '{}'".format(it.lineCount, it.lineOffset, chr(cp)))
+
+
+== TokenIterator Raw
+from gio.CodepointIterators import File
+from gio.TrackingIterator import TrackingIterator
+from gio.TokenIterator import TokenIterator
+from reporters.ConsoleStreamReporter import ConsoleStreamReporter
+
+srcPath = '/home/rob/Code/python/x64_compiler/test/test.gv'
+it = File(srcPath)
+it = TrackingIterator(it)
+r = ConsoleStreamReporter()
+it = TokenIterator(it, r, srcPath)
+
+
+== Tokeniterator via Source
+from gio.Source import FileSource
+from reporters.ConsoleStreamReporter import ConsoleStreamReporter
+from Tokens import tokenToString
+r = ConsoleStreamReporter()
+src = FileSource('/home/rob/Code/python/x64_compiler/test/tokens.gv')
+src.srcPath
+it = src.tokenIterator(r)
+for tok in it:
+    print("[{},{}] '{}' '{}'".format(
+    it.lineCount,
+    it.lineOffset,
+    tokenToString[tok], it.textOf()
+    ))
+    

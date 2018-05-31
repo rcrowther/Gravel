@@ -1,0 +1,18 @@
+
+python3 
+
+== ELF write
+from elf_write import *
+write_file()
+
+[looks like...]
+xxd somefile
+
+[is it right?]
+readelf -a somefile
+== Registers
+from x64_register_base import *
+
+R15D
+r = floating_point_registers[FPR4]
+ r.description
