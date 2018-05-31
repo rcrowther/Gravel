@@ -61,6 +61,6 @@ r.info('ouch')
 from gio.Source import FileSource
 from reporters.ConsoleStreamReporter import ConsoleStreamReporter
 from Syntaxer import Syntaxer
-src = FileSource('/home/rob/Code/python/x64_compiler/test/syntax.gv')
+src = FileSource('/home/rob/Code/python/gravel/test/syntax.gv')
 r = ConsoleStreamReporter()
 s = Syntaxer(src, r)

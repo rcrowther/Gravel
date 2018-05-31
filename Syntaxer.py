@@ -11,7 +11,7 @@ class Syntaxer:
         self.reporter = reporter
         self.it = source.tokenIterator(reporter)
         self.tok = None
-        self.ast = Lambda()
+        self.ast = mkLambda(NoPosition)
         # start me up
         self.root()
         print(self.ast.toString())
@@ -128,10 +128,10 @@ class Syntaxer:
              #t.isDef = True
              # generic params?
              self.defineParameters(t.params)
-             self
+             #self
              #self.explicitSeq(t.body)
-             lst.append(t)
              self.optionalKindAnnotation(t)
+             #! body
         return commit 
         
     def comment(self, lst):

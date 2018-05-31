@@ -8,6 +8,11 @@ from Mark import Mark, UndefinedMark
 # Now, we could do a LISP thing and make everything a list,
 # but future? typechecking may go easier if we model the common groups
 # of constructs.
+# NB: This looks like odd Python. It is. It is a little delicate.
+# In particular, do not put defaults on the inits. If you need
+# defaults, put them in the factories. Defaults on inits that match
+# classwide attribute values will not change classwide to 
+# instance-specific values.
 class Tree():
     '''
     Tree init() should be designed so the class will accept the 
@@ -16,14 +21,15 @@ class Tree():
     code.
     Use a factory for other inits e.g. for tree builders.
     Note this base can be leaf or branch---it has no children.
+    Both dataStr and kindStr exist so later tree functionality can 
+    change them to Python values, or, for example, test symbolic names 
+    against tables.
     '''
     # For parsed data
-    data_str = None
+    #dataStr = None
     # for final data
-    data = None
-    position = NoPosition
-    #def __init__(self):
-    #    self.position = position
+    #data = None
+    #position = NoPosition
 
     def toString(self):
         return 'Tree()'
@@ -34,17 +40,15 @@ class Tree():
         
         
 class Comment(Tree):
-    #def __init__(self, data = None):
-      #self.data_str = text
-      #self.data = text.strip()
+    def __init__(self, text):
+        self.data = text
 
     def toString(self):
         return 'Comment("{}")'.format(self.data)
 
 def mkComment(position, text):
-    t = Comment()
-    t.data_str = text 
-    t.data = text.strip()
+    t = Comment(text.strip())
+    t.dataStr = text
     t.position = position   
     return t
 
@@ -61,7 +65,7 @@ class MarkNode(Tree):
     # at the very least, the Mark carries a position, over and above
     # the name.
     # A concrete class. See MarkTable.
-    def __init__(self, mark = UndefinedMark):
+    def __init__(self, mark):
         assert isinstance(mark, Mark), "Value for 'mark' must be an instance of Mark: value: {} type:{}".format(mark, type(mark))
         self.data = mark
 
@@ -86,24 +90,24 @@ NoMarkNode = _NoMarkNode()
 class ParameterDefinition(Tree):
     '''
     A parameter definition.
-    These nodes are distinctive, they have,
-    - explicit marking of kind
+    These nodes are distinctive, they
+    - have explicit marking of kind
     - are tree leaves (no body) always???
     They also print out with explicit kind.
     '''
-    data = UndefinedMark
+    #data = UndefinedMark
     kindStr = None
     returnKind = UnknownKind
     
-    def __init__(self, mark = UndefinedMark):
+    def __init__(self, mark):
         self.data = mark    
 
     def toString(self):
         return "{}:{}".format(self.data, self.returnKind)
         
 def mkParameterDefinition(position, markStr, kindStr):
-    t = ParameterDefinition()
-    t.data_str = markStr
+    t = ParameterDefinition(UndefinedMark)
+    t.dataStr = markStr
     t.kindStr = kindStr
     t.position = position   
     return t
@@ -120,7 +124,7 @@ class Atom(Tree):
     returnKind = UnknownKind
     typ_str = "Call on base Atom, do not do this, use subtypes"
     
-    def __init__(self, data = None):
+    def __init__(self, data):
         self.data = data
     #data_type = None
     #def __init__(self, position, data, tpe):
@@ -168,12 +172,12 @@ class Expression(Tree):
     # Params is separate from child lists, which are for bodies.
     #params = []
     
-    def __init__(self, mark = UndefinedMark, params=[]):
-        self.mark = mark
+    def __init__(self, mark, params):
+        self.data = mark
         self.params = params
         
     def toString(self):
-        return "Expression({}, {})".format(self.mark.toString(), self.params)
+        return "Expression({}, {})".format(self.data.toString(), self.params)
 
 
 
@@ -196,7 +200,7 @@ class ExpressionWithBodyBase(Expression):
     Expression with a body.
     The body is a list which will be handled in context of the params. 
     '''
-    def __init__(self, mark = UndefinedMark, params=[], body=[]):
+    def __init__(self, mark, params, body):
         self.body = body
         super().__init__(mark, params)
         
@@ -210,7 +214,7 @@ class ConditionalNode(ExpressionWithBodyBase):
     e.g. if gt(x, y) { *(x, y) }
     '''
     def toString(self):
-        return "Conditional({}, {})".format(self.mark.toString(), self.params, self.body)
+        return "Conditional({}, {})".format(self.data.toString(), self.params, self.body)
         
         
         
@@ -222,12 +226,13 @@ class ContextNode(ExpressionWithBodyBase):
     e.g. def mult(x, y) { *(x, y) }
     '''
     def toString(self):
-        return "ParameterContext({}, {})".format(self.mark.toString(), self.params, self.body)
+        return "ParameterContext({}, {})".format(self.data.toString(), self.params, self.body)
         
         
 def mkContextNode(position, markStr):
-    t = ContextNode()
-    t.data_str = markStr
+    #(self, mark = , params=[], body=[]):
+    t = ContextNode(UndefinedMark, [], [])
+    t.dataStr = markStr
     t.position = position
     return t
     
@@ -242,7 +247,7 @@ class ConditionalContextNode(ExpressionWithBodyBase):
     e.g. def while(x, y) { *(x, y) }
     '''    
     def toString(self):
-        return "ConditionalContext({}, {})".format(self.mark.toString(), self.params, self.body)
+        return "ConditionalContext({}, {})".format(self.data.toString(), self.params, self.body)
        
 
 
@@ -252,9 +257,16 @@ class Lambda(ExpressionWithBodyBase):
     Also serves as the base for a main() parse.
     Special case.
     '''
-    def __init__(self, params=[], body=[]):
+    dataStr = ''
+    
+    def __init__(self, params, body):
         super().__init__(NoMark, params=params, body=body)
 
     def toString(self):
         return "Lambda({}, {})".format(self.params, self.body)
        
+def mkLambda(position):
+    #(self, mark = , params=[], body=[]):
+    t = Lambda([], [])
+    t.position = position
+    return t
