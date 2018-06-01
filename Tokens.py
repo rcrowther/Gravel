@@ -10,7 +10,7 @@ tokenBase = {
     0 : ('empty' , 'EMPTY' ),
     1 : ('EOF' , 'EOF' ),
     2 : ('identifier' , 'IDENTIFIER' ),
-    3 : ('operater' , 'OPERATER' ),
+    3 : ('operaterIdentifier' , 'OPERATER' ),
     
     # constants
     4 : ('intNum' , 'INT_NUM' ),

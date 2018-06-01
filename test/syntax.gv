@@ -1,5 +1,26 @@
 # Gravel Syntax set
 
+## Atom expressions
+#
+
+# Integer
+1923
+
+# Float
+1965.34
+
+# String
+"A string"
+
+# Multiline String
+""
+A sting covering
+several
+lines
+...
+"
+# Atoms can be followed by optional Kind annotation
+1923 : Bit32U
 
 ## Function definition
 #
@@ -10,6 +31,23 @@ fnc filter()
 # ...and have kinded parameters
 fnc filter(dom: Int node: Float)
 
-# ...and handle trailing kinds
+# ...and handle optional trailing kinds
 fnc filter(dom: Int node: Float) : Float
 
+## Operater definition
+#
+
+# ...same as function definition
+fnc ++=(dom: Int node: String) : String
+
+## Operater call
+#
+# can have implicit parameter list, even if empty
+++=()
+
+
+# ...parameters can have optional kinds
+++=(spiral: Spiral)
+
+# ...handles optional trailing kinds
+++=(spiral: Spiral) : String

@@ -105,10 +105,9 @@ class ParameterDefinition(Tree):
     def toString(self):
         return "{}:{}".format(self.data, self.returnKind)
         
-def mkParameterDefinition(position, markStr, kindStr):
+def mkParameterDefinition(position, markStr):
     t = ParameterDefinition(UndefinedMark)
     t.dataStr = markStr
-    t.kindStr = kindStr
     t.position = position   
     return t
     
@@ -139,6 +138,12 @@ class IntegerAtom(Atom):
     returnKind = IntegerKind
     typ_str = 'IntegerAtom'
 
+def mkIntegerAtom(position, markStr):
+    t = IntegerAtom(UndefinedMark)
+    t.dataStr = markStr
+    t.position = position
+    return t
+
 
 
 class FloatAtom(Atom):
@@ -148,6 +153,12 @@ class FloatAtom(Atom):
     def toString(self):
         return 'FloatAtom({})'.format(self.data)
         
+def mkFloatAtom(position, markStr):
+    t = FloatAtom(UndefinedMark)
+    t.dataStr = markStr
+    t.position = position
+    return t
+
 
 
 class StringAtom(Atom):
@@ -157,7 +168,11 @@ class StringAtom(Atom):
     def toString(self):
         return 'StringAtom("{}")'.format(self.data)
 
-
+def mkStringAtom(position, markStr):
+    t = StringAtom(UndefinedMark)
+    t.dataStr = markStr
+    t.position = position
+    return t
 
     
 class Expression(Tree):
