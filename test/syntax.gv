@@ -42,12 +42,14 @@ fnc ++=(dom: Int node: String) : String
 
 ## Operater call
 #
-# can have implicit parameter list, even if empty
-++=()
+# ...has one parameter even if empty
+++=(5678)
 
+# ...can have implicit parameter list,
+++= 49333
 
-# ...parameters can have optional kinds
-++=(spiral: Spiral)
+# ...arguments can have optional kinds
+++=(spiral(): Spiral)
 
 # ...handles optional trailing kinds
-++=(spiral: Spiral) : String
+++=(spiral(): Spiral) : String

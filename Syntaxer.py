@@ -33,16 +33,22 @@ class Syntaxer:
 
         #pos = Position(self.it.source(), self.prevLine, self.prevOffset)
         self.reporter.error(msg + txtO, self.position())
-
         sys.exit("Error message")
 
     def expectedTokenError(self, ruleName, tok):
-         self.error("In rule '{0}' expected '{1}' but found '{2}'".format(
+         self.error("In rule '{0}' expected token '{1}' but found '{2}'".format(
              ruleName,
              tokenToString[tok],
              tokenToString[self.tok]
              ))
 
+    def expectedRuleError(self, currentRule, expectedRule):
+         self.error("In rule '{0}' expected rule '{1}'. Current token: '{2}'".format(
+             currentRule,
+             expectedRule,
+             tokenToString[self.tok]
+             ))
+             
     ## iterators
     def textOf(self):
         return self.it.textOf()
@@ -53,7 +59,7 @@ class Syntaxer:
         self.tok = self.it.__next__()
 
 
-    ## rule helpers
+    ## Token helpers
     def isToken(self, token):
        return (token == self.tok)
 
@@ -90,10 +96,30 @@ class Syntaxer:
             self._next()
         return r
             
-    ## Rules
+            
+    ## Rule helpers
+    #! enable
+    def zeroOrMoreDelimited(self, lst, rule, endToken):
+        '''
+        Often easier and more human for list rules to match the 
+        delimiter than to keep checking if contained rules match.
+        '''
+        while(not self.isToken(endToken)):
+            rule(lst)
 
+    def oneOrError(self, lst, rule, currentRule, expectedRule):
+        '''
+        Often easier and more human for list rules to match the delimiter than to
+        keep checking if contained rules match.
+        '''
+        if(not rule(lst)):
+            self.expectedRuleError(currentRule, expectedRule)
+            
+              
+    ## Rules
     def optionalKindAnnotation(self, tree):
         '''
+        option(':' ~ Kind)
         Optionally match a Kind annotation.
         '''
         coloned = self.optionallySkipToken(COLON)
@@ -125,9 +151,11 @@ class Syntaxer:
         return commit
         
             
-            
+    # lot like a simple call
+    # and a parameter
     def identifierOptionalKind(self, lst):
         '''
+        identifier ~ Option(Kind)
         Optional type declaration.
         Succeed or error
         '''
@@ -140,6 +168,7 @@ class Syntaxer:
               
     def defineParameter(self, lst):
         '''
+        identifier ~ ':' ~ Kind
         Enforced type declaration.
         Succeed or error
         '''
@@ -155,21 +184,22 @@ class Syntaxer:
 
     def defineParameters(self, lst):
         '''
+        '(' ~ zeroOrMore(defineParameter) ~')'
         Enforced bracketing.
         Suceed or error
         '''
         self.skipTokenOrError('Define Parameters', LBRACKET)          
-        while(not self.isToken(RBRACKET)):
-            self.defineParameter(lst)
+        #while(not self.isToken(RBRACKET)):
+        #    self.defineParameter(lst)
+        self.zeroOrMoreDelimited(lst, self.defineParameter, RBRACKET)
+        #! can be skipToken
         self.skipTokenOrError('Define Parameters', RBRACKET)          
         return True
 
 
-        
-
-    def defineFunction(self, lst):
+    def functionDefine(self, lst):
         '''
-        'fnc' ~ Identifier /OperatorIdentifier~ DefineParameters  ~ Option(Kind) ~ ExplicitSeq
+        'fnc' ~ (Identifier | OperatorIdentifier) ~ DefineParameters  ~ Option(Kind) ~ ExplicitSeq
         Definitions attached to code blocks
         '''
         #! this textOf is direct, but could be done by token lookup
@@ -184,7 +214,7 @@ class Syntaxer:
              # currently. can't be dried out
              if(self.tok != IDENTIFIER and self.tok != OPERATER):
                  #self.expectedTokenError(ruleName, token)
-                 self.error("In rule '{}' expected '{}' or '{}' but found '{}'".format(
+                 self.tokenError("In rule '{}' expected '{}' or '{}' but found '{}'".format(
                      'Define Function',
                      tokenToString[IDENTIFIER],
                      tokenToString[OPERATER],
@@ -201,33 +231,50 @@ class Syntaxer:
              self.optionalKindAnnotation(t)
              #! body
              #self.explicitSeq(t.body)
-        return commit 
-
+        return commit
+        
+         
+    #! should the parameter be optional in currying?
+    #! I think not? Thats a postfix... at best '++'?
     def parametersForOperaterCall(self, lst):
         '''
+        Option('(') ~ Option(expression) ~ Option(')'
         One parameter, optional bracketing.
         Succeed or error
         '''
         bracketted = self.optionallySkipToken(LBRACKET)
-        if (not self.isToken(RBRACKET)):          
-            self.identifierOptionalKind(lst)
+        #if (not self.isToken(RBRACKET)):          
+            #! Should be expressions
+            #! optional or mandatory [mandatory for now?]?
+            #self.expressionCall(lst)
+        self.oneOrError(lst, 
+            self.expressionCall, 
+            'parametersForOperaterCall', 
+            'expressionCall'
+            )
         if (bracketted):
             self.skipTokenOrError('Operater Call Parameters', RBRACKET)          
         return True
 
+
+                      
+    #??? test expression embedding
     def parametersForCall(self, lst):
         '''
-        Assured brackets
+        '(' ~ zeroOrMore(expression) ~')'
         Multiple parameters, optional kind.
         Succeed or error
         '''
         self.skipTokenOrError('Function Call Parameters', LBRACKET)          
-        while(not self.isToken(RBRACKET)):
-            self.identifierOptionalKind(lst)
+        #while(not self.isToken(RBRACKET)):
+            #! Should be expressions
+            #self.atomExpression(lst)
+            #self.expressionCall(lst)
+        self.zeroOrMoreDelimited(lst, self.expressionCall, RBRACKET)
         self.skipTokenOrError('Function Call Parameters', RBRACKET)          
         return True
                 
-    def callFunction(self, lst):
+    def functionCall(self, lst):
         '''
         Identifier ~ DefineParameters ~ Option(Kind) ~ ExplicitSeq
         Definitions attached to code blocks
@@ -246,7 +293,7 @@ class Syntaxer:
 
     def operatorCall(self, lst):
         '''
-        OperaterIdentifier ~ DefineParameter ~ Option(Kind) ~ ExplicitSeq
+        OperaterIdentifier ~ DefineParameter ~ Option(Kind)
         Slightly, but strongly, different to functionCall.
         '''
         commit = (self.isToken(OPERATER))
@@ -277,6 +324,20 @@ class Syntaxer:
             self._next()
         return commit
         
+    def expressionCall(self, lst):
+        '''
+        atomExpression | functionCall | operatorCall
+        Calls where they can be used nested (not as the target
+        of allocation etc.?)
+        '''
+        #print('expression')
+        commit = (
+            self.atomExpression(lst) 
+            or self.functionCall(lst)
+            or self.operatorCall(lst)
+            )
+        return commit
+        
     def seqContents(self, lst):
         '''
         Used for body contents
@@ -284,12 +345,10 @@ class Syntaxer:
         while(
             self.comment(lst)
             or self.multilineComment(lst)
-            or self.defineFunction(lst)
-            # must go after defines, which are more specialised in the
-            # first token
-            or self.callFunction(lst)
-            or self.operatorCall(lst)
-            or self.atomExpression(lst)
+            or self.functionDefine(lst)
+            # calls must go after defines, which are more 
+            # specialised in the first token
+            or self.expressionCall(lst)
             ):
             pass
         
@@ -300,7 +359,7 @@ class Syntaxer:
             self._next()
             self.seqContents(self.ast.body)
             # if we don't except on StopIteration...
-            self.error('Parsing did not complete: lastToken: {},'.format(
+            self.tokenError('Parsing did not complete: lastToken: {},'.format(
                 tokenToString[self.tok]
                 ))
         except StopIteration:
