@@ -152,7 +152,7 @@ punctuationBase = {
     'comma': (COMMA, Codepoints.COMMA),
     'colon': (COLON, Codepoints.COLON),
     'scolon': (SEMI_COLON, Codepoints.SEMI_COLON),
-    'solidus': (SOLIDUS, Codepoints.SOLIDUS),
+    #'solidus': (SOLIDUS, Codepoints.SOLIDUS),
     'period': (PERIOD, Codepoints.PERIOD),
     'lbracket': (LBRACKET, Codepoints.LEFT_BRACKET),
     'rbracket': (RBRACKET, Codepoints.RIGHT_BRACKET),

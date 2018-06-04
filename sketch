@@ -36,4 +36,33 @@ val meg: int128
 # assume brackets
 5 + 4 / 3
 
+== Issue
+
+could have non-prefixed operattors?
+
+++(2)
+++ 2
+
+
+big issue
+
+4 + -34
+
+operaters need brackets allowing
+
+6 + (10/12)
+
+! prefix/no prefix position ok. Postfix not ok, parameter ambiguous.
+
+ambiguous
+
+functionCall
+name()
+
+symbolCall
+name
+
+Does it matter? They both return....
+
+== Thoughts
 There a connection between a partially applied function, and a data structure being partially filled. Explore...

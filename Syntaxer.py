@@ -201,6 +201,7 @@ class Syntaxer:
         '''
         'fnc' ~ (Identifier | OperatorIdentifier) ~ DefineParameters  ~ Option(Kind) ~ ExplicitSeq
         Definitions attached to code blocks
+        Used for both named and operater functions.
         '''
         #! this textOf is direct, but could be done by token lookup
         commit = (self.isToken(IDENTIFIER) and self.it.textOf() == 'fnc')
@@ -243,8 +244,6 @@ class Syntaxer:
         Succeed or error
         '''
         bracketted = self.optionallySkipToken(LBRACKET)
-        #if (not self.isToken(RBRACKET)):          
-            #! Should be expressions
             #! optional or mandatory [mandatory for now?]?
             #self.expressionCall(lst)
         self.oneOrError(lst, 
@@ -259,7 +258,7 @@ class Syntaxer:
 
                       
     #??? test expression embedding
-    def parametersForCall(self, lst):
+    def parametersForNamedCall(self, lst):
         '''
         '(' ~ zeroOrMore(expression) ~')'
         Multiple parameters, optional kind.
@@ -273,8 +272,23 @@ class Syntaxer:
         self.zeroOrMoreDelimited(lst, self.expressionCall, RBRACKET)
         self.skipTokenOrError('Function Call Parameters', RBRACKET)          
         return True
-                
-    def functionCall(self, lst):
+        
+    def optionalChainedExpressionCall(self, lst):
+        '''
+        zeroOrMore(period ~ namedFunctionCall) | (operaterFunctionCall))
+        Used after function and operator calls.
+        '''
+        while(True):
+            if (self.tok == PERIOD): 
+                self._next()
+                self.namedFunctionCall(lst)
+                continue
+            if (self.tok == OPERATER):
+                self.operaterFunctionCall(lst)
+                continue
+            break
+        
+    def namedFunctionCall(self, lst):
         '''
         Identifier ~ DefineParameters ~ Option(Kind) ~ ExplicitSeq
         Definitions attached to code blocks
@@ -282,24 +296,29 @@ class Syntaxer:
         #! this textOf is direct, but could be done by token lookup
         commit = (self.isToken(IDENTIFIER))
         if(commit):       
-             # get mark    
-             t = mkContextNode(self.position(), self.textOf())
-             lst.append(t)
-             self._next()
-             # generic params?
-             self.parametersForCall(t.params)
-             self.optionalKindAnnotation(t)            
+            # get mark    
+            t = mkContextCall(self.position(), self.textOf())
+            lst.append(t)
+            self._next()
+            # generic params?
+            self.parametersForNamedCall(t.params)
+            self.optionalKindAnnotation(t)   
+            #? seperate rule 'functionChain'
+            # because will go after an Atom too.
+            #while (self.tok == PERIOD): 
+                #self._next()
+            self.optionalChainedExpressionCall(t.chain)
         return commit 
 
-    def operatorCall(self, lst):
+    def operaterFunctionCall(self, lst):
         '''
         OperaterIdentifier ~ DefineParameter ~ Option(Kind)
-        Slightly, but strongly, different to functionCall.
+        Slightly, but strongly, different to namedFunctionCall.
         '''
         commit = (self.isToken(OPERATER))
         if(commit):       
              # get mark    
-             t = mkContextNode(self.position(), self.textOf())
+             t = mkContextCall(self.position(), self.textOf())
              lst.append(t)
              self._next()
              # generic params?
@@ -326,15 +345,15 @@ class Syntaxer:
         
     def expressionCall(self, lst):
         '''
-        atomExpression | functionCall | operatorCall
+        atomExpression | namedFunctionCall | operaterFunctionCall
         Calls where they can be used nested (not as the target
         of allocation etc.?)
         '''
         #print('expression')
         commit = (
             self.atomExpression(lst) 
-            or self.functionCall(lst)
-            or self.operatorCall(lst)
+            or self.namedFunctionCall(lst)
+            or self.operaterFunctionCall(lst)
             )
         return commit
         
@@ -359,7 +378,7 @@ class Syntaxer:
             self._next()
             self.seqContents(self.ast.body)
             # if we don't except on StopIteration...
-            self.tokenError('Parsing did not complete: lastToken: {},'.format(
+            self.error('Parsing did not complete: lastToken: {},'.format(
                 tokenToString[self.tok]
                 ))
         except StopIteration:

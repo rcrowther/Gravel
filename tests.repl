@@ -64,3 +64,7 @@ from Syntaxer import Syntaxer
 src = FileSource('/home/rob/Code/python/gravel/test/syntax.gv')
 r = ConsoleStreamReporter()
 s = Syntaxer(src, r)
+
+== Tree handling
+from trees.Visitors import RawPrint
+RawPrint(s.ast)

@@ -11,7 +11,7 @@ from Mark import Mark, UndefinedMark
 # NB: This looks like odd Python. It is. It is a little delicate.
 # In particular, do not put defaults on the inits. If you need
 # defaults, put them in the factories. Defaults on inits that match
-# classwide attribute values will not change classwide to 
+# classwide attribute values will not change classwide attributes to 
 # instance-specific values.
 class Tree():
     '''
@@ -175,6 +175,7 @@ def mkStringAtom(position, markStr):
     return t
 
     
+    
 class Expression(Tree):
     '''
     Joins a mark and a list of Atom/Expression.
@@ -190,9 +191,13 @@ class Expression(Tree):
     def __init__(self, mark, params):
         self.data = mark
         self.params = params
-        
+        # chain contains reviever-notated expressions. 
+        # ask the chain to be by instance, not classwide.
+        self.chain = []
+
     def toString(self):
-        return "Expression({}, {})".format(self.data.toString(), self.params)
+        chainStr = '.'.join([e.toString for e in self.chain])
+        return "Expression({}, {}){}".format(self.data.toString(), self.params, chainStr)
 
 
 
@@ -251,9 +256,22 @@ def mkContextNode(position, markStr):
     t.position = position
     return t
     
+
+class ContextCall(ContextNode):
+    '''
+    Call on a function/operator.
+    Like a ContextNode, can take a mark, parameters and a body (for closures).
+    '''
+    pass
     
-    
-    
+def mkContextCall(position, markStr):
+    t = ContextCall(UndefinedMark, [], [])
+    t.dataStr = markStr
+    t.position = position
+    return t
+        
+        
+        
 class ConditionalContextNode(ExpressionWithBodyBase):
     '''
     Expression where the body is executed conditionally in context of the params.

@@ -10,11 +10,12 @@
 1965.34
 
 # String
-"A string"
+# Single line string
+"string along for a line
 
 # Multiline String
 ""
-A sting covering
+A string covering
 several
 lines
 ...
@@ -40,13 +41,26 @@ fnc filter(dom: Int node: Float) : Float
 # ...same as function definition
 fnc ++=(dom: Int node: String) : String
 
+## Function call
+#
+# explicit parameter delimits
+filter(grabList())
+
+# can be chained
+filter(grabList()).filter2().filter3()
+
+# can be chained with operater functions
+filter(grabList()) + 44
+
+
 ## Operater call
 #
 # ...has one parameter even if empty
 ++=(5678)
 
 # ...can have implicit parameter list,
-++= 49333
+#++= 49333 -93 /(45 * 3) 
+++= 49333 -93 
 
 # ...arguments can have optional kinds
 ++=(spiral(): Spiral)
