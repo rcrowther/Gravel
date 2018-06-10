@@ -29,3 +29,21 @@ class File(CodePointIterator):
             self.fd.close()
             raise StopIteration
         return ord(c)
+
+
+#$ Clumsy for Python, but keeping it generic. 
+class StringLine(CodePointIterator):
+
+    def __init__(self, line):
+        self.line = line
+        self.i = -1
+        self.len = len(line)
+  
+    def __next__(self):
+        self.i += 1   
+        if (self.i == self.len):
+            raise StopIteration
+        else:  
+            return ord(self.line[self.i])
+
+       

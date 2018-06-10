@@ -1,10 +1,19 @@
 
 = IO
-== File
+== Codepoint
+=== File
 from gio.CodepointIterators import File
 it = File('/home/rob/Code/python/x64_compiler/test/test.gv')
 for cp in it:
     print(cp)
+    print(type(cp))
+
+=== StringLine
+from gio.CodepointIterators import StringLine
+it = StringLine('val quip = 19')
+for cp in it:
+    print(cp)
+    print(chr(cp))
     print(type(cp))
 
   
@@ -31,6 +40,7 @@ it = TokenIterator(it, r, srcPath)
 
 
 == Tokeniterator via Source
+=== File
 from gio.Source import FileSource
 from reporters.ConsoleStreamReporter import ConsoleStreamReporter
 from Tokens import tokenToString
@@ -38,6 +48,20 @@ r = ConsoleStreamReporter()
 src = FileSource('/home/rob/Code/python/x64_compiler/test/tokens.gv')
 src.srcPath
 it = src.tokenIterator(r)
+for tok in it:
+    print("[{},{}] '{}' '{}'".format(
+    it.lineCount,
+    it.lineOffset,
+    tokenToString[tok], it.textOf()
+    ))
+    
+=== StringLine
+from gio.Source import StringLineSource
+from reporters.ConsoleStreamReporter import ConsoleStreamReporter
+from Tokens import tokenToString
+r = ConsoleStreamReporter()
+src = StringLineSource()
+it = src.tokenIterator(r, 'val quip = 19')
 for tok in it:
     print("[{},{}] '{}' '{}'".format(
     it.lineCount,

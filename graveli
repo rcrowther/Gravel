@@ -1,0 +1,45 @@
+#!/usr/bin/env python3
+
+from cmd import Cmd
+
+from interpreter import Engine
+
+
+class MyPrompt(Cmd):
+
+    def __init__(self):
+        super().__init__()
+        self.engine = Engine()
+    
+    def onecmd(self, line):
+        if (line == 'EOF'):
+            #super().onecmd('quit')
+            print('\n')
+            raise SystemExit
+
+        #print('ok.. interpret this...' + line)
+        self.engine.evaluate(line)
+        
+            
+    #def do_hello(self, args):
+        #"""Says hello. If you provide a name, it will greet you with it."""
+        #print("Welcome to Gravel")
+        #print("Type in expressions to evaluate.")
+        #print("Type help for information.")
+        #print("Type quit to finish.")
+
+    #def do_quit(self, args):
+        #"""Quits the program."""
+        #print("Quitting.")
+        #raise SystemExit
+
+
+if __name__ == '__main__':
+    prompt = MyPrompt()
+    prompt.prompt = 'gravel> '
+    prompt.intro = ("Welcome to Gravel.\n"
+        "Type in expressions to evaluate.\n"
+        "Type help for information.\n"
+        "Type quit to finish.\n"
+        )
+    prompt.cmdloop()

@@ -18,12 +18,37 @@ class Syntaxer:
         self.reporter = reporter
         self.it = source.tokenIterator(reporter)
         self.tok = None
+        self.pathId = 0
+        self.nodeStack = []
         self.ast = mkNamelessFunc(NoPosition)
+        self.pushTree(self.ast) 
+        
         # start me up
         self.root()
+        self.popTree() 
         print(self.ast.toString())
    
-   
+    def nextPID(self, tree):
+        tree._in = self.pathId
+        self.pathId += 1
+        
+    def insertLeaf(self, tree):
+        tree._in = self.pathId
+        self.pathId += 1
+        tree._out = self.pathId
+        self.pathId += 1  
+             
+    def pushTree(self, tree):
+        tree._in = self.pathId
+        self.pathId += 1
+        self.nodeStack.append(tree)
+
+    def popTree(self):
+        tree = self.nodeStack.pop()
+        tree._out = self.pathId
+        self.pathId += 1        
+        return tree
+        
     ## reporter helpers     
     def position(self):
         return Position(self.source.srcPath, self.it.lineCount, self.it.lineOffset)
@@ -150,6 +175,7 @@ class Syntaxer:
             if (self.isToken(MULTILINE_STRING)):
                 t = mkStringNamelessData(self.position(), self.textOf())       
             lst.append(t)
+            self.insertLeaf(t) 
             self._next()
             self.optionalKindAnnotation(t)
         return commit
@@ -182,6 +208,7 @@ class Syntaxer:
         self.skipTokenOrError('Define Parameter', COLON)
         # type
         t = mkParameterDefinition(self.position(), markStr)
+        self.insertLeaf(t) 
         t.returnKind = self.getTokenOrError('Define Parameter', IDENTIFIER)
         lst.append(t)
         return True
@@ -229,13 +256,16 @@ class Syntaxer:
              self._next()
              #
              t = mkContextDefine(pos, markStr)
+             #self.nextPID(t)
+             self.pushTree(t) 
              lst.append(t)
              #t.isDef = True
              # generic params?
              self.defineParameters(t.params)
-             self.optionalKindAnnotation(t)
              #! body
              #self.explicitSeq(t.body)
+             self.popTree() 
+             self.optionalKindAnnotation(t)
         return commit
         
          
@@ -302,6 +332,7 @@ class Syntaxer:
         if(commit):       
             # get mark    
             t = mkContextCall(self.position(), self.textOf())
+            self.pushTree(t) 
             lst.append(t)
             self._next()
             # generic params?
@@ -312,6 +343,7 @@ class Syntaxer:
             #while (self.tok == PERIOD): 
                 #self._next()
             self.optionalChainedExpressionCall(t.chain)
+            self.popTree() 
         return commit 
 
     def operaterFunctionCall(self, lst):
@@ -323,10 +355,12 @@ class Syntaxer:
         if(commit):       
              # get mark    
              t = mkContextCall(self.position(), self.textOf())
+             self.pushTree(t) 
              lst.append(t)
              self._next()
              # generic params?
              self.parametersForOperaterCall(t.params)
+             self.popTree() 
              self.optionalKindAnnotation(t)            
         return commit 
         
@@ -335,6 +369,7 @@ class Syntaxer:
         commit = self.isToken(COMMENT)
         if (commit):
             t = mkComment(self.position(), self.textOf())
+            #self.insertLeaf(t) 
             lst.append(t)
             self._next()
         return commit
@@ -343,6 +378,7 @@ class Syntaxer:
         commit = self.isToken(MULTILINE_COMMENT)
         if (commit):
             t = mkComment(self.position(), self.textOf())
+            #self.insertLeaf(t) 
             lst.append(t)
             self._next()
         return commit

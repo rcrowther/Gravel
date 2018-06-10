@@ -1,10 +1,13 @@
 from Position import NoPosition
 from Kinds import *
-from Mark import Mark, UndefinedMark
+from TreeInfo import TreeInfo, UndefinedTreeInfo, NoTreeInfo
 
 
 
-
+#! may well need module defs etc. See,
+#! /home/rob/Downloads/scala-2.12.0/src/reflect/scala/reflect/api/Trees.scala
+#! assignment tree
+#! 
 # Now, we could do a LISP thing and make everything a list,
 # but future? typechecking may go easier if we model the common groups
 # of constructs.
@@ -17,11 +20,11 @@ class Tree():
     '''
     Tree init() should be designed so the class will accept the 
     parsed and identifying data. The init should not contain 
-    supplementary information. This is so toString() will print working 
-    code.
+    supplementary information. This is so toString() can print 
+    code which re[resents a working tree.
     Use a factory for other inits e.g. for tree builders.
     Note this base can be leaf or branch---it has no children.
-    Both dataStr and kindStr exist so later tree functionality can 
+    Both parsedData and parsedKind exist so later tree functionality can 
     change them to Python values, or, for example, test symbolic names 
     against tables.
     '''
@@ -30,84 +33,60 @@ class Tree():
     # for final data
     #data = None
     #position = NoPosition
+    #* Would be a recusive definition, so None
+    _in = None
+    _out = None
+    
+    def __init__(self):
+        self.parsedData = None
+        self.treeInfo = UndefinedTreeInfo
+        self.position = NoPosition
 
     def toString(self):
         return 'Tree()'
         
     def __repr__(self):
         return self.toString()
-        
-        
-        
+
+
+
 class Comment(Tree):
     def __init__(self, text):
-        self.data = text
+        super().__init__()
+        self.parsedData = text
 
     def toString(self):
-        return 'Comment("{}")'.format(self.data)
+        return 'Comment("{}")'.format(self.parsedData)
 
-def mkComment(position, text):
-    t = Comment(text.strip())
-    t.dataStr = text
+def mkComment(position, text): 
+    t = Comment(text)
     t.position = position   
     return t
 
 
-#! do all marks have a kind?
-#! if so, should it be in here? As an expression?
-class MarkNode(Tree):
-    '''
-    Marks are a name attached to some action.
-    In other languages, a ''symbol' or 'label'.
-    marks may be defined by the user (e.g. vars, action names, data names, etc)
-    or builtin (e.g. arithmetic operators)
-    '''
-    # at the very least, the Mark carries a position, over and above
-    # the name.
-    # A concrete class. See MarkTable.
-    def __init__(self, mark):
-        assert isinstance(mark, Mark), "Value for 'mark' must be an instance of Mark: value: {} type:{}".format(mark, type(mark))
-        self.data = mark
-
-    def toString(self):
-        return "MarkNode({})".format(self.data.toString())
-
-
-#! whats this for?
-class _NoMarkNode(MarkNode):
-    def __init__(self):
-        self.data = UndefinedMark
-
-    def toString(self):
-        return "NoMarkNode"
-        
-NoMarkNode = _NoMarkNode()
 
 
 
-
-#? very like an atom with a mark....
+#? very like a NamelessData with a TreeInfo....
 class ParameterDefinition(Tree):
     '''
     A parameter definition.
     These nodes are distinctive, they
-    - have explicit marking of kind
+    - have explicit treeInfoing of kind
     - are tree leaves (no body) always???
-    They also print out with explicit kind.
+    They also print out with explicit kind??? (no)
     '''
-    #data = UndefinedMark
-    kindStr = None
-    returnKind = UnknownKind
+    parsedKind = ''
     
-    def __init__(self, mark):
-        self.data = mark    
+    def __init__(self, name):
+        super().__init__()
+        self.parsedData = name    
 
     def toString(self):
-        return "{}:{}".format(self.data, self.returnKind)
+        return "ParameterDefinition('{}')".format(self.parsedData)
         
-def mkParameterDefinition(position, markStr):
-    t = ParameterDefinition(UndefinedMark)
-    t.dataStr = markStr
+def mkParameterDefinition(position, name):
+    t = ParameterDefinition(name)
     t.position = position   
     return t
     
@@ -115,81 +94,72 @@ def mkParameterDefinition(position, markStr):
     
     
 #? Sort out some parsed types
-class Atom(Tree):
+class NamelessData(Tree):
     '''
     A definition of data - a literal.
     In lisp terms, an ''atom'.
     '''
-    returnKind = UnknownKind
-    typ_str = "Call on base Atom, do not do this, use subtypes"
+    parsedKind = ''
+    typeStr = "Call on base NamelessData, do not do this, use subtypes"
     
-    def __init__(self, data):
-        self.data = data
-    #data_type = None
-    #def __init__(self, position, data, tpe):
+    def __init__(self, valueStr):
+        super().__init__()
+        self.parsedData = valueStr
 
     def toString(self):
-        return "{}({})".format(self.typ_str, self.data)
+        return "{}('{}')".format(self.typeStr, self.parsedData)
 
 
 
+class IntegerNamelessData(NamelessData):
+    typeStr = 'IntegerNamelessData'
 
-class IntegerAtom(Atom):
-    returnKind = IntegerKind
-    typ_str = 'IntegerAtom'
-
-def mkIntegerAtom(position, markStr):
-    t = IntegerAtom(UndefinedMark)
-    t.dataStr = markStr
+def mkIntegerNamelessData(position, valueStr):
+    t = IntegerNamelessData(valueStr)
     t.position = position
     return t
 
 
 
-class FloatAtom(Atom):
-    returnKind = FloatKind
-    typ_str = 'FloatAtom'
+class FloatNamelessData(NamelessData):
+    typeStr = 'FloatNamelessData'
 
     def toString(self):
-        return 'FloatAtom({})'.format(self.data)
+        return 'FloatNamelessData("{}")'.format(self.parsedData)
         
-def mkFloatAtom(position, markStr):
-    t = FloatAtom(UndefinedMark)
-    t.dataStr = markStr
+def mkFloatNamelessData(position, valueStr):
+    t = FloatNamelessData(valueStr)
     t.position = position
     return t
 
 
 
-class StringAtom(Atom):
-    returnKind = StringKind
-    typ_str = 'StringAtom'
+class StringNamelessData(NamelessData):
+    typeStr = 'StringNamelessData'
 
     def toString(self):
-        return 'StringAtom("{}")'.format(self.data)
+        return 'StringNamelessData("{}")'.format(self.parsedData)
 
-def mkStringAtom(position, markStr):
-    t = StringAtom(UndefinedMark)
-    t.dataStr = markStr
+def mkStringNamelessData(position, valueStr):
+    t = StringNamelessData(valueStr)
     t.position = position
     return t
 
+
+
     
-    
+#! is ExpressionCall
 class Expression(Tree):
     '''
-    Joins a mark and a list of Atom/Expression.
+    Joins a name and a list of NamelessData/Expression.
     The list is ''parameters'.
     e.g. +(3,2)
     '''
-    kindStr = None
-    returnKind = UnknownKind
-    #mark = NoMarkNode
-    # Params is separate from child lists, which are for bodies.
-    #params = []
+    parsedKind = ''
     
-    def __init__(self, mark, params):
-        self.data = mark
+    def __init__(self, nameStr, params):
+        super().__init__()
+        self.parsedData = nameStr
         self.params = params
         # chain contains reviever-notated expressions. 
         # ask the chain to be by instance, not classwide.
@@ -197,19 +167,19 @@ class Expression(Tree):
 
     def toString(self):
         chainStr = '.'.join([e.toString for e in self.chain])
-        return "Expression({}, {}){}".format(self.data.toString(), self.params, chainStr)
+        return "Expression('{}', {}){}".format(self.parsedData, self.params, chainStr)
 
 
 
 #class Assignment(Tree):
     #'''
-    #Joins a mark and a list of Atom/Expression.
+    #Joins a treeInfo and a list of NamelessData/Expression.
     #The list is ''parameters'.
     #e.g. val e = 4
     #=(e, 4)
     #'''
     #returnKind = NoKind
-    #mark = NoMark
+    #treeInfo = NoTreeInfo
     #body = []
 
 
@@ -220,25 +190,13 @@ class ExpressionWithBodyBase(Expression):
     Expression with a body.
     The body is a list which will be handled in context of the params. 
     '''
-    def __init__(self, mark, params, body):
+    def __init__(self, nameStr, params, body):
+        super().__init__(nameStr, params)
         self.body = body
-        super().__init__(mark, params)
         
         
-        
-        
-class ConditionalNode(ExpressionWithBodyBase):
-    '''
-    Expression where the body is executed conditional on the params.
-    Special case
-    e.g. if gt(x, y) { *(x, y) }
-    '''
-    def toString(self):
-        return "Conditional({}, {})".format(self.data.toString(), self.params, self.body)
-        
-        
-        
-class ContextNode(ExpressionWithBodyBase):
+
+class ContextDefine(ExpressionWithBodyBase):
     '''
     Expression where the body is executed in context of the params.
     Or, a ''function' or ''proceedure' of some kind
@@ -246,33 +204,44 @@ class ContextNode(ExpressionWithBodyBase):
     e.g. def mult(x, y) { *(x, y) }
     '''
     def toString(self):
-        return "ParameterContext({}, {})".format(self.data.toString(), self.params, self.body)
-        
-        
-def mkContextNode(position, markStr):
-    #(self, mark = , params=[], body=[]):
-    t = ContextNode(UndefinedMark, [], [])
-    t.dataStr = markStr
+        return "ContextDefine('{}', {})".format(self.parsedData, self.params, self.body)
+                
+def mkContextDefine(position, nameStr):
+    t = ContextDefine(nameStr, [], [])
     t.position = position
     return t
     
 
-class ContextCall(ContextNode):
+
+class ContextCall(ContextDefine):
     '''
     Call on a function/operator.
-    Like a ContextNode, can take a mark, parameters and a body (for closures).
+    Like a ContextCall, can take a name, parameters and a body (for closures).
     '''
-    pass
-    
-def mkContextCall(position, markStr):
-    t = ContextCall(UndefinedMark, [], [])
-    t.dataStr = markStr
+    def toString(self):
+        return "ContextCall('{}', {})".format(self.parsedData, self.params, self.body)
+            
+def mkContextCall(position, nameStr):
+    t = ContextCall(nameStr, [], [])
     t.position = position
     return t
         
+
+
+
+class ConditionalCall(ExpressionWithBodyBase):
+    '''
+    Expression where the body is executed conditional on the params.
+    Special case
+    e.g. if gt(x, y) { *(x, y) }
+    '''
+    def toString(self):
+        return "ConditionalCall('{}', {})".format(self.parsedData, self.params, self.body)
+
+
+                
         
-        
-class ConditionalContextNode(ExpressionWithBodyBase):
+class ConditionalContextCall(ExpressionWithBodyBase):
     '''
     Expression where the body is executed conditionally in context of the params.
     loops
@@ -280,26 +249,23 @@ class ConditionalContextNode(ExpressionWithBodyBase):
     e.g. def while(x, y) { *(x, y) }
     '''    
     def toString(self):
-        return "ConditionalContext({}, {})".format(self.data.toString(), self.params, self.body)
+        return "ConditionalContextCall('{}', {})".format(self.parsedData, self.params, self.body)
        
 
 
-class Lambda(ExpressionWithBodyBase):
+class NamelessFunc(ExpressionWithBodyBase):
     '''
-    Body expression with no mark.
+    Body expression with no treeInfo.
     Also serves as the base for a main() parse.
     Special case.
-    '''
-    dataStr = ''
-    
+    '''    
     def __init__(self, params, body):
-        super().__init__(NoMark, params=params, body=body)
+        super().__init__(NoTreeInfo, params=params, body=body)
 
     def toString(self):
-        return "Lambda({}, {})".format(self.params, self.body)
+        return "NamelessFunc({}, {})".format(self.params, self.body)
        
-def mkLambda(position):
-    #(self, mark = , params=[], body=[]):
-    t = Lambda([], [])
+def mkNamelessFunc(position):
+    t = NamelessFunc([], [])
     t.position = position
     return t

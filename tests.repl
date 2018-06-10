@@ -21,7 +21,7 @@ NoMark.toString()
 
 == MarkTable
 from MarkTable import *
-t = MarkTable()
+t = ExpressionMarkTable()
 t.note('xbox')
 # return the Mark
 print(t.define('xbox'))
@@ -60,7 +60,7 @@ r.info('ouch')
 == Syntaxer
 from gio.Source import FileSource
 from reporters.ConsoleStreamReporter import ConsoleStreamReporter
-from Syntaxer import Syntaxer
+from Syntaxer2 import Syntaxer
 src = FileSource('/home/rob/Code/python/gravel/test/syntax.gv')
 r = ConsoleStreamReporter()
 s = Syntaxer(src, r)
@@ -68,3 +68,17 @@ s = Syntaxer(src, r)
 == Tree handling
 from trees.Visitors import RawPrint
 RawPrint(s.ast)
+
+== Phases
+from Phases import *
+p1 = Phase('lex', 'run the lexer over input', True)
+p2 = Phase('syntax', 'check synatx, build tree', True)
+p3 = Phase('unarySignCompact', 'Replace parsed unary signs with internal +/-', True)
+pl = PhaseList(p1,p2,p3)
+pl.indexOf('unarySignCompact')
+pl1 = pl.take('syntax')
+for p in pl1:
+   print(p.name)
+pl.toDisplayString()
+for p in pl:
+    print(p.toDisplayString())
