@@ -185,6 +185,7 @@ class Expression(Tree):
 
 
 
+
 class ExpressionWithBodyBase(Expression):
     '''
     Expression with a body.
@@ -227,7 +228,22 @@ def mkContextCall(position, nameStr):
     return t
         
 
+class MonoOpExpressionCall(Expression):
+    '''
+    Operator Expression with one parameter 
+    Parameter can be a chain
+    '''
+    def toString(self):
+        chainStr = '.'.join([e.toString for e in self.chain])
+        return "MonoOpExpression('{}', {}){}".format(self.parsedData, self.params, chainStr)
 
+            
+def mkMonoOpExpressionCall(position, nameStr):
+    t = MonoOpExpressionCall(nameStr, [])
+    t.position = position
+    return t
+
+#?
 
 class ConditionalCall(ExpressionWithBodyBase):
     '''

@@ -1,7 +1,4 @@
-  #movreg a, c
-  #return 20 
-
-  # Comment here!
+  # Single line comment
   ## Multiline comment
   Can go on for a bit, these. Textfull.
   ...and have newlines.
@@ -24,7 +21,7 @@
   0.45
   
   # ...not a number after second period
-  0.45.func
+  0.45.someFuncId
    
   # Strings
   # Single line
@@ -39,14 +36,17 @@
 
   
   # Operaters
-  # ...stopped by whitespace
-  ~~~>>  @tag
+  # ...MomoSingle parameter (mono-op) pressed against number
+  >>45
   
-  # ...stopped by punctuation
-  ~~~>>()
-  
-  # ...stopped by numbers
-  ~~~>>45
+  # ...Single parameter (mono-op) pressed against alphanumeric
+  >>shuntedIdentifier
+
+  # - Generic parameter pressed against punctuation
+  +(dummy1, dummy2)
+   
+  # - Generic parameter pressed stopped by whitespace
+  ~~~>> 
   
   # ...versatile
   ???

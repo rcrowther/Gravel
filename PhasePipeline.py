@@ -1,38 +1,47 @@
-from Phase import PhaseList
+#from Phase import PhaseList
 #from MarkTables import ExpressionMarkTable, KindMarkTable
 
 # RunnerContext
 
 class PhasePipeline():        
     def __init__(self, 
-        reporter, 
-        #codeGenContext, 
-        #settings = None
+        phaseList
         ):
         #self.expSymbolTable = expressionActionSymbolTable
         #self.kindSymbolTable = kindSymbolTable
-        self.reporter = reporter
-        self.phases = PhaseList(self._requiredPhases())
-        self.settings.reportPhaseNames = True
+        self.phaseList = phaseList
 
 
-    def _requiredPhases(self):
-        return [
-        ]
+    #def _requiredPhases(self):
+    #    return [
+    #        SyntaxPhase(self.reporter, self.settings),
+       #phases.TreePhases.RemoveCommentsPhase(self.reporter),
+    #    ]
 
 
-    def run(self, phaseList, compilationUnit):
-       for p in phaseList:
-         if (self.settings.reportPhaseNames):
-            self.reporter.info("phase: '{0}'".format(p.name))
-         p.run(compilationUnit)
-         if (self.reporter.hasErrors()):
-             break
+    def run(self, 
+        compilationUnit,
+        reporter, 
+        #codeGenContext, 
+        settings = lambda: None
+        ):
+        settings.reportPhaseNames = True
 
-       if (self.reporter.hasErrors()):
-             print('errors...')
-             print(self.reporter.summaryString())
+        for p in self.phaseList:
+            if (settings.reportPhaseNames):
+                reporter.info("phase: '{0}'".format(p.name))
+            p.run(compilationUnit, reporter, settings)
+            if (reporter.hasErrors()):
+                break
+
+        if (reporter.hasErrors()):
+            print('errors...')
+            print(reporter.summaryString())
              # print errors/extent of errors?
              #sys.exit("Error message")
-       else:
-             print('done')
+        else:
+            print('done')
+
+
+    def __repr__(self):
+        return "<PhasePipeline phases={}>".format(self.phaseList)

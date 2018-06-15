@@ -4,8 +4,31 @@ from Position import Position
 from Tokens import *
 
 
+INFIX = [
+'|',
+'||',
+'^',
+'&',
+'&&',
+'<',
+'<<',
+ '>',
+'>>',
+#'=', 
+'!',
+#??? ':'
+'+', 
+'++',
+'-',
+'--',
+'*',
+'/',
+'%',
+]
 
-
+def isInfix(name):
+  return ((name[-1] == '=') or (name in INFIX))
+  
 class Syntaxer:
     '''
     Tree holding the structure of tokens.
@@ -107,9 +130,11 @@ class Syntaxer:
         '''
         Often easier and more human for list rules to match the 
         delimiter than to keep checking if contained rules match.
+        Skips the delimiting token.
         '''
         while(not self.isToken(endToken)):
             rule(lst)
+        self._next()
 
     def oneOrError(self, lst, rule, currentRule, expectedRule):
         '''
@@ -119,7 +144,7 @@ class Syntaxer:
         if(not rule(lst)):
             self.expectedRuleError(currentRule, expectedRule)
             
-              
+                          
     ## Rules
     def optionalKindAnnotation(self, tree):
         '''
@@ -192,12 +217,8 @@ class Syntaxer:
         Enforced bracketing.
         Suceed or error
         '''
-        self.skipTokenOrError('Define Parameters', LBRACKET)          
-        #while(not self.isToken(RBRACKET)):
-        #    self.defineParameter(lst)
-        self.zeroOrMoreDelimited(lst, self.defineParameter, RBRACKET)
-        #! can be skipToken
-        self.skipTokenOrError('Define Parameters', RBRACKET)          
+        self.skipTokenOrError('Define Parameters', LBRACKET)
+        self.zeroOrMoreDelimited(lst, self.defineParameter, RBRACKET)        
         return True
 
 
@@ -238,99 +259,116 @@ class Syntaxer:
              #self.explicitSeq(t.body)
         return commit
         
-         
-    #! should the parameter be optional in currying?
-    #! I think not? Thats a postfix... at best '++'?
-    def parametersForOperaterCall(self, lst):
+
+                      
+    #??? test expression embedding
+    def parametersForFunctionCall(self, lst):
         '''
-        Option('(') ~ Option(expression) ~ Option(')'
+        '(' ~ zeroOrMore(expression) ~')' | Empty
+        Multiple parameters, optional kind.
+        Succeed or error
+        '''
+        bracketted = self.optionallySkipToken(LBRACKET)
+        if (bracketted):
+            self.zeroOrMoreDelimited(lst, self.expressionCall, RBRACKET)          
+        return True
+        
+    def parametersForChainedOperaterFunctionCall(self, lst):
+        '''
+        expression |
+        '(' ~ zeroOrMore(expression) ~ ')'
         One parameter, optional bracketing.
         Succeed or error
         '''
         bracketted = self.optionallySkipToken(LBRACKET)
-            #! optional or mandatory [mandatory for now?]?
-            #self.expressionCall(lst)
+        if (not bracketted):
+            # assume binOp
+            self.oneOrError(lst, 
+                self.expressionCall, 
+                'parametersForOperaterCall', 
+                'expressionCall'
+                )
+        else:
+           # allow any parameters
+            self.zeroOrMoreDelimited(lst, self.expressionCall, RBRACKET)
+        return True
+      
+      
+    def chainedOperaterBinOpCall(self, lst):
+        '''
+        OperatorIdentifier ~ ExpressionCall
+        '''
+        # get mark    
+        print ('binop operator:' +  self.textOf())
+        t = mkContextCall(self.position(), self.textOf())
+        lst.append(t)
+        self._next()
+        # generic params?
         self.oneOrError(lst, 
             self.expressionCall, 
-            'parametersForOperaterCall', 
-            'expressionCall'
+            'expressionCall', 
+            'chainedOperaterBinOpCall'
             )
-        if (bracketted):
-            self.skipTokenOrError('Operater Call Parameters', RBRACKET)          
+        #self.optionalKindAnnotation(t)            
         return True
-
-
-                      
-    #??? test expression embedding
-    def parametersForNamedCall(self, lst):
-        '''
-        '(' ~ zeroOrMore(expression) ~')'
-        Multiple parameters, optional kind.
-        Succeed or error
-        '''
-        self.skipTokenOrError('Function Call Parameters', LBRACKET)          
-        #while(not self.isToken(RBRACKET)):
-            #! Should be expressions
-            #self.namelessDataExpression(lst)
-            #self.expressionCall(lst)
-        self.zeroOrMoreDelimited(lst, self.expressionCall, RBRACKET)
-        self.skipTokenOrError('Function Call Parameters', RBRACKET)          
-        return True
+      
+      
+    #def optionalChainedExpressionCall(self, lst):
+        #'''
+        #zeroOrMore(period ~ namedFunctionCall) | (operaterFunctionCall))
+        #Used after function and operator calls.
+        #'''
+        #while(True):
+            #if (self.tok == PERIOD): 
+                #self._next()
+                #self.functionCall(lst)
+                #continue
+            #if (self.tok == OPERATER and isInfix(self.it.textOf())):
+                #self.chainedOperaterBinOpCall(lst)
+                #continue
+            #break
         
-    def optionalChainedExpressionCall(self, lst):
-        '''
-        zeroOrMore(period ~ namedFunctionCall) | (operaterFunctionCall))
-        Used after function and operator calls.
-        '''
-        while(True):
-            if (self.tok == PERIOD): 
-                self._next()
-                self.namedFunctionCall(lst)
-                continue
-            if (self.tok == OPERATER):
-                self.operaterFunctionCall(lst)
-                continue
-            break
-        
-    def namedFunctionCall(self, lst):
+    def functionCall(self, lst):
         '''
         Identifier ~ DefineParameters ~ Option(Kind) ~ ExplicitSeq
         Definitions attached to code blocks
         '''
         #! this textOf is direct, but could be done by token lookup
-        commit = (self.isToken(IDENTIFIER))
+        commit = (self.isToken(IDENTIFIER) or self.isToken(OPERATER))
         if(commit):       
             # get mark    
             t = mkContextCall(self.position(), self.textOf())
             lst.append(t)
             self._next()
             # generic params?
-            self.parametersForNamedCall(t.params)
-            self.optionalKindAnnotation(t)   
-            #? seperate rule 'functionChain'
-            # because will go after an Atom too.
-            #while (self.tok == PERIOD): 
-                #self._next()
-            self.optionalChainedExpressionCall(t.chain)
+            self.parametersForFunctionCall(t.params)
+            self.optionalKindAnnotation(t)
+            #self.optionalChainedExpressionCall(t.chain)
         return commit 
 
-    def operaterFunctionCall(self, lst):
+
+    #! maybe should be in function itself?
+    def operaterMonoFunctionCall(self, lst):
         '''
-        OperaterIdentifier ~ DefineParameter ~ Option(Kind)
+        MonoOperaterIdentifier ~ MonoOpCallParameter ~ Option(Kind)
         Slightly, but strongly, different to namedFunctionCall.
         '''
-        commit = (self.isToken(OPERATER))
+        commit = (self.isToken(MONO_OPERATER))
         if(commit):       
-             # get mark    
-             t = mkContextCall(self.position(), self.textOf())
-             lst.append(t)
-             self._next()
-             # generic params?
-             self.parametersForOperaterCall(t.params)
-             self.optionalKindAnnotation(t)            
-        return commit 
-        
-        
+            # get mark    
+            print ('MONO operator:' + self.textOf())
+            t = mkMonoOpExpressionCall(self.position(), self.textOf())
+            lst.append(t)
+            self._next()
+            #! not expression, as another mono is not available, but otherwise ok
+            self.oneOrError(lst, 
+                self.expressionCall, 
+                'parameterForMonoOperaterCall', 
+                'expressionCall'
+                )
+            #self.optionalKindAnnotation(t)            
+        return commit
+                
     def comment(self, lst):
         commit = self.isToken(COMMENT)
         if (commit):
@@ -356,9 +394,12 @@ class Syntaxer:
         #print('expression')
         commit = (
             self.namelessDataExpression(lst) 
-            or self.namedFunctionCall(lst)
-            or self.operaterFunctionCall(lst)
+            or self.functionCall(lst)
+            or self.operaterMonoFunctionCall(lst)
             )
+        #! must insert some chained value into the Nodes? 
+        #! isChained
+        self.optionallySkipToken(PERIOD)
         return commit
         
     def seqContents(self, lst):
@@ -383,8 +424,9 @@ class Syntaxer:
             self.seqContents(self.ast.body)
             # if we don't except on StopIteration...
             self.error('Parsing did not complete: lastToken: {},'.format(
-                tokenToString[self.tok]
+                tokenToString[self.tok],                
                 ))
         except StopIteration:
             # All ok
+            print('parsed')
             pass

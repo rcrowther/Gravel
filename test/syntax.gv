@@ -23,6 +23,8 @@ lines
 # Atoms can be followed by optional Kind annotation
 1923 : Bit32U
 
+
+
 ## Function definition
 #
 
@@ -41,29 +43,69 @@ fnc filter(dom: Int node: Float) : Float
 # ...same as function definition
 fnc ++=(dom: Int node: String) : String
 
-## Function call
+
+
+## Name Function call
 #
-# explicit parameter delimits
-filter(grabList())
 
-# can be chained
-filter(grabList()).filter2().filter3()
+# no arguments
+println
 
-# can be chained with operater functions
-filter(grabList()) + 44
+# empty arguments
+println()
 
-
-## Operater call
-#
-# ...has one parameter even if empty
-++=(5678)
-
-# ...can have implicit parameter list,
-#++= 49333 -93 /(45 * 3) 
-++= 49333 -93 
+# many arguments
+println(data1 data2 data3)
 
 # ...arguments can have optional kinds
-++=(spiral(): Spiral)
+println(spiral: Spiral)
 
-# ...handles optional trailing kinds
-++=(spiral(): Spiral) : String
+# ...call handles optional trailing kinds
+println(spiral) : Nothing
+
+
+
+## Op Function call
+#
+
+# no arguments
+???
+
+# empty arguments
+|||()
+
+# many arguments
+|||(data1 data2 data3)
+
+
+## Chained functions
+#
+# nameFunctions can be chained
+grabList().filter2().filter3()
+
+# opFunctions can be chained
+>>.>>.>>
+
+# opFunctions can be chained without periods or brackets (as BinOps)
+1 + 2 + 3
+
+# can be chained with operater functions
+filter + 44
+
+
+
+
+## MonoOpCall
+-45
+#
+# if crushed againster number, is mono-op
+<<2
+
+# if crushed against alphabetic, is mono-op
+@tag()
+
+
+#?
+#++= 49333 - 93 / (45 * 3) 
+#++= 49333 - 93 
+

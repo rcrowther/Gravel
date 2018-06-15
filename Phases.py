@@ -83,8 +83,11 @@ class Phase():
         self.description = description
         self.isInternal = isInternal
 
-    def run(self, compilationUnit):
+    def run(self, compilationUnit, reporter, settings):
         pass
 
     def toDisplayString(self):
         return "{}: {}".format(self.name, self.description)
+
+    def __repr__(self):
+        return "{}".format(self.name)

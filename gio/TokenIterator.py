@@ -212,18 +212,22 @@ class TokenIterator():
     
     def scanOperatorIdentifier(self):
         '''
-        [a-z, A-Z] ~  zeroOrMore(not(Whitespace) | not(Numeric) | not(Punctuation))
+        [^a-z, A-Z] ~  zeroOrMore(not(Whitespace) | not(Numeric) | not(Alphabetic) | not(Punctuation))
         '''
-        self.tok = Tokens.OPERATER
         while (True):
             self.b.append(self.c)
             self._next()
             if (
                 (self.isWhitespace()) 
                 or (self.isNumeric())
+                or (self.isAlphabetic())
                 or (self.isPunctuation())
                 ):
                 break
+        if (self.isNumeric() or self.isAlphabetic()):
+            self.tok = Tokens.MONO_OPERATER
+        else:
+            self.tok = Tokens.OPERATER
         return True
 
     def skipWhitespace(self):

@@ -11,26 +11,27 @@ tokenBase = {
     1 : ('EOF' , 'EOF' ),
     2 : ('identifier' , 'IDENTIFIER' ),
     3 : ('operaterIdentifier' , 'OPERATER' ),
+    4 : ('monoOperaterIdentifier' , 'MONO_OPERATER' ),
     
     # constants
-    4 : ('intNum' , 'INT_NUM' ),
-    5 : ('floatNum' , 'FLOAT_NUM' ),
-    6 : ('multilinestring' , 'MULTILINE_STRING' ),
-    7 : ('string' , 'STRING' ),
-    8 : ('multilineComment', 'MULTILINE_COMMENT'),
-    9 : ('comment' , 'COMMENT' ),
+    10 : ('intNum' , 'INT_NUM' ),
+    11 : ('floatNum' , 'FLOAT_NUM' ),
+    12 : ('multilinestring' , 'MULTILINE_STRING' ),
+    13 : ('string' , 'STRING' ),
+    14 : ('multilineComment', 'MULTILINE_COMMENT'),
+    15 : ('comment' , 'COMMENT' ),
     
-    10 : ('and' , 'AND' ),
-    11 : ('or' , 'OR' ),
-    12 : ('not' , 'NOT' ),
-    13 : ('xor' , 'XOR' ),
-    20 : ('+' , 'PLUS' ),
-    21 : ('-' , 'MINUS' ),
-    22 : ('%' , 'PERCENT' ),
-    23 : ('*' , 'ASTERIX' ),
-    24 : ('<<' , 'LGUILEMOT' ),
-    25 : ('>>' , 'RGUILEMOT' ),
-    31 : ('=' , 'EQUALS' ),
+    20 : ('and' , 'AND' ),
+    21 : ('or' , 'OR' ),
+    22 : ('not' , 'NOT' ),
+    23 : ('xor' , 'XOR' ),
+    24 : ('+' , 'PLUS' ),
+    25 : ('-' , 'MINUS' ),
+    26 : ('%' , 'PERCENT' ),
+    27 : ('*' , 'ASTERIX' ),
+    28 : ('<<' , 'LGUILEMOT' ),
+    29 : ('>>' , 'RGUILEMOT' ),
+    30 : ('=' , 'EQUALS' ),
     #''
     # floatlit
     #intlit
@@ -50,6 +51,9 @@ tokenBase = {
     51 : ('linefeed' , 'LINEFEED' ),
     
     100 : ('val' , 'VAL' ),
+    100 : ('var' , 'VAR' ),
+    # idempotent, pure, reentrant?
+    102 : ('fnp' , 'FUNCTION_PURE' ),
     102 : ('fnc' , 'FUNCTION' ),
     
     110 : ('if' , 'IF' ),

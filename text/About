@@ -1,0 +1,35 @@
+A Parser/Lexer, written in Python.
+
+Reasons not to use Gravel:
+ - It supports x64 aand i396 archoiteture only (presently, the backend is the NASM compiler, so it supports anything, but x64 and i386 are the only aims)
+ - It's made by someone who cannot afford books
+ - It uses nobody else's wonderful software which has been created by people who know what they are doing (except NASM, but one day that will go)
+ - It's made by someone with no money-returning feats nor membership of highly-regarded institutions.
+ - It's unsuppoerted by big comfortable corporations
+ - It was made with passion, but passion is not what you think it is.
+ - It's made by a git
+ - Nobody else works in this way at this level, so there must be something fundamentally wrong about it.
+
+Reasons to use Gravel,
+ - For some cases, it's what I want. If you want that too, you may look at it.
+
+As Gravel has wandered onwards, a few fundamentals have become exposed,
+  ~ Gravel will produce guessable machine-code
+  : The key here is that optomisations are highly unlikly in the compiler. Especially, optomisations that substitute code. A few reorganisations maybe.
+  ~ The lexer will not be touched
+  : The lexer is usually regarded as an extensible tool. Not in Gravel. I'm close to freezing the code forever (like Tex)
+  ~ The parser will not be extended without revelation
+  : I've worked to made it stupid, and will not appreciate changes
+  ~ Optomisation is never accepted for itself
+  : For various reasons, some optomisations have emerged, but no optomisation is accepted for the reason it makes code faster.
+  ~ High-level constructs are accepted if they do not break the rules above
+  : Which, if you think about it, is possible. Mind you, Gravel regards ''if' as a philosophy.
+
+== Motto
+There will be another way of doing iy, which is wromg
+
+== What's it like?
+Pre-historic Scala-toy? Poorly-informed Dylan-that-compiles? Something you'd use if you hadn't heard of Go?
+
+== Why the name?
+I'm opposed to software names that reference suburban-naturalist fantasy---from an industry concentrated on emptying heavy metals and recyclable high-grade engineering into peripheral-society landfill.

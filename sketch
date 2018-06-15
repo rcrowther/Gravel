@@ -61,6 +61,93 @@ operaters need brackets allowing
 ! ie: +(6, {/(10/12)})
 ! prefix/no prefix position ok. Postfix not ok, parameter ambiguous.
 
+The problem is how to parse and tree-store this.
+mono calls are dealt with (but need accounting for).
+
+=== Syntax
+Since we now have a token, monoOpCalls can now go any place an expression, optionally
+        MonoOperaterIdentifier ~ MonoOpCallParameter ~ Option(Kind)
+        MonoOpCallParameter = Option('(') ~ ExpressionSeq ~ Option(')')
+
+==== Ops
+Other ops continue to be a problem?
+
+Must do,
+If chained no brackets assume binop?
+        OperaterIdentifier ~ OpCallParameters ~ Option(Kind)
+
+        (OpCallParameters =  '(' ~ ExpressionSeq ~ ')' |
+        Expression)
+         ~ Option(Kind)
+
+But won't work for chaining. could have seperate rules for chaining?
+
+        OpChainCallParameter =  '(' ~ Expression ~ ')' 
+
+So can do (with ops)
+1 + 2 === 1.+(2)
+
+With names
+x + y === x.+(y)
+
+But how does this stop?
+
+The issue would seem to be this. Any operator could chain-binop to what
+came before. That is what we are after, of course. But includes items
+which are not 'operators' at all,
+
+???
+
+Other problems: assignment becomes a chained operator,
+
+a = 1 + 2
+
+Actually, that works. But anyway.
+
+Kind might be taken as an operator?
+
+gosh : Operator
+
+No, colons are punctuation.
+
+Unrelated operation may chain together,
+
+res = magic >> 2
+flip + dice
+
+No intermediate operator, so should 
+work. But if we allow standalone operater functions,
+
+res = magic >> 2
+**flip + dice
+
+That will chain. That is bad. 
+
+So our biuggest problems is accidental chaining. And ??? standalone marks. ?
+
+infix anything ending in '='.
+
+'|'
+'||'
+'^'
+'&'
+'&&'
+'<'
+'<<'
+ '>'
+'>>'
+'=' '!'
+??? ':'
+'+' 
+'++'
+'-'
+'--'
+'*'
+'/' 
+'%'
+
+
+== funcs vs. attributes (classic/Liskov)
 ambiguous
 
 functionCall
@@ -70,6 +157,8 @@ symbolCall
 name
 
 Does it matter? They both return....
+
+
 
 == returns
 If .. return
@@ -81,11 +170,16 @@ ContextCall : last of body seq
 ConditionalCall : the last of body seq (if passes)
 ConditionalContextCall: the last of body seq (if passes)
 NamelessFunc: last of body seq
-Assign:  last of body seq
+Assign:  last of body seq to label
 
 ... and
 chainItem: to next
 chainLast: to label
+
+=== Return poitioning
+After param calcs
+if ... some loops
+
 
 == Thoughts
 There a connection between a partially applied function, and a data structure being partially filled. Explore...

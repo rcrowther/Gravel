@@ -3,7 +3,7 @@
 == Codepoint
 === File
 from gio.CodepointIterators import File
-it = File('/home/rob/Code/python/x64_compiler/test/test.gv')
+it = File('test/gio.gv')
 for cp in it:
     print(cp)
     print(type(cp))
@@ -20,7 +20,7 @@ for cp in it:
 == Tracking
 from gio.CodepointIterators import File
 from gio.TrackingIterator import TrackingIterator
-it = File('/home/rob/Code/python/x64_compiler/test/test.gv')
+it = File('test/gio.gv')
 it = TrackingIterator(it)
 for cp in it:
     print("[{},{}] '{}'".format(it.lineCount, it.lineOffset, chr(cp)))
@@ -30,14 +30,20 @@ for cp in it:
 from gio.CodepointIterators import File
 from gio.TrackingIterator import TrackingIterator
 from gio.TokenIterator import TokenIterator
+from Tokens import tokenToString
 from reporters.ConsoleStreamReporter import ConsoleStreamReporter
 
-srcPath = '/home/rob/Code/python/x64_compiler/test/test.gv'
+srcPath = 'test/tokens.gv'
 it = File(srcPath)
 it = TrackingIterator(it)
 r = ConsoleStreamReporter()
 it = TokenIterator(it, r, srcPath)
-
+for tok in it:
+    print("[{},{}] '{}': '{}'".format(
+    it.lineCount,
+    it.lineOffset,
+    tokenToString[tok], it.textOf()
+    ))
 
 == Tokeniterator via Source
 === File
@@ -45,11 +51,11 @@ from gio.Source import FileSource
 from reporters.ConsoleStreamReporter import ConsoleStreamReporter
 from Tokens import tokenToString
 r = ConsoleStreamReporter()
-src = FileSource('/home/rob/Code/python/x64_compiler/test/tokens.gv')
+src = FileSource('test/tokens.gv')
 src.srcPath
 it = src.tokenIterator(r)
 for tok in it:
-    print("[{},{}] '{}' '{}'".format(
+    print("[{},{}] '{}': '{}'".format(
     it.lineCount,
     it.lineOffset,
     tokenToString[tok], it.textOf()
@@ -63,7 +69,7 @@ r = ConsoleStreamReporter()
 src = StringLineSource()
 it = src.tokenIterator(r, 'val quip = 19')
 for tok in it:
-    print("[{},{}] '{}' '{}'".format(
+    print("[{},{}] '{}': '{}'".format(
     it.lineCount,
     it.lineOffset,
     tokenToString[tok], it.textOf()

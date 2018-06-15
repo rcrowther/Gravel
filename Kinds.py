@@ -40,7 +40,7 @@ Any = _Any()
 
 '''
 Unknown kind.
-Used for basic initialising. 
+Used for basic initialising. Only before a typechecker.
 '''
 class _UnknownKind(BaseKind):
     def __init__(self):
@@ -52,7 +52,7 @@ class _UnknownKind(BaseKind):
 UnknownKind = _UnknownKind()
 
 
-
+#! like scala.Unit
 '''
 Absense of kind.
 e.g. expression with no return.

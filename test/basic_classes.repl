@@ -1,0 +1,51 @@
+python3
+
+== Tokens
+from Tokens import *
+tokenToString
+punctuationCodepoints
+
+for k, v in punctuationCodepointToToken.items():
+  print(k, tokenToString[v])
+
+WHILE
+INT_NUM
+
+tokenToString[LSQUARE]
+
+== Mark
+from Mark import *
+m = Mark('class')
+m.toString()
+NoMark.toString()
+
+== MarkTable
+from MarkTable import *
+t = ExpressionMarkTable()
+t.note('xbox')
+# return the Mark
+print(t.define('xbox'))
+# return None
+print(t.define('xbox'))
+print(t.note('xbox1'))
+t('xbox')
+t.toString()
+
+
+
+== Kinds
+from Kinds import *
+NoKind.toString()
+
+
+== Trees
+from trees.Trees import *
+from Position import NoPosition
+mkParameterDefinition(NoPosition, 'xbox')
+mkIntegerNamelessData(NoPosition, 44)
+mkFloatNamelessData(NoPosition, 78.6)
+mkStringNamelessData(NoPosition, 'doopy')
+mkContextDefine(NoPosition, 'doopy')
+mkContextCall(NoPosition, 'dpong')
+mkMonoOpExpressionCall(NoPosition, 'dponth')
+mkNamelessFunc(NoPosition)
