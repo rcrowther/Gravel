@@ -2,6 +2,7 @@ from PhasePipeline import PhasePipeline
 from reporters.ConsoleStreamReporter import ConsoleStreamReporter
 
 from phases.Basic import PrintTokensPhase, SyntaxPhase, PrintTreePhase
+from phases.Documentation import GravelDoc
 
 
 
@@ -38,4 +39,13 @@ def Stock():
     return PhasePipeline( 
         phaseList,
         #codeGenContext, 
+        )
+
+def Documentation():
+    phaseList = [
+        SyntaxPhase(),
+        GravelDoc(),
+        ]
+    return PhasePipeline( 
+        phaseList 
         )

@@ -41,18 +41,9 @@ cu = CompilationUnit(src)
 == Pipelines
 
 == PrebuiltPipelines
-from reporters.ConsoleStreamReporter import ConsoleStreamReporter
-from PrebuiltPipelines import Stock
-from gio.Source import FileSource
-from CompilationUnit import CompilationUnit
-r = ConsoleStreamReporter()
-p = Stock()
-cu = CompilationUnit(FileSource('test/syntax.gv'))
-p.run(cu, r)
 
-
-from reporters.ConsoleStreamReporter import ConsoleStreamReporter
 from PrebuiltPipelines import PrintTokens
+from reporters.ConsoleStreamReporter import ConsoleStreamReporter
 from gio.Source import FileSource
 from CompilationUnit import CompilationUnit
 r = ConsoleStreamReporter()
@@ -62,11 +53,30 @@ p.run(cu, r)
 
 
 
-from reporters.ConsoleStreamReporter import ConsoleStreamReporter
 from PrebuiltPipelines import PrintTree
+from reporters.ConsoleStreamReporter import ConsoleStreamReporter
 from gio.Source import FileSource
 from CompilationUnit import CompilationUnit
 r = ConsoleStreamReporter()
 p = PrintTree()
+cu = CompilationUnit(FileSource('test/syntax.gv'))
+p.run(cu, r)
+
+
+from PrebuiltPipelines import Stock
+from reporters.ConsoleStreamReporter import ConsoleStreamReporter
+from gio.Source import FileSource
+from CompilationUnit import CompilationUnit
+r = ConsoleStreamReporter()
+p = Stock()
+cu = CompilationUnit(FileSource('test/syntax.gv'))
+p.run(cu, r)
+
+from PrebuiltPipelines import Documentation
+from reporters.ConsoleStreamReporter import ConsoleStreamReporter
+from gio.Source import FileSource
+from CompilationUnit import CompilationUnit
+r = ConsoleStreamReporter()
+p = Documentation()
 cu = CompilationUnit(FileSource('test/syntax.gv'))
 p.run(cu, r)

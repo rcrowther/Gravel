@@ -105,8 +105,10 @@ class NamelessData(Tree):
     def __init__(self, valueStr):
         super().__init__()
         self.parsedData = valueStr
-
-    def toString(self):
+        self.chain = []
+        
+    def toString(self):      
+        #chainStr = '.'.join([e.toString for e in self.chain])
         return "{}('{}')".format(self.typeStr, self.parsedData)
 
 
@@ -196,7 +198,27 @@ class ExpressionWithBodyBase(Expression):
         self.body = body
         
         
+        
+class DataDefine(ExpressionWithBodyBase):
+    '''
+    Expression where the body is executed for data.
+    Or, a ''val' or ''var' of some kind
+    No params
+    e.g. val pi { 3.142 }
+    '''
+    def __init__(self, nameStr, body):
+        super().__init__(nameStr, params=[], body=body)
 
+    def toString(self):
+        return "DataDefine('{}', {})".format(self.parsedData, self.body)
+                
+def mkDataDefine(position, nameStr):
+    t = DataDefine(nameStr, [])
+    t.position = position
+    return t
+    
+    
+    
 class ContextDefine(ExpressionWithBodyBase):
     '''
     Expression where the body is executed in context of the params.
@@ -214,7 +236,7 @@ def mkContextDefine(position, nameStr):
     
 
 
-class ContextCall(ContextDefine):
+class ContextCall(ExpressionWithBodyBase):
     '''
     Call on a function/operator.
     Like a ContextCall, can take a name, parameters and a body (for closures).
@@ -275,13 +297,13 @@ class NamelessFunc(ExpressionWithBodyBase):
     Also serves as the base for a main() parse.
     Special case.
     '''    
-    def __init__(self, params, body):
-        super().__init__(NoTreeInfo, params=params, body=body)
+    def __init__(self, body):
+        super().__init__(NoTreeInfo, params=[], body=body)
 
     def toString(self):
-        return "NamelessFunc({}, {})".format(self.params, self.body)
+        return "NamelessFunc({})".format(self.body)
        
 def mkNamelessFunc(position):
-    t = NamelessFunc([], [])
+    t = NamelessFunc([])
     t.position = position
     return t

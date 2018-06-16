@@ -24,24 +24,32 @@ lines
 1923 : Bit32U
 
 
+## Val definition
+#
+val pi{3.142}
+
 
 ## Function definition
 #
 
 # must have explicit parameter list, even if empty
-fnc filter()
+fnc filter() {
+}
 
 # ...and have kinded parameters
-fnc filter(dom: Int node: Float)
+fnc filter(dom: Int node: Float) {
+}
 
 # ...and handle optional trailing kinds
-fnc filter(dom: Int node: Float) : Float
+fnc filter(dom: Int node: Float) : Float {
+}
 
 ## Operater definition
 #
 
 # ...same as function definition
-fnc ++=(dom: Int node: String) : String
+fnc ++=(dom: Int node: String) : String {
+}
 
 
 

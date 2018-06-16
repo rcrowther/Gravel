@@ -15,7 +15,13 @@ class Visitor():
 
     def namelessData(self, t):
         pass
-            
+
+    def monoOpExpressionCall(self, t):
+        pass
+        
+    def dataDefine(self, t):
+        pass
+                    
     def contextDefine(self, t):
         pass
         
@@ -38,8 +44,12 @@ class Visitor():
             self.parameterDefinition(t)
         elif (isinstance(t, NamelessData)):
             self.namelessData(t)
+        elif (isinstance(t, MonoOpExpressionCall)):
+            self.monoOpExpressionCall(t)
         elif (isinstance(t, ExpressionWithBodyBase)):
-            if (isinstance(t, ContextDefine)):
+            if (isinstance(t, DataDefine)):
+                self.dataDefine(t)
+            elif (isinstance(t, ContextDefine)):
                 self.contextDefine(t)
             elif (isinstance(t, ContextCall)):
                 self.contextCall(t)
@@ -52,7 +62,7 @@ class Visitor():
             for e in t.body:
                 self._dispatch(e)
         else:
-            print("unrecognised tree. Kind:''".format(type(t).__name__))
+            print("tree.Visitor: unrecognised tree. Kind:'{}'".format(type(t).__name__))
 
 
 class VisitorWithDepth():
@@ -71,6 +81,12 @@ class VisitorWithDepth():
     def namelessData(self, depth, chained, t):
         pass
 
+    def monoOpExpressionCall(self, depth, chained, t):
+        pass
+        
+    def dataDefine(self, depth, chained, t):
+        pass
+        
     def contextDefine(self, depth, chained, t):
         pass
 
@@ -93,11 +109,15 @@ class VisitorWithDepth():
             self.parameterDefinition(depth, chained, t)
         elif (isinstance(t, NamelessData)):
             self.namelessData(depth, chained, t)
+        elif (isinstance(t, MonoOpExpressionCall)):
+            self.monoOpExpressionCall(depth, chained, t)
         elif (isinstance(t, ExpressionWithBodyBase)):
-            if (isinstance(t, ContextDefine)):
+            if (isinstance(t, DataDefine)):
+                self.dataDefine(depth, chained, t)
+            elif (isinstance(t, ContextDefine)):
                 self.contextDefine(depth, chained, t) 
             elif (isinstance(t, ContextCall)):
-                self.contextCall(depth, t)
+                self.contextCall(depth, chained, t)
             elif (isinstance(t, ConditionalCall)):
                 self.conditionalCall(depth, chained, t) 
             elif (isinstance(t, ConditionalContextCall)):
@@ -108,11 +128,13 @@ class VisitorWithDepth():
             for e in t.body:
                 self._dispatch(newDepth, e, False)      
         else:
-            print("[Error] Unrecognised tree. Kind:''".format(type(t).__name__))
+            print("tree.VisitorWithDepth: unrecognised tree. Kind:'{}'".format(type(t).__name__))
 
-        if (isinstance(t, Expression) and t.chain):
+        if ((isinstance(t, Expression) or isinstance(t, NamelessData)) and t.chain):
             #self.chainedFunctions(depth + self.chainIndent, t.chain)
-            self._dispatch(depth + self.chainIndent, t.chain[0], True)            
+            chainDepth = depth + self.chainIndent
+            for ct in t.chain: 
+                self._dispatch(chainDepth, ct, True)            
 
 
 
@@ -143,6 +165,12 @@ class RawPrint(VisitorWithDepth):
     def namelessData(self, depth, chained, t):
         self._print(depth, chained, t)
 
+    def monoOpExpressionCall(self, depth, chained, t):
+        self._print(depth, chained, t)
+        
+    def dataDefine(self, depth, chained, t):
+        self._print(depth, chained, t)
+        
     def contextDefine(self, depth, chained, t):
         self._print(depth, chained, t)
 
@@ -157,3 +185,67 @@ class RawPrint(VisitorWithDepth):
         
     def namelessFunc(self, depth, chained, t):
         self._print(depth, chained, t)
+
+
+
+#class VisitorTransformer():
+  
+    #def __init__(self, tree):
+      #self._dispatch(tree)
+
+    #def comment(self, t):
+        #pass
+              
+    #def parameterDefinition(self, t):
+        #pass
+
+    #def namelessData(self, t):
+        #pass
+
+    #def monoOpExpressionCall(self, depth, chained, t):
+        #pass
+        
+    #def dataDefine(self, t):
+        #pass
+                    
+    #def contextDefine(self, t):
+        #pass
+        
+    #def contextCall(self, t):
+        #pass 
+                
+    #def conditionalCall(self, t):
+        #pass
+        
+    #def conditionalContextCall(self, t):
+        #pass
+        
+    #def namelessFunc(self, t):
+        #pass  
+              
+    #def _dispatch(self, t):
+        #if (isinstance(t, Comment)):
+            #self.comment(t)
+        #elif (isinstance(t, ParameterDefinition)):
+            #self.parameterDefinition(t)
+        #elif (isinstance(t, NamelessData)):
+            #self.namelessData(t)
+        #elif (isinstance(t, MonoOpExpressionCall)):
+            #self.monoOpExpressionCall(t)
+        #elif (isinstance(t, ExpressionWithBodyBase)):
+            #if (isinstance(t, DataDefine)):
+                #self.dataDefine(t)
+            #elif (isinstance(t, ContextDefine)):
+                #self.contextDefine(t)
+            #elif (isinstance(t, ContextCall)):
+                #self.contextCall(t)
+            #elif (isinstance(t, ConditionalCall)):
+                #self.conditionalCall(t) 
+            #elif (isinstance(t, ConditionalContextCall)):
+                #self.conditionalContextCall(t)           
+            #elif (isinstance(t, NamelessFunc)):
+                #self.namelessFunc(t)            
+            #for e in t.body:
+                #self._dispatch(e)
+        #else:
+            #print("tree.Visitor: unrecognised tree. Kind:'{}'".format(type(t).__name__))

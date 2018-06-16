@@ -44,7 +44,7 @@ class Syntaxer:
         self.ast = mkNamelessFunc(NoPosition)
         # start me up
         self.root()
-        print(self.ast.toString())
+        #print(self.ast.toString())
    
    
     ## reporter helpers     
@@ -221,7 +221,46 @@ class Syntaxer:
         self.zeroOrMoreDelimited(lst, self.defineParameter, RBRACKET)        
         return True
 
-
+    def dataDefine(self, lst):
+        '''
+        'fnc' ~ (Identifier | OperatorIdentifier) ~ DefineParameters  ~ Option(Kind) ~ ExplicitSeq
+        Definitions attached to code blocks
+        Used for both named and operater functions.
+        '''
+        #! this textOf is direct, but could be done by token lookup
+        commit = (
+            self.isToken(IDENTIFIER) and 
+            self.it.textOf() == 'val' or
+            self.it.textOf() == 'var'
+            )
+        if(commit):
+            self._next()
+            pos = self.position()
+            
+            # mark 
+            if(self.tok != IDENTIFIER and self.tok != OPERATER):
+                self.tokenError("In rule '{}' expected '{}' or '{}' but found '{}'".format(
+                    'Define Data',
+                    tokenToString[IDENTIFIER],
+                    tokenToString[OPERATER],
+                    tokenToString[self.tok]
+                    ))
+            markStr = self.textOf()
+            self._next()
+            
+            # make node
+            t = mkDataDefine(pos, markStr)
+            lst.append(t)
+            
+            # Kind
+            self.optionalKindAnnotation(t)
+            
+            # body (namelessData)
+            self.skipTokenOrError('Define Data', LCURLY)
+            self.namelessDataExpression(t.body)
+            self.skipTokenOrError('Define Data', RCURLY)
+        return commit
+                                                  
     def functionDefine(self, lst):
         '''
         'fnc' ~ (Identifier | OperatorIdentifier) ~ DefineParameters  ~ Option(Kind) ~ ExplicitSeq
@@ -231,32 +270,36 @@ class Syntaxer:
         #! this textOf is direct, but could be done by token lookup
         commit = (self.isToken(IDENTIFIER) and self.it.textOf() == 'fnc')
         if(commit):
-             self._next()
-             pos = self.position()
+            self._next()
+            pos = self.position()
              
-             # get mark
-             #markStr = self.getTokenOrError('Define Function', IDENTIFIER)     
-             ##
-             # currently. can't be dried out
-             if(self.tok != IDENTIFIER and self.tok != OPERATER):
-                 #self.expectedTokenError(ruleName, token)
-                 self.tokenError("In rule '{}' expected '{}' or '{}' but found '{}'".format(
-                     'Define Function',
-                     tokenToString[IDENTIFIER],
-                     tokenToString[OPERATER],
-                     tokenToString[self.tok]
-                     ))
-             markStr = self.textOf()
-             self._next()
-             #
-             t = mkContextDefine(pos, markStr)
-             lst.append(t)
-             #t.isDef = True
-             # generic params?
-             self.defineParameters(t.params)
-             self.optionalKindAnnotation(t)
-             #! body
-             #self.explicitSeq(t.body)
+            # mark
+            # currently. can't be dried out
+            if(self.tok != IDENTIFIER and self.tok != OPERATER):
+                self.tokenError("In rule '{}' expected '{}' or '{}' but found '{}'".format(
+                    'Define Function',
+                    tokenToString[IDENTIFIER],
+                    tokenToString[OPERATER],
+                    tokenToString[self.tok]
+                    ))
+            markStr = self.textOf()
+            self._next()
+
+            # make node
+            t = mkContextDefine(pos, markStr)
+            lst.append(t)
+            
+            # params
+            #! generic params
+            self.defineParameters(t.params)
+
+            # Kind
+            self.optionalKindAnnotation(t)            
+            
+            # body (exp seq)
+            self.skipTokenOrError('Define Function', LCURLY)
+            self.seqContents(t.body)
+            self.skipTokenOrError('Define Function', RCURLY)
         return commit
         
 
@@ -273,44 +316,44 @@ class Syntaxer:
             self.zeroOrMoreDelimited(lst, self.expressionCall, RBRACKET)          
         return True
         
-    def parametersForChainedOperaterFunctionCall(self, lst):
-        '''
-        expression |
-        '(' ~ zeroOrMore(expression) ~ ')'
-        One parameter, optional bracketing.
-        Succeed or error
-        '''
-        bracketted = self.optionallySkipToken(LBRACKET)
-        if (not bracketted):
-            # assume binOp
-            self.oneOrError(lst, 
-                self.expressionCall, 
-                'parametersForOperaterCall', 
-                'expressionCall'
-                )
-        else:
-           # allow any parameters
-            self.zeroOrMoreDelimited(lst, self.expressionCall, RBRACKET)
-        return True
+    #def parametersForChainedOperaterFunctionCall(self, lst):
+        #'''
+        #expression |
+        #'(' ~ zeroOrMore(expression) ~ ')'
+        #One parameter, optional bracketing.
+        #Succeed or error
+        #'''
+        #bracketted = self.optionallySkipToken(LBRACKET)
+        #if (not bracketted):
+            ## assume binOp
+            #self.oneOrError(lst, 
+                #self.expressionCall, 
+                #'parametersForOperaterCall', 
+                #'expressionCall'
+                #)
+        #else:
+           ## allow any parameters
+            #self.zeroOrMoreDelimited(lst, self.expressionCall, RBRACKET)
+        #return True
       
       
-    def chainedOperaterBinOpCall(self, lst):
-        '''
-        OperatorIdentifier ~ ExpressionCall
-        '''
-        # get mark    
-        print ('binop operator:' +  self.textOf())
-        t = mkContextCall(self.position(), self.textOf())
-        lst.append(t)
-        self._next()
-        # generic params?
-        self.oneOrError(lst, 
-            self.expressionCall, 
-            'expressionCall', 
-            'chainedOperaterBinOpCall'
-            )
-        #self.optionalKindAnnotation(t)            
-        return True
+    #def chainedOperaterBinOpCall(self, lst):
+        #'''
+        #OperatorIdentifier ~ ExpressionCall
+        #'''
+        ## get mark    
+        #print ('binop operator:' +  self.textOf())
+        #t = mkContextCall(self.position(), self.textOf())
+        #lst.append(t)
+        #self._next()
+        ## generic params?
+        #self.oneOrError(lst, 
+            #self.expressionCall, 
+            #'expressionCall', 
+            #'chainedOperaterBinOpCall'
+            #)
+        ##self.optionalKindAnnotation(t)            
+        #return True
       
       
     #def optionalChainedExpressionCall(self, lst):
@@ -356,7 +399,7 @@ class Syntaxer:
         commit = (self.isToken(MONO_OPERATER))
         if(commit):       
             # get mark    
-            print ('MONO operator:' + self.textOf())
+            #print ('MONO operator:' + self.textOf())
             t = mkMonoOpExpressionCall(self.position(), self.textOf())
             lst.append(t)
             self._next()
@@ -384,7 +427,7 @@ class Syntaxer:
             lst.append(t)
             self._next()
         return commit
-        
+            
     def expressionCall(self, lst):
         '''
         namelessDataExpression | namedFunctionCall | operaterFunctionCall
@@ -409,6 +452,7 @@ class Syntaxer:
         while(
             self.comment(lst)
             or self.multilineComment(lst)
+            or self.dataDefine(lst)
             or self.functionDefine(lst)
             # calls must go after defines, which are more 
             # specialised in the first token
