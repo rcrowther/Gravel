@@ -435,7 +435,8 @@ class Syntaxer:
             # specialised in the first token
             or self.expressionCall(lst)
             ):
-            pass
+            if (len(lst) > 1):
+                lst[-1].prev = lst[-2]
         
         
     def root(self):

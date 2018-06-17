@@ -144,7 +144,6 @@ class Syntaxer:
         if(not rule(lst)):
             self.expectedRuleError(currentRule, expectedRule)
             
-                          
     ## Rules
     def optionalKindAnnotation(self, tree):
         '''
@@ -157,7 +156,6 @@ class Syntaxer:
             # add contents
             #self.optionalGenericParams(k)
         return coloned
-        
         
     def namelessDataExpression(self, lst):
         '''
@@ -458,8 +456,8 @@ class Syntaxer:
             # specialised in the first token
             or self.expressionCall(lst)
             ):
-            pass
-        
+            if (len(lst) > 1):
+                lst[-1].prev = lst[-2]        
         
     def root(self):
         try:

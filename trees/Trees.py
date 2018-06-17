@@ -37,6 +37,9 @@ class Tree():
     _in = None
     _out = None
     
+    _prev = None
+    _next = None
+    
     def __init__(self):
         self.parsedData = None
         self.treeInfo = UndefinedTreeInfo

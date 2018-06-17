@@ -1,0 +1,71 @@
+* {
+padding: 0;
+margin: 0;
+}
+
+body {
+background-color: white;
+color: #333;
+font-size:9pt;
+font-family: ariel, sans-serif;
+}
+
+section {
+margin: 12pt auto 0;
+}
+
+header {
+margin: 12pt 1em 0;
+}
+
+h1 {
+margin-top:8pt;
+font-size:16pt;
+font-weight: 400;
+}
+
+header > .description {
+margin-top: 5pt;
+}
+
+p {
+margin-top: 5pt; 
+}
+
+a {
+text-decoration: none;
+}
+
+header .path  a{
+text-decoration: underline;
+color: #363;
+}
+
+.children {
+margin-top: 6pt;
+}
+
+.children > li {
+display: table;
+width:100%;
+padding: 4pt;
+margin-bottom: 4pt;
+list-style: none;
+}
+
+li a {
+text-decoration: underline;
+color: #336;
+}
+
+li > .name {
+font-weight: 600;
+} 
+
+.mark-selector {
+width:16em;
+padding-right: 0.5em;
+text-align: right;
+display: table-cell;
+white-space: nowrap;
+}
