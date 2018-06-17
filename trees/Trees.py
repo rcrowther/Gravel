@@ -34,6 +34,7 @@ class Tree():
     #data = None
     #position = NoPosition
     #* Would be a recusive definition, so None
+    #?
     _in = None
     _out = None
     
@@ -53,20 +54,36 @@ class Tree():
 
 
 
-class Comment(Tree):
+class CommentBase(Tree):
+    typeStr = "Call on CommentBase, do not do this, use subtypes"
+    
     def __init__(self, text):
         super().__init__()
         self.parsedData = text
 
     def toString(self):
-        return 'Comment("{}")'.format(self.parsedData)
+        return '{}("{}")'.format(self.typeStr, self.parsedData)
 
-def mkComment(position, text): 
-    t = Comment(text)
+
+
+class SingleLineComment(CommentBase):
+    typeStr = "SingleLineComment"
+
+def mkSingleLineComment(position, text): 
+    t = SingleLineComment(text)
     t.position = position   
     return t
+    
+    
+    
+class MultiLineComment(CommentBase):
+    typeStr = "MultiLineComment"
 
-
+def mkMultiLineComment(position, text): 
+    t = MultiLineComment(text)
+    t.position = position   
+    return t
+    
 
 
 
@@ -97,13 +114,14 @@ def mkParameterDefinition(position, name):
     
     
 #? Sort out some parsed types
-class NamelessData(Tree):
+#! how to handle chains?
+class NamelessDataBase(Tree):
     '''
     A definition of data - a literal.
     In lisp terms, an ''atom'.
     '''
     parsedKind = ''
-    typeStr = "Call on base NamelessData, do not do this, use subtypes"
+    typeStr = "Call on base NamelessDataBase, do not do this, use subtypes"
     
     def __init__(self, valueStr):
         super().__init__()
@@ -112,11 +130,11 @@ class NamelessData(Tree):
         
     def toString(self):      
         #chainStr = '.'.join([e.toString for e in self.chain])
-        return "{}('{}')".format(self.typeStr, self.parsedData)
+        return "{}({})".format(self.typeStr, self.parsedData)
 
 
 
-class IntegerNamelessData(NamelessData):
+class IntegerNamelessData(NamelessDataBase):
     typeStr = 'IntegerNamelessData'
 
 def mkIntegerNamelessData(position, valueStr):
@@ -126,12 +144,9 @@ def mkIntegerNamelessData(position, valueStr):
 
 
 
-class FloatNamelessData(NamelessData):
+class FloatNamelessData(NamelessDataBase):
     typeStr = 'FloatNamelessData'
 
-    def toString(self):
-        return 'FloatNamelessData("{}")'.format(self.parsedData)
-        
 def mkFloatNamelessData(position, valueStr):
     t = FloatNamelessData(valueStr)
     t.position = position
@@ -139,7 +154,7 @@ def mkFloatNamelessData(position, valueStr):
 
 
 
-class StringNamelessData(NamelessData):
+class StringNamelessData(NamelessDataBase):
     typeStr = 'StringNamelessData'
 
     def toString(self):

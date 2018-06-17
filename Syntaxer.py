@@ -413,7 +413,7 @@ class Syntaxer:
     def comment(self, lst):
         commit = self.isToken(COMMENT)
         if (commit):
-            t = mkComment(self.position(), self.textOf())
+            t = mkSingleLineComment(self.position(), self.textOf())
             lst.append(t)
             self._next()
         return commit
@@ -421,7 +421,7 @@ class Syntaxer:
     def multilineComment(self, lst):
         commit = self.isToken(MULTILINE_COMMENT)
         if (commit):
-            t = mkComment(self.position(), self.textOf())
+            t = mkMultiLineComment(self.position(), self.textOf())
             lst.append(t)
             self._next()
         return commit

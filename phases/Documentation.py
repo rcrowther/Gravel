@@ -84,7 +84,7 @@ class HTMLVisitor(Visitor):
         #self.b.append('{')
         #self.b.append('}')
         prev = t.prev
-        if(isinstance(prev, Comment)):
+        if(isinstance(prev, MultiLineComment)):
             self.renderComment(prev.parsedData)
         self.b.append('</li>')
             
@@ -98,7 +98,7 @@ class HTMLVisitor(Visitor):
         self.b.append(')</span>')
         self.renderKind()
         prev = t.prev
-        if(isinstance(prev, Comment)):
+        if(isinstance(prev, MultiLineComment)):
             self.renderComment(prev.parsedData)
         self.b.append('</li>')
 
@@ -129,7 +129,7 @@ class PlaintextVisitor(Visitor):
         self.b.append('{')
         self.b.append('}: ')
         prev = t.prev
-        if(isinstance(prev, Comment)):
+        if(isinstance(prev, MultiLineComment)):
             self.b.append('\n    ')
             self.b.append(prev.parsedData.strip())
             
@@ -141,7 +141,7 @@ class PlaintextVisitor(Visitor):
         self.renderParameterDefinitions(t)
         self.b.append('): ')
         prev = t.prev
-        if(isinstance(prev, Comment)):
+        if(isinstance(prev, MultiLineComment)):
             self.b.append('\n    ')
             self.b.append(prev.parsedData.strip())
     
@@ -158,9 +158,8 @@ class GravelDoc(Phase):
             )
 
     def run(self, compilationUnit, reporter, settings):
-        #! settings to terminal, settings to files?
-        #! add titles?
-        #! sourcefile data?
+        #! settings for everything
+        #! 
         tree = compilationUnit.tree
         #v = PlaintextVisitor(tree)
         v = HTMLVisitor(tree)
