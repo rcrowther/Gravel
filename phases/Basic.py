@@ -28,23 +28,37 @@ class PrintTokensPhase(Phase):
   
 
 
-from trees.Visitors import RawPrint
-
-#? could do this using a setting in the pipeline,
-#? but this may be useful too
-class PrintTreePhase(Phase):
-    #? allow nothing after this phase
+class TreePrint(Phase):
+    #? after Syntax so there is a tree
     def __init__(self):
         Phase.__init__(self,
-            "parser tree print",
-            "read source, make tree, print tree after parsing",
+            "Print the AST Tree",
+            "Prints the tree. This print is of working intermediate code, and hard to read.",
             True
             )
 
     def run(self, compilationUnit, reporter, settings):
-        src = compilationUnit.source
-        parser = Syntaxer(src, reporter)
-        RawPrint(parser.ast)
+        #src = compilationUnit.source
+        #parser = Syntaxer(src, reporter)
+        print(compilationUnit.tree)
+
+
+        
+from trees.Visitors import RawPrint
+
+#? could do this using a setting in the pipeline,
+#? but this may be useful too
+class TreePrintDisplay(Phase):
+    #? after Syntax so there is a tree
+    def __init__(self):
+        Phase.__init__(self,
+            "Print the AST Tree",
+            "Prints the tree. This is depth-ordered representation for easy reading.",
+            True
+            )
+
+    def run(self, compilationUnit, reporter, settings):
+        RawPrint(compilationUnit.tree)
              
              
               
@@ -61,7 +75,66 @@ class SyntaxPhase(Phase):
         parser = Syntaxer(src, reporter)
         compilationUnit.tree = parser.ast
 
-#class TreeTidy(Phase):
+
+
+
+from trees.Visitors import VisitorForBodies
+from trees.Trees import CommentBase
+
+
+
+class CommentStripVisitor(VisitorForBodies):
+    def nodeWithBody(self, t):
+        t.body = [child for child in t.body if (not(isinstance(child, CommentBase)))]
+
+
+
+class StripComments(Phase):
+    #? after Syntax so there is a tree (and typecheck)
+    def __init__(self):
+        Phase.__init__(self,
+            "Strip Comments",
+            "Remove comments from the AST",
+            True
+            )
+
+    def run(self, compilationUnit, reporter, settings):
+        #! settings for everything
+        if (not compilationUnit.tree):
+            reporter.warning('phases.Basic.StripComments was unable to load a tree. Does a tree exist at for this phase?')
+            return
+        CommentStripVisitor(compilationUnit.tree)
+
+
+class InfixChainingVisitor(VisitorForBodies):
+    def nodeWithBody(self, t):
+        # check something is there
+        if(t.body):
+            node = t.body[0]
+            nxt = node._next
+            # until we run out of data 
+            while (nxt):
+                if (isinstance(node, ContextCall) and isinstance(nxt, ContextCall) and isInfix(nxt.parsedData)):
+                  node.isChained = True
+                node = nxt
+                nxt = node._next
+
+                  # or isinstance(node, ContextCall) and )
+        #t.body = [child for child in t.body if (not(isinstance(child, CommentBase)))]
+
+            
+class ChainsInfixMark(Phase):
+    #? after Syntax so there is a tree (and typecheck)
+    def __init__(self):
+        Phase.__init__(self,
+            "Mark Infix Chains",
+            "The parser will not mark infixed expressions, so this phase handles that.",
+            True
+            )
+
+    def run(self, compilationUnit, reporter, settings):
+        #! settings for everything
+        InfixChainingVisitor(compilationUnit.tree)
     #def __init__(self):
         #Phase.__init__(self,
             #"Tree tidy",

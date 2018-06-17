@@ -40,7 +40,7 @@ class HTMLVisitor(Visitor):
       self.b = []
       super().__init__(tree)
 
-    def namelessData(self, t):
+    def namelessDataBase(self, t):
         # only on the module?
         pass
 
@@ -111,7 +111,7 @@ class PlaintextVisitor(Visitor):
       self.b = []
       super().__init__(tree)
 
-    def namelessData(self, t):
+    def namelessDataBase(self, t):
         # only on the module?
         pass
 

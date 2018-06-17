@@ -41,6 +41,8 @@ NoKind.toString()
 == Trees
 from trees.Trees import *
 from Position import NoPosition
+mkSingleLineComment(NoPosition, 'No comment on single line comments')
+mkMultiLineComment(NoPosition, 'Multiline comments?\nEasy')
 mkParameterDefinition(NoPosition, 'xbox')
 mkIntegerNamelessData(NoPosition, 44)
 mkFloatNamelessData(NoPosition, 78.6)

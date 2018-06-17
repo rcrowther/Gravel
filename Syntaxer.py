@@ -136,10 +136,21 @@ class Syntaxer:
             rule(lst)
         self._next()
 
+    def oneOrMoreDelimited(self, lst, rule, endToken):
+        '''
+        Often easier and more human for list rules to match the 
+        delimiter than to keep checking if contained rules match.
+        Skips the delimiting token.
+        '''
+        while(True):
+            rule(lst)
+            if (self.isToken(endToken)):
+                break
+        self._next()
+        
     def oneOrError(self, lst, rule, currentRule, expectedRule):
         '''
-        Often easier and more human for list rules to match the delimiter than to
-        keep checking if contained rules match.
+        Match one rule or mark an error.
         '''
         if(not rule(lst)):
             self.expectedRuleError(currentRule, expectedRule)
@@ -258,7 +269,7 @@ class Syntaxer:
             self.namelessDataExpression(t.body)
             self.skipTokenOrError('Define Data', RCURLY)
         return commit
-                                                  
+        
     def functionDefine(self, lst):
         '''
         'fnc' ~ (Identifier | OperatorIdentifier) ~ DefineParameters  ~ Option(Kind) ~ ExplicitSeq
@@ -371,20 +382,31 @@ class Syntaxer:
         
     def functionCall(self, lst):
         '''
-        Identifier ~ DefineParameters ~ Option(Kind) ~ ExplicitSeq
-        Definitions attached to code blocks
+        (Identifier | OPERATER) ~ Arguments ~ Option(Kind)
+        
         '''
         #! this textOf is direct, but could be done by token lookup
         commit = (self.isToken(IDENTIFIER) or self.isToken(OPERATER))
         if(commit):       
-            # get mark    
+            # node    
             t = mkContextCall(self.position(), self.textOf())
             lst.append(t)
             self._next()
-            # generic params?
-            self.parametersForFunctionCall(t.params)
+            
+            # params
+            # Allow for the special case of infix (binop) operator 
+            # params, with no brackets and one parameter
+            if (not isInfix(t.parsedData)):
+                self.parametersForFunctionCall(t.params)
+            else:
+                self.oneOrError(t.params, 
+                    self.expressionCall, 
+                    'functionCall infix operator params', 
+                    'expressionCall'
+                    )
+                    
+            # Kind
             self.optionalKindAnnotation(t)
-            #self.optionalChainedExpressionCall(t.chain)
         return commit 
 
 
@@ -426,6 +448,25 @@ class Syntaxer:
             self._next()
         return commit
             
+            
+            
+    def namelessFuncCall(self, lst):
+        '''
+        '''
+        commit = (self.isToken(LCURLY))
+        if(commit): 
+            self._next()
+            
+            # node    
+            t = mkNamelessFunc(self.position())
+            lst.append(t)
+
+            # body
+            self.oneOrMoreDelimited(t.body, self.expressionCall, RCURLY)
+        return commit
+
+
+
     def expressionCall(self, lst):
         '''
         namelessDataExpression | namedFunctionCall | operaterFunctionCall
@@ -437,15 +478,22 @@ class Syntaxer:
             self.namelessDataExpression(lst) 
             or self.functionCall(lst)
             or self.operaterMonoFunctionCall(lst)
+            #! or self.namelessFuncCall(lst)
             )
-        #! must insert some chained value into the Nodes? 
-        #! isChained
-        self.optionallySkipToken(PERIOD)
+            
+        # chaining
+        if (commit):
+            t = lst[-1]
+            if (self.optionallySkipToken(PERIOD)):
+                t.isChained = True
+            if (isInfix(t.parsedData) and len(lst) > 1):
+                lst[-2].isChained = True
         return commit
         
     def seqContents(self, lst):
         '''
-        Used for body contents
+        Used for body contents.
+        Allows definitions.
         '''
         while(
             self.comment(lst)

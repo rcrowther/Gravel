@@ -70,6 +70,28 @@ class Visitor():
             print("tree.Visitor: unrecognised tree. Kind:'{}'".format(type(t).__name__))
 
 
+
+class VisitorForBodies():
+    '''
+    Visit all nodes that contain a body.
+    Note that this will not explore chains.
+    Note also that his can mutate the body, as the body is traversed 
+    after the tree is dispatched.
+    '''  
+    def __init__(self, tree):
+      self._dispatch(tree)
+        
+    def nodeWithBody(self, t):
+        pass  
+              
+    def _dispatch(self, t):
+        if (isinstance(t, BodyParameterMixin)):
+            self.nodeWithBody(t)
+            for e in t.body:
+                self._dispatch(e)
+
+
+
 class VisitorWithDepth():
     indent = 2
     chainIndent = 1
@@ -149,8 +171,10 @@ class VisitorWithDepth():
 
 
 class RawPrint(VisitorWithDepth):
-    '''
-    Print parsed string data from a tree.
+    '''    
+    Print a representation of the data in a tree.
+    
+    Designed for easy reading.
     Helpful especially in the first phases, when Marks have not been
     allocated, so are not visible through toString().
     '''
@@ -158,12 +182,13 @@ class RawPrint(VisitorWithDepth):
         
     def _print(self, depth, chained, t):
         indent = ' ' * depth            
-        if (chained):
+        #if (chained):
+        if (t.isChained):
             # U+2500 BOX DRAWINGS LIGHT HORIZONTAL
             # U+2514 BOX DRAWINGS LIGHT UP AND RIGHT
             # U+251C BOX DRAWINGS LIGHT VERTICAL AND RIGHT
-            indent += '└── '
-        print("{}[{}, {}]".format(indent, t._in, t._out))
+            indent += '┌── '
+        #print("{}[{}, {}]".format(indent, t._in, t._out))
         print("{}{}('{}')".format(indent, type(t).__name__, t.parsedData))
 
     def multiLineComment(self, depth, chained, t):
@@ -175,7 +200,7 @@ class RawPrint(VisitorWithDepth):
     def parameterDefinition(self, depth, chained, t):
         self._print(depth, chained, t)
 
-    def namelessData(self, depth, chained, t):
+    def namelessDataBase(self, depth, chained, t):
         self._print(depth, chained, t)
 
     def monoOpExpressionCall(self, depth, chained, t):

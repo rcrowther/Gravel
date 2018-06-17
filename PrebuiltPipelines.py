@@ -1,7 +1,15 @@
 from PhasePipeline import PhasePipeline
 from reporters.ConsoleStreamReporter import ConsoleStreamReporter
 
-from phases.Basic import PrintTokensPhase, SyntaxPhase, PrintTreePhase
+from phases.Basic import (
+    PrintTokensPhase, 
+    SyntaxPhase, 
+    TreePrint, 
+    TreePrintDisplay, 
+    StripComments,
+    ChainsInfixMark,
+    #NamesValidate
+    )
 from phases.Documentation import GravelDoc
 
 
@@ -22,7 +30,10 @@ def PrintTokens():
         
 def PrintTree():
     phaseList = [
-        PrintTreePhase(),
+        SyntaxPhase(),
+        StripComments(),
+        TreePrintDisplay(),
+        #TreePrint()
         ]
     reporter = ConsoleStreamReporter()
     return PhasePipeline( 
@@ -33,7 +44,9 @@ def PrintTree():
 def Stock():
     phaseList = [
         SyntaxPhase(),
-        #phases.TreePhases.RemoveCommentsPhase(self.reporter),
+        StripComments(),
+        #ChainsInfixMark(),
+        #NamesValidate(),
         ]
     reporter = ConsoleStreamReporter()
     return PhasePipeline( 

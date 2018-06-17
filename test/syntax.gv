@@ -92,7 +92,7 @@ println(spiral) : Nothing
 grabList().filter2().filter3()
 
 # opFunctions can be chained
->>.>>.>>
+>%.>%.>$
 
 # opFunctions can be chained without periods or brackets (as BinOps)
 1 + 2 + 3

@@ -45,6 +45,7 @@ class Tree():
         self.parsedData = None
         self.treeInfo = UndefinedTreeInfo
         self.position = NoPosition
+        self.isChained = False
 
     def toString(self):
         return 'Tree()'
@@ -85,8 +86,7 @@ def mkMultiLineComment(position, text):
     return t
     
 
-
-
+    
 #? very like a NamelessData with a TreeInfo....
 class ParameterDefinition(Tree):
     '''
@@ -111,7 +111,26 @@ def mkParameterDefinition(position, name):
     return t
     
     
+
+class BodyParameterMixin():
+    '''
+    Mixin for any Tree accepting a body as a parameter.
+    a body is a sequence of expressions, with the last expression
+    auto-returning a value (the value may be None).
     
+    As a parameter, a body will be loaded in an in an init,
+    and printed in a toString().
+    
+    There is usually but not always one body parameter only. Since they 
+    are used and consulted often, and shape much of the tree structure
+    in an AST, body parameters are placed on a seperate attribute to 
+    other parameters,
+    
+    This Mixin does little but establish that body parameters exist in
+    a tree node.
+    '''
+    pass
+        
     
 #? Sort out some parsed types
 #! how to handle chains?
@@ -206,7 +225,7 @@ class Expression(Tree):
 
 
 
-class ExpressionWithBodyBase(Expression):
+class ExpressionWithBodyBase(Expression, BodyParameterMixin):
     '''
     Expression with a body.
     The body is a list which will be handled in context of the params. 
