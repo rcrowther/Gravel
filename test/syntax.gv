@@ -28,6 +28,8 @@ lines
 #
 val pi{3.142}
 
+# can be followed by kind annotation
+var life: Choice {3.142}
 
 ## Function definition
 #
@@ -96,6 +98,9 @@ grabList().filter2().filter3()
 
 # opFunctions can be chained without periods or brackets (as BinOps)
 1 + 2 + 3
+
+# can be chained with nameless functions
+Gervaise + {2 / 3}
 
 # can be chained with operater functions
 filter + 44

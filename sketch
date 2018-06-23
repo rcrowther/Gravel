@@ -163,7 +163,7 @@ Does it matter? They both return....
 == returns
 If .. return
 NamelessData: data to label
-Seq: last, and anyting labeled ''return', to label
+Seq: last, and anything labeled ''return', to label
 ParamDefine : Nothing, it's a label
 ContextDefine : the function to label
 ContextCall : last of body seq
@@ -182,6 +182,23 @@ if ... some loops
 
 
 == Thoughts
-There a connection between a partially applied function, and a data structure being partially filled. Explore...
+There a connection between a partially applied function, and a data 
+structure being partially filled. Explore...
 
-Imports: Probaly more useful is where the file is used, not what is used there.
+Imports: Probaly more useful is where the file is used, not what is used 
+there.
+
+The greatest feature of JIT is not that you compile before run, but that 
+you only break on what you are trying.
+
+Call traces are only occasionally useful. What would also be very useful 
+is how many times a loop has been executed before the fail, how many
+times a proceedure executed. Did it work for something else?  Type is 
+also useful, but if typechecking exists, less so?
+
+Doing one thing and one thing only is like normalizing DB tables. Can
+the same rules be usedd (the thing, the whole thing, nothing but the 
+thing)? Note: should Maps only contain the 
+connection ('map') between subjectID and the objectID, not the 
+subjects and objects themselves? What about references, or is that 
+cheating? 

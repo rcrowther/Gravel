@@ -32,8 +32,8 @@ def PrintTree():
     phaseList = [
         SyntaxPhase(),
         StripComments(),
-        TreePrintDisplay(),
-        #TreePrint()
+        #TreePrintDisplay(),
+        TreePrint()
         ]
     reporter = ConsoleStreamReporter()
     return PhasePipeline( 

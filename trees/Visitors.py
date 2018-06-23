@@ -2,6 +2,81 @@ from trees.Trees import *
 
 
 
+class NonTraversingVisitor():
+    '''
+    A visitor which makes no attempt to auto-traverse a tree.
+    visit() must be called directly.
+    Each enabled visit method must make decisions and call visit() to 
+    move through a tree structure.
+    '''
+    #? Reusable class (no init)
+    def multiLineComment(self, t):
+        pass
+
+    def singleLineComment(self, t):
+        pass
+                      
+    def parameterDefinition(self, t):
+        pass
+
+    def namelessDataBase(self, t):
+        pass
+
+    def monoOpExpressionCall(self, t):
+        pass
+        
+    def dataDefine(self, t):
+        pass
+         
+    def namelessBody(self, t):
+        pass
+        
+    def contextDefine(self, t):
+        pass
+        
+    def contextCall(self, t):
+        pass 
+                
+    def conditionalCall(self, t):
+        pass
+        
+    def conditionalContextCall(self, t):
+        pass
+        
+    def namelessFunc(self, t):
+        pass  
+              
+    def visit(self, t):
+        if (isinstance(t, SingleLineComment)):
+            self.singleLineComment(t)
+        elif (isinstance(t, MultiLineComment)):
+            self.multiLineComment(t)
+        elif (isinstance(t, ParameterDefinition)):
+            self.parameterDefinition(t)
+        elif (isinstance(t, NamelessDataBase)):
+            self.namelessDataBase(t)
+        elif (isinstance(t, MonoOpExpressionCall)):
+            self.monoOpExpressionCall(t)
+        elif (isinstance(t, BodyParameterMixin)):
+            if (isinstance(t, DataDefine)):
+                self.dataDefine(t)
+            elif (isinstance(t, NamelessBody)):
+                self.namelessBody(t)                
+            elif (isinstance(t, ContextDefine)):
+                self.contextDefine(t)
+            elif (isinstance(t, ContextCall)):
+                self.contextCall(t)
+            elif (isinstance(t, ConditionalCall)):
+                self.conditionalCall(t) 
+            elif (isinstance(t, ConditionalContextCall)):
+                self.conditionalContextCall(t)           
+            elif (isinstance(t, NamelessFunc)):
+                self.namelessFunc(t)
+        else:
+            print("tree.NonTraversingVisitor: unrecognised tree. Kind:'{}'".format(type(t).__name__))
+
+
+
 class Visitor():
   
     def __init__(self, tree):
@@ -24,7 +99,10 @@ class Visitor():
         
     def dataDefine(self, t):
         pass
-                    
+         
+    def namelessBody(self, t):
+        pass
+        
     def contextDefine(self, t):
         pass
         
@@ -51,9 +129,11 @@ class Visitor():
             self.namelessDataBase(t)
         elif (isinstance(t, MonoOpExpressionCall)):
             self.monoOpExpressionCall(t)
-        elif (isinstance(t, ExpressionWithBodyBase)):
+        elif (isinstance(t, BodyParameterMixin)):
             if (isinstance(t, DataDefine)):
                 self.dataDefine(t)
+            elif (isinstance(t, NamelessBody)):
+                self.namelessBody(t)                
             elif (isinstance(t, ContextDefine)):
                 self.contextDefine(t)
             elif (isinstance(t, ContextCall)):
@@ -117,6 +197,9 @@ class VisitorWithDepth():
     def dataDefine(self, depth, chained, t):
         pass
         
+    def namelessBody(self, depth, chained, t):
+        pass
+        
     def contextDefine(self, depth, chained, t):
         pass
 
@@ -143,9 +226,11 @@ class VisitorWithDepth():
             self.namelessDataBase(depth, chained, t)
         elif (isinstance(t, MonoOpExpressionCall)):
             self.monoOpExpressionCall(depth, chained, t)
-        elif (isinstance(t, ExpressionWithBodyBase)):
+        elif (isinstance(t, BodyParameterMixin)):
             if (isinstance(t, DataDefine)):
                 self.dataDefine(depth, chained, t)
+            elif (isinstance(t, NamelessBody)):
+                self.namelessBody(depth, chained, t)
             elif (isinstance(t, ContextDefine)):
                 self.contextDefine(depth, chained, t) 
             elif (isinstance(t, ContextCall)):
@@ -207,6 +292,9 @@ class RawPrint(VisitorWithDepth):
         self._print(depth, chained, t)
         
     def dataDefine(self, depth, chained, t):
+        self._print(depth, chained, t)
+
+    def namelessBody(self, depth, chained, t):
         self._print(depth, chained, t)
         
     def contextDefine(self, depth, chained, t):

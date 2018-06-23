@@ -265,6 +265,8 @@ class Syntaxer:
             self.optionalKindAnnotation(t)
             
             # body (namelessData)
+            #! Perhaps could take an expression
+            #? close to namelessFuncCall but inly alowing one expression
             self.skipTokenOrError('Define Data', LCURLY)
             self.namelessDataExpression(t.body)
             self.skipTokenOrError('Define Data', RCURLY)
@@ -401,7 +403,7 @@ class Syntaxer:
             else:
                 self.oneOrError(t.params, 
                     self.expressionCall, 
-                    'functionCall infix operator params', 
+                    'functionCall infix operator params',
                     'expressionCall'
                     )
                     
@@ -450,15 +452,16 @@ class Syntaxer:
             
             
             
-    def namelessFuncCall(self, lst):
+    def namelessBodyCall(self, lst):
         '''
+        '{'~ oneOrMore(ExpressionCall) ~'}'
         '''
         commit = (self.isToken(LCURLY))
         if(commit): 
             self._next()
             
             # node    
-            t = mkNamelessFunc(self.position())
+            t = mkNamelessBody(self.position())
             lst.append(t)
 
             # body
@@ -478,16 +481,22 @@ class Syntaxer:
             self.namelessDataExpression(lst) 
             or self.functionCall(lst)
             or self.operaterMonoFunctionCall(lst)
-            #! or self.namelessFuncCall(lst)
+            or self.namelessBodyCall(lst)
             )
             
         # chaining
+        #! Not DRY (because not convinced of final form yet).
         if (commit):
             t = lst[-1]
             if (self.optionallySkipToken(PERIOD)):
                 t.isChained = True
-            if (isInfix(t.parsedData) and len(lst) > 1):
-                lst[-2].isChained = True
+            # The iterator is resting on the next op. What if its an 
+            # infix? Prefer this sneaky look-forward to a 
+            # high-engineered look-back
+            elif ((self.isToken(IDENTIFIER) or self.isToken(OPERATER)) and isInfix(self.it.textOf())):
+                t.isChained = True
+            #elif (isinstance(t, NameMixin) and isInfix(t.parsedData) and len(lst) > 1):
+                #lst[-2].isChained = True
         return commit
         
     def seqContents(self, lst):

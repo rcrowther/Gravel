@@ -3,6 +3,49 @@ from Kinds import *
 from TreeInfo import TreeInfo, UndefinedTreeInfo, NoTreeInfo
 
 
+class BodyParameterMixin():
+    '''
+    Mixin for any Tree accepting a body as a parameter.
+    a body is a sequence of expressions, with the last expression
+    auto-returning a value (the value may be None).
+
+    Applied to both definitions and calls.
+    
+    As a parameter, a body will be loaded in an init,
+    and printed in a toString().
+    
+    There is usually but not always one body parameter only. Since they 
+    are used and consulted often, and shape much of the tree structure
+    in an AST, body parameters are placed on a seperate attribute to 
+    other parameters,
+    
+    This Mixin does little but establish that a tree node contains 
+    bodies.
+    '''
+    #self.body = body
+    pass
+     
+     
+        
+class NameMixin():
+    '''
+    Mixin for any Tree accepting a name.
+
+    Applied to both definitions and calls.
+    
+    As a parameter, a name will be loaded in an init,
+    and printed in a toString().
+        
+    There is one name per tree. Since they 
+    are used and consulted often, and have checks and references,
+    name are placed on a seperate attribute to 
+    other parameters,
+    
+    This Mixin does little but establish that tree node contains a name.
+    '''
+    #self.parsedData = nameStr
+    pass
+    
 
 #! may well need module defs etc. See,
 #! /home/rob/Downloads/scala-2.12.0/src/reflect/scala/reflect/api/Trees.scala
@@ -88,7 +131,7 @@ def mkMultiLineComment(position, text):
 
     
 #? very like a NamelessData with a TreeInfo....
-class ParameterDefinition(Tree):
+class ParameterDefinition(Tree, NameMixin):
     '''
     A parameter definition.
     These nodes are distinctive, they
@@ -98,9 +141,9 @@ class ParameterDefinition(Tree):
     '''
     parsedKind = ''
     
-    def __init__(self, name):
+    def __init__(self, nameStr):
         super().__init__()
-        self.parsedData = name    
+        self.parsedData = nameStr   
 
     def toString(self):
         return "ParameterDefinition('{}')".format(self.parsedData)
@@ -112,25 +155,7 @@ def mkParameterDefinition(position, name):
     
     
 
-class BodyParameterMixin():
-    '''
-    Mixin for any Tree accepting a body as a parameter.
-    a body is a sequence of expressions, with the last expression
-    auto-returning a value (the value may be None).
-    
-    As a parameter, a body will be loaded in an in an init,
-    and printed in a toString().
-    
-    There is usually but not always one body parameter only. Since they 
-    are used and consulted often, and shape much of the tree structure
-    in an AST, body parameters are placed on a seperate attribute to 
-    other parameters,
-    
-    This Mixin does little but establish that body parameters exist in
-    a tree node.
-    '''
-    pass
-        
+
     
 #? Sort out some parsed types
 #! how to handle chains?
@@ -186,9 +211,33 @@ def mkStringNamelessData(position, valueStr):
 
 
 
+class NamelessBody(Tree, BodyParameterMixin):
+    '''
+    Body expression with no name or params.
+    Has no name, so has no params.
+    Is both definition and call, rolled in one.
+    Used to break chain sequences into small units
+    1 + {2/3}
+    and as closures
+    '''
+    def __init__(self, body):
+        super().__init__()
+        self.body = body
+             
+    def toString(self):
+        return "NamelessBody({})".format(self.body)
+       
+def mkNamelessBody(position):
+    t = NamelessBody([])
+    t.position = position
+    return t
+
+    
     
 #! is ExpressionCall
-class Expression(Tree):
+#x not necessary. Main/EntryPoint can be a context func. Namespace also.
+# Others are just a Seq (NamelessBody)?
+class Expression(Tree, NameMixin):
     '''
     Joins a name and a list of NamelessData/Expression.
     The list is ''parameters'.
@@ -209,6 +258,19 @@ class Expression(Tree):
         return "Expression('{}', {}){}".format(self.parsedData, self.params, chainStr)
 
 
+#class NamelessListCall(Tree, ParameterMixin):
+    #'''
+    #Has return value
+    #'''
+    #def __init__(self, params):
+        #super().__init__()    
+        #self.params = params
+        ## chain contains reviever-notated expressions. 
+        ## ask the chain to be by instance, not classwide.
+        ##self.chain = []
+
+    #def toString(self):
+        #return "NamelessListCall('{}', {})".format(self.parsedData, self.params)
 
 #class Assignment(Tree):
     #'''
@@ -286,7 +348,8 @@ def mkContextCall(position, nameStr):
     t.position = position
     return t
         
-
+# should this exist, or should we drop it?
+# was here for infixing, I recall
 class MonoOpExpressionCall(Expression):
     '''
     Operator Expression with one parameter 
@@ -330,12 +393,19 @@ class ConditionalContextCall(ExpressionWithBodyBase):
 
 class NamelessFunc(ExpressionWithBodyBase):
     '''
-    Body expression with no treeInfo.
-    Also serves as the base for a main() parse.
-    Special case.
+    Body expression with no name or params.
+    Has no name, so has no params.
+    Used to break chain sequences into small units
+    1 + {2/3}
+    and as closures
     '''    
+    #! Currently serves as the base for a main() access point?? (which needs parameters, no?)
     def __init__(self, body):
-        super().__init__(NoTreeInfo, params=[], body=body)
+        #! the name needs some thought
+        # diven a valid name because the attribute is tested, 
+        # here and there
+        super().__init__('namelessFunc', params=[], body=body)
+        self.body = body
 
     def toString(self):
         return "NamelessFunc({})".format(self.body)
@@ -344,3 +414,4 @@ def mkNamelessFunc(position):
     t = NamelessFunc([])
     t.position = position
     return t
+
