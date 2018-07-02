@@ -4,7 +4,7 @@ from operator import attrgetter
 
 class MPTTNode:
   '''
-  Node for a MPTT tree.
+  Node for an MPTT tree.
   Can be composed/superclassed with contents, or used as a 
   template.
   '''
@@ -22,29 +22,27 @@ class MPTTNode:
   def __repr__(self):
       return self.toString()
       
-class Node:
-  '''
-  Node for a MPTT tree.
-  Can be composed/superclassed with contents, or used as a 
-  template.
-  '''
-  _id = 0
+      
+      
+class Node(MPTTNode):
+    '''
+    TestNode for an MPTT tree.
+    '''
+    _id = 0
 
-  def __init__(self):
-      Node._id += 1 
-      self.id = Node._id
-      self._in = None
-      self._out = None
+    def __init__(self):
+        Node._id += 1 
+        self.id = Node._id
+        super().__init__()
+
       
-  def toString(self):
-      return "Node(id: {}, _in: {}, _out: {})".format(
-          self.id,
-          self._in,
-          self._out,
-          )
-      
-  def __repr__(self):
-      return self.toString()
+    def toString(self):
+        return "Node(id: {}, _in: {}, _out: {})".format(
+            self.id,
+            self._in,
+            self._out,
+            )
+
       
       
 
@@ -61,9 +59,6 @@ class MPTT():
         self.underlying.append(initial_node)
        
     def insert(self, parentNode, node):
-        #pIn = 0
-        #pOut = 1
-        #if (parent):
         pIn = parentNode._in
         pOut = parentNode._out
        
@@ -76,8 +71,6 @@ class MPTT():
                    
         # set new node
         self.underlying.append(node)
-        #print('in' + str(_in))
-        #print('out' + str(_out))
         node._in = pOut
         node._out = pOut + 1
         return node
@@ -135,7 +128,7 @@ class MPTT():
 
 
 from Kinds import Any
-from Keywords import KEY_KINDNAMES
+from Keywords import KEY_KINDS
 
 class KindNameNode(MPTTNode):
     '''
@@ -153,9 +146,9 @@ class KindNameNode(MPTTNode):
             )
           
           
-#! I want tis purly for registering Kinds and
+#! I want this for registering Kind names and
 # detecting their structure (not typechecking)
-# Does this handle Kinds, or names of Kinds?
+# Handles names of Kinds, not Kinds themselves.
 # We have issues in here. For example, List[_] is a subtype of 
 # List[Integer]. Although function types can be broken up, e.g. 
 # (Int => Float)
@@ -164,41 +157,43 @@ class KindNameNode(MPTTNode):
 class KindNameTree(MPTT):
     '''
     Register valid kinds.
-    The tree is only for registering kind names and establishing a 
-    structure 
-    between them (it is not for typechecking).
+    The tree is only for registering kind names and 
+    establishing/reporting on a structure between them. It is not for 
+    typechecking.
     '''
     # The tree is used for finding parents and children.
     # this is boosted with a link table for fast lookup of names
     # (the tree can do this, but is slow, and in Python has a 
-    # non-intuitive API. Alright, I can get round that, but anyway).
+    # non-intuitive API. Alright, I can get round the API, but anyway).
     def __init__(self):
         initial_name = 'Any'
         initial_node = KindNameNode(initial_name)
         super().__init__(initial_node)
         self.nameToNode = {initial_name: initial_node}
-        for e in KEY_KINDNAMES:
+        for e in KEY_KINDS:
             self.insert(e[1], e[0])
 
     #Test the kindname is not there?
+    # if it's a complex kind, it needs to be broken up to register 
+    # the names
     def insert(self, parentName, name):
-        # if it's a complex kind, it needs to be broken up to register 
-        # the names
-        #if (isinstance (kind, CollectionNode)):
-        #else:
+        '''
+        Insert a name into the tree.
+        Will throw an assert if the name exists.
+        '''
         parentNode = self.find(parentName)
-        if (not parentNode):
-            print('not inserting' + name)
-            return None
-        else:
-            node = KindNameNode(name)
-            self.nameToNode[name] = node
-            return super().insert(parentNode, node)
+        assert parentNode, "Parent node not found in tree parentName:{} nodeName:{}".format(
+            parentName,
+            name
+            )
+        node = KindNameNode(name)
+        self.nameToNode[name] = node
+        return super().insert(parentNode, node)
         
     def find(self, name):
         '''
         Find a name.
-        Error if name does not exist.
+        @return None if not exists.
         '''
         return self.nameToNode.get(name)
         

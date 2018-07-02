@@ -7,9 +7,14 @@ from phases.Basic import (
     TreePrint, 
     TreePrintDisplay, 
     StripComments,
-    ChainsInfixMark,
+    NamesVerify,
     #NamesValidate
     )
+
+from phases.ToLinear import (
+    TreeChainsReverse
+    )
+    
 from phases.Documentation import GravelDoc
 
 
@@ -32,8 +37,8 @@ def PrintTree():
     phaseList = [
         SyntaxPhase(),
         StripComments(),
-        #TreePrintDisplay(),
-        TreePrint()
+        TreePrintDisplay(),
+        #TreePrint()
         ]
     reporter = ConsoleStreamReporter()
     return PhasePipeline( 
@@ -45,8 +50,9 @@ def Stock():
     phaseList = [
         SyntaxPhase(),
         StripComments(),
-        #ChainsInfixMark(),
-        #NamesValidate(),
+        #TreeChainsReverse(),
+        NamesVerify(),
+        TreePrintDisplay(),
         ]
     reporter = ConsoleStreamReporter()
     return PhasePipeline( 

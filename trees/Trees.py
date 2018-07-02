@@ -97,6 +97,17 @@ class Tree():
         return self.toString()
 
 
+class BuiltinCall(Tree):
+    '''
+    Represents a builtin call.
+    This tree will never appear in an AST, which cares not where the 
+    call is located.
+    It is useful in places where a tree is needed but can not be 
+    provided, for example as a reference for keywords in the name 
+    tables. 
+    '''
+    def toString(self):
+        return 'BuiltinCall()'    
 
 class CommentBase(Tree):
     typeStr = "Call on CommentBase, do not do this, use subtypes"
@@ -235,11 +246,13 @@ def mkNamelessBody(position):
     
     
 #! is ExpressionCall
+#! so waht about definitions? They are expressions.
+#! is the definition hasParams = True?
 #x not necessary. Main/EntryPoint can be a context func. Namespace also.
 # Others are just a Seq (NamelessBody)?
 class Expression(Tree, NameMixin):
     '''
-    Joins a name and a list of NamelessData/Expression.
+    Join an action name and a list of NamelessData/Expression.
     The list is ''parameters'.
     e.g. +(3,2)
     '''

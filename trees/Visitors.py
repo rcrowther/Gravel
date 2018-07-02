@@ -76,9 +76,35 @@ class NonTraversingVisitor():
             print("tree.NonTraversingVisitor: unrecognised tree. Kind:'{}'".format(type(t).__name__))
 
 
+class VisitorNodeDispatch():
+    '''
+    A visitor which traverses the entire tree.
+    The nodes are only dispatched t one method. This can be useful for
+    visiting where only a small number of nodes need to be looked at.
+    The downside is that most code that uses this visitor must test for
+    tree type manually.
+    Params are visited first, then bodies. 
+    '''
+    def __init__(self, tree):
+      self._dispatch(tree)
+
+    def node(self, t):
+        pass
+              
+    def _dispatch(self, t):
+        self.node(t)
+        if (isinstance(t, Expression)): 
+            for e in t.params:
+                self._dispatch(e)                     
+        if (isinstance(t, BodyParameterMixin)):           
+            for e in t.body:
+                self._dispatch(e)
+
 
 class Visitor():
-  
+    '''
+    A visitor which traverses the entire tree.
+    '''
     def __init__(self, tree):
       self._dispatch(tree)
 
@@ -313,6 +339,83 @@ class RawPrint(VisitorWithDepth):
         self._print(depth, chained, t)
 
 
+#class PostOpVisitor():
+    #'''
+    #A visitor which auto-traverses a tree in post-op order.
+    #Post-op means the tree is traversed left-right depth-first. Another
+    #way to say this is that it pulls out of the deepest leaves, but 
+    #otherwise traverses left-right.
+    #This visitor also traverses chains as tree branches, and traverses 
+    #them in post-op order (i.e. last item first).
+    #'''
+    ##? Reusable class (no init)
+    #def multiLineComment(self, t):
+        #pass
+
+    #def singleLineComment(self, t):
+        #pass
+                      
+    #def parameterDefinition(self, t):
+        #pass
+
+    #def namelessDataBase(self, t):
+        #pass
+
+    #def monoOpExpressionCall(self, t):
+        #pass
+        
+    #def dataDefine(self, t):
+        #pass
+         
+    #def namelessBody(self, t):
+        #pass
+        
+    #def contextDefine(self, t):
+        #pass
+        
+    #def contextCall(self, t):
+        #pass 
+                
+    #def conditionalCall(self, t):
+        #pass
+        
+    #def conditionalContextCall(self, t):
+        #pass
+        
+    #def namelessFunc(self, t):
+        #pass  
+              
+    #def visit(self, t):
+        #if (t.isChained
+        #if (isinstance(t, SingleLineComment)):
+            #self.singleLineComment(t)
+        #elif (isinstance(t, MultiLineComment)):
+            #self.multiLineComment(t)
+        #elif (isinstance(t, ParameterDefinition)):
+            #self.parameterDefinition(t)
+        #elif (isinstance(t, NamelessDataBase)):
+            #self.namelessDataBase(t)
+        #elif (isinstance(t, MonoOpExpressionCall)):
+            #self.monoOpExpressionCall(t)
+        #elif (isinstance(t, BodyParameterMixin)):
+            #for e in t.body:
+                #self._dispatch(e) 
+            #if (isinstance(t, DataDefine)):
+                #self.dataDefine(t)
+            #elif (isinstance(t, NamelessBody)):
+                #self.namelessBody(t)                
+            #elif (isinstance(t, ContextDefine)):
+                #self.contextDefine(t)
+            #elif (isinstance(t, ContextCall)):
+                #self.contextCall(t)
+            #elif (isinstance(t, ConditionalCall)):
+                #self.conditionalCall(t) 
+            #elif (isinstance(t, ConditionalContextCall)):
+                #self.conditionalContextCall(t)           
+            #elif (isinstance(t, NamelessFunc)):
+                #self.namelessFunc(t)
+        #else:
+            #print("tree.NonTraversingVisitor: unrecognised tree. Kind:'{}'".format(type(t).__name__))
 
 #class VisitorTransformer():
   

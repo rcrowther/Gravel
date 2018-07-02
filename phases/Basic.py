@@ -105,6 +105,39 @@ class StripComments(Phase):
             return
         CommentStripVisitor(compilationUnit.tree)
 
+
+
+
+from trees.Visitors import VisitorNodeDispatch
+from trees.Trees import NameMixin
+from MarkTable import ExpressionMarkTable
+
+
+class NamesVerifyVisitor(VisitorNodeDispatch):
+    def __init__(self, tree):
+        self.table = ExpressionMarkTable()
+        super().__init__(tree)
+        
+    def node(self, t):
+        # check something is there
+        if (isinstance(t, NameMixin)):
+            print('named item: ' + str(t.parsedData))
+            self.table.note(t.)
+            define()
+            
+class NamesVerify(Phase):
+    #? after Syntax so there is a tree (and typecheck)
+    def __init__(self):
+        Phase.__init__(self,
+            "Check names have a definition.",
+            "This will also build, on the compilation unit, a name tree.",
+            True
+            )
+
+    def run(self, compilationUnit, reporter, settings):
+        #! settings for everything
+        NamesVerifyVisitor(compilationUnit.tree)
+
 #x
 class InfixChainingVisitor(VisitorForBodies):
     def nodeWithBody(self, t):

@@ -31,7 +31,32 @@ print(t.note('xbox1'))
 t('xbox')
 t.toString()
 
+== NameTable
+from NameTable import *
+t = ExpressionNameTable()
+t.note('xbox', None)
+# Note again
+t.note('xbox', None)
+# return the InfoNode. Should be isDefine = False, noteCount = 2
+t('xbox')
+# add a definition. Returns None
+t.define('xbox', None)
+# further attempts to add defintions should return the node
+# isDefine = True, noteCount = 2
+t.define('xbox', None)
+# start with a definition
+t.define('xbox1', None)
+# note another instance
+t.note('xbox1', None)
+# isDefine = True, NoteCount = 1
+t('xbox1')
+# print
+t
 
+== KindNameTable
+from NameTable import *
+t = KindNameTable()
+t
 
 == Kinds
 from Kinds import *
@@ -66,7 +91,7 @@ t.parents(t4)
 t.children(t2)
 # True
 t.isChild(t1, t5)
-t.isParent(t4, t3)
+t.isParent(t4, t2)
 # False
 t.isChild(t2, t3)
 t.isParent(t4, t3)
@@ -74,7 +99,14 @@ t.isParent(t4, t3)
 == KindNameTree
 from KindTrees import KindNameTree
 t = KindNameTree()
-
+t
+# 'AnyRef'
+t.narrow('Seq', 'AnyRef')
+t.narrow('AnyRef', 'Seq')
+# 'Seq'
+t.widen('Seq', 'AnyRef')
+# None
+t.widen('Map', 'String')
 
 == Trees
 from trees.Trees import *

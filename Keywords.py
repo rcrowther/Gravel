@@ -11,29 +11,11 @@ KEY_EXPRESSIONS = [
 
 # Preset Kind -> Parent
 # Excludes Any
-# Must be in declaration order
-#KEY_KINDS = {
-  #AnyVal : Any,
-  #NoKind : AnyVal,
-  #Integer : AnyVal,
-  #Float : AnyVal,
-  #AnyRef : Any,
-  #String : AnyRef,
-  ## How to handke complex types?
-  ## But these derive from each other?
-  ## Collections: Iterable <- Seq  <- List
-  ## Where did this come from? Ah, the diagram...
-  #Iterable([Any]) : AnyRef,
-  #Seq([Any]) : Iterable([Any]),
-  #List([Any]) : Seq([Any]),
-  ##CollectionKind
-  #}
-
-
-
+# Must be in declaration order, so the list (not dict)
 # https://www.scala-lang.org/api/2.12.6/scala/index.html#AnyRef:Specializable
 # https://www.scala-lang.org/api/2.12.6/scala/Predef$.html
-KEY_KINDNAMES = [
+#What about Tuple?
+KEY_KINDS = [
   ('Nothing', 'Any'),
   ('AnyVal', 'Any'),
   ('NoVal', 'AnyVal'),
@@ -62,3 +44,5 @@ KEY_KINDNAMES = [
   
   #CollectionKind
   ]
+
+KEY_KINDNAMES = [e[0] for e in KEY_KINDS]

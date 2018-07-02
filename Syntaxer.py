@@ -490,7 +490,7 @@ class Syntaxer:
             t = lst[-1]
             if (self.optionallySkipToken(PERIOD)):
                 t.isChained = True
-            # The iterator is resting on the next op. What if its an 
+            # The iterator is resting on the next op. What if it's an 
             # infix? Prefer this sneaky look-forward to a 
             # high-engineered look-back
             elif ((self.isToken(IDENTIFIER) or self.isToken(OPERATER)) and isInfix(self.it.textOf())):

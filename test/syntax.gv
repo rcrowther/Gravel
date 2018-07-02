@@ -35,15 +35,15 @@ var life: Choice {3.142}
 #
 
 # must have explicit parameter list, even if empty
-fnc filter() {
+fnc map() {
 }
 
 # ...and have kinded parameters
-fnc filter(dom: Int node: Float) {
+fnc map(dom: Int node: Float) {
 }
 
 # ...and handle optional trailing kinds
-fnc filter(dom: Int node: Float) : Float {
+fnc map(dom: Int node: Float) : Float {
 }
 
 ## Operater definition
@@ -97,13 +97,13 @@ grabList().filter2().filter3()
 >%.>%.>$
 
 # opFunctions can be chained without periods or brackets (as BinOps)
-1 + 2 + 3
+1 + 2 - 3
 
 # can be chained with nameless functions
 Gervaise + {2 / 3}
 
 # can be chained with operater functions
-filter + 44
+filter - 44
 
 
 

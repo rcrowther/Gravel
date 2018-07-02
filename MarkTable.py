@@ -6,10 +6,11 @@ from Keywords import KEY_EXPRESSIONS, KEY_KINDS
 #? Should be fully path qualified, or seperate tables for each scope
 #! also needed for Kinds
 
-#! what does a mark table need to do?
-#! collect marks and verify one declaration
+#! what does a mark table need?
+#! to collect marks and verify one declaration
 #! the tree position, for errors
-#! Perhaps: type: verifying assignments and expressions in the source code are semantically correct.
+#? Perhaps: type: verifying assignments and expressions in the source 
+#? code are semantically correct. But not part of this at all?
 #! Register cope 
 class DuplicateDefinitionException(Exception):
     pass
