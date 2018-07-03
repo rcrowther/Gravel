@@ -6,7 +6,10 @@ from Position import NoPosition
 #! need a flush?
 #! need a print
 class Reporter:
-
+    '''
+    All reporters can return a summary string. See sublasses for details
+    of how a reporter deals with full output.
+    '''
     def __init__(self):
         self.reset()
         #self.errors = []

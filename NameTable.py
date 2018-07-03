@@ -56,7 +56,7 @@ def mkNameInfo(name, tree):
     return n    
     
     
-#! sure ther may come to be a named tuple with defaults, but not yet...
+#! sure there may come to be a named tuple with defaults, but not yet...
 #? could stash definition position, value, state, scope, and type
 #! name = TreeInfo
 #! all data here
@@ -85,12 +85,12 @@ class NameTable():
         '''
         Add a name to the tree, marking as a definition.
         The curious return logic is so support code can handle errors. 
-        @return None or, if the node is already defined, the node.
+        @return None or, if the node is already defined, the tree.
         '''
         n = self.underlying.get(name)
         if (n):
             if (n.isDefined):
-                return n
+                return tree
             n.addDefinition(tree)
         else:
             n = mkNameInfoDefinition(name, tree)
@@ -125,5 +125,6 @@ class NameTable():
 def ExpressionNameTable():
     return NameTable(KEY_EXPRESSIONS)
 
+#? some code someplace builds the KindTTree
 def KindNameTable():
     return NameTable(KEY_KINDNAMES)

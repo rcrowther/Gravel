@@ -35,9 +35,9 @@ class PhasePipeline():
                 break
 
         if (reporter.hasErrors()):
+            # detailed output of errors handled by idividual reporters
             print('errors...')
             print(reporter.summaryString())
-             # print errors/extent of errors?
              #sys.exit("Error message")
         else:
             print('done')

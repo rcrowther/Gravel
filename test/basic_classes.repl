@@ -13,23 +13,6 @@ INT_NUM
 
 tokenToString[LSQUARE]
 
-== Mark
-from Mark import *
-m = Mark('class')
-m.toString()
-NoMark.toString()
-
-== MarkTable
-from MarkTable import *
-t = ExpressionMarkTable()
-t.note('xbox')
-# return the Mark
-print(t.define('xbox'))
-# return None
-print(t.define('xbox'))
-print(t.note('xbox1'))
-t('xbox')
-t.toString()
 
 == NameTable
 from NameTable import *
