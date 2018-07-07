@@ -26,10 +26,10 @@ lines
 
 ## Val definition
 #
-val pi{3.142}
+val pi{3.143}
 
 # can be followed by kind annotation
-var life: Choice {3.142}
+var life: Choice {3.144}
 
 ## Function definition
 #
@@ -39,11 +39,11 @@ fnc map() {
 }
 
 # ...and have kinded parameters
-fnc map(dom: Int node: Float) {
+fnc map2(dom: Int node: Float) {
 }
 
 # ...and handle optional trailing kinds
-fnc map(dom: Int node: Float) : Float {
+fnc map3(dom: Int node: Float) : Float {
 }
 
 ## Operater definition

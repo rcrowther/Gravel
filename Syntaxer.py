@@ -2,32 +2,20 @@ import sys
 from trees.Trees import *
 from Position import Position
 from Tokens import *
+import Keywords
 
-
-INFIX = [
-'|',
-'||',
-'^',
-'&',
-'&&',
-'<',
-'<<',
- '>',
-'>>',
-#'=', 
-'!',
-#??? ':'
-'+', 
-'++',
-'-',
-'--',
-'*',
-'/',
-'%',
-]
-
+# We've got problems:
+# - Identifying by name alone does not split between '+' (monop) and
+# '+' (binop). Is this kind of issue what full names are for? It's
+# making the monop scene a mess. This, essentially, is the problem of 
+# polymorphism, arrising early.
+# - chaining for the interpreter means signalling the last item, not 
+# the first (chain the trailing return into this). But I recall that
+# we chained the first op for a reason? Reversal?
+# - chaining feels compromised? Why have parameters if reaching for
+# the next item in line?
 def isInfix(name):
-  return ((name[-1] == '=') or (name in INFIX))
+  return ((name[-1] == '=') or (name in Keywords.INFIX))
   
 class Syntaxer:
     '''

@@ -3,6 +3,7 @@ from gio.Source import StringLineSource
 
 from Tokens import tokenToString
 from trees.Visitors import Visitor
+import Keywords
 
 
 
@@ -67,7 +68,18 @@ from trees.Trees import *
 
 
 #! incomplete, will we use the typechecked tree?
+#! needs data storage
 class FileEngine(NonTraversingVisitor):
+    def __init__(self):
+        self.dataStash = {}
+        self.returnStash = 22
+        
+    def _evaluateBody(self, body):
+        for e in body:
+            # the last return is interesting,
+            #! as are any 'returns'
+            self.visit(e)
+        
     #for AST?
     def multiLineComment(self, t):
         pass
@@ -79,18 +91,21 @@ class FileEngine(NonTraversingVisitor):
         pass
 
     def namelessDataBase(self, t):
+        print('...namelessDataBase: ' + str(t))
         if isinstance(t, IntegerNamelessData):
-            return int(t.parsedData)
+            self.returnStash = int(t.parsedData)
         if isinstance(t, FloatNamelessData):
-            return float(t.parsedData)
+            self.returnStash = float(t.parsedData)
         if isinstance(t, StringNamelessData):
-            return t.parsedData
-                        
+            self.returnStash = t.parsedData
+
     def monoOpExpressionCall(self, t):
         pass
         
     def dataDefine(self, t):
-        pass
+        self._evaluateBody(t.body)
+        self.dataStash[t.parsedData] = self.returnStash 
+        #pass
          
     def namelessBody(self, t):
         pass
@@ -99,7 +114,27 @@ class FileEngine(NonTraversingVisitor):
         pass
         
     def contextCall(self, t):
-        pass 
+        if(t.parsedData in Keywords.INFIX):
+            print('context call isChained: ' + str(t.isChained))
+            #self.returnStash
+            print('context call: ' + t.parsedData)
+            if(t.isChained):
+                print('ret val: ' + str(self.returnStash))
+                print('parameters: ' + str(t.params))
+                chainValue = self.returnStash
+                self.visit(t.params[0])
+                self.returnStash = chainValue + self.returnStash
+                print('chainval: ' + str(self.returnStash))
+        #elif(t.parsedData in Keywords.MONOP):
+        else:
+            #custom call
+
+                
+            
+        
+        #print('def count: ' + str(len(t.body)))
+        
+        #pass 
                 
     def conditionalCall(self, t):
         pass
@@ -108,7 +143,7 @@ class FileEngine(NonTraversingVisitor):
         pass
         
     def namelessFunc(self, t):
-        #print('twaddle')
+        print('twaddle')
         for e in t.body:
             self.visit(e) 
 
@@ -121,6 +156,10 @@ class FileEngine(NonTraversingVisitor):
         cu = CompilationUnit(FileSource(filePath))
         p.run(cu, r)
         
-        # ok, now interpret the tree
-        self.visit(cu.tree)
+        if (r.hasErrors()):
+            print('Parse Errors: interpretation not attempted')
+        else:
+            # ok, now interpret the tree
+            self.visit(cu.tree)
   
+        print('interpreter datashtash:\n' + str(self.dataStash))

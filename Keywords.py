@@ -1,13 +1,49 @@
 #from Kinds import *
 
+
+# From where? C definition? because '!' '++' '--' are not infix, but
+# mono-ops. What ':' is for, I do not know? The ternary op?
+'''
+Definition of builtin binops.
+'=' is not included, because (at present) any op ending in '=' is a binop.
+'''
+INFIX = [
+'|',
+'||',
+'^',
+'&',
+'&&',
+'<',
+'<<',
+'>',
+'>>',
+#'=', 
+#'!',
+#??? ':'
+'+', 
+#'++',
+'-',
+#'--',
+'*',
+'/',
+'%',
+]
+
+MOMO_OP = [
+'!',
+'++',
+'--'
+]
+
 # does not include keywords like val?
 # /home/rob/Downloads/scala-2.12.0/src/reflect/scala/reflect/internal
+# Don't modify with extend(), create new list using '+'
 KEY_EXPRESSIONS = [
-  '+',
-  '-',
-  '*',
-  '/'
-  ]
+  #'+',
+  #'-',
+  #'*',
+  #'/'
+  ] + INFIX
 
 # Preset Kind -> Parent
 # Excludes Any

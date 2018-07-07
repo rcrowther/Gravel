@@ -338,8 +338,9 @@ class RawPrint(VisitorWithDepth):
     def namelessFunc(self, depth, chained, t):
         self._print(depth, chained, t)
 
-
-#class PostOpVisitor():
+#? No point pluging into definitions unless called?
+#? but since we only have a name table, we need to allocate memory? Maybe.
+#class DepthFirstLRVisitor():
     #'''
     #A visitor which auto-traverses a tree in post-op order.
     #Post-op means the tree is traversed left-right depth-first. Another
@@ -385,8 +386,14 @@ class RawPrint(VisitorWithDepth):
     #def namelessFunc(self, t):
         #pass  
               
-    #def visit(self, t):
-        #if (t.isChained
+    #def _dispatch(self, t):
+        #if (isinstance(t, Expression)): 
+            #for e in t.params:
+                #self._dispatch(e)                     
+        #if (isinstance(t, BodyParameterMixin)):           
+            #for e in t.body:
+                #self._dispatch(e)
+
         #if (isinstance(t, SingleLineComment)):
             #self.singleLineComment(t)
         #elif (isinstance(t, MultiLineComment)):
@@ -416,65 +423,3 @@ class RawPrint(VisitorWithDepth):
                 #self.namelessFunc(t)
         #else:
             #print("tree.NonTraversingVisitor: unrecognised tree. Kind:'{}'".format(type(t).__name__))
-
-#class VisitorTransformer():
-  
-    #def __init__(self, tree):
-      #self._dispatch(tree)
-
-    #def comment(self, t):
-        #pass
-              
-    #def parameterDefinition(self, t):
-        #pass
-
-    #def namelessData(self, t):
-        #pass
-
-    #def monoOpExpressionCall(self, depth, chained, t):
-        #pass
-        
-    #def dataDefine(self, t):
-        #pass
-                    
-    #def contextDefine(self, t):
-        #pass
-        
-    #def contextCall(self, t):
-        #pass 
-                
-    #def conditionalCall(self, t):
-        #pass
-        
-    #def conditionalContextCall(self, t):
-        #pass
-        
-    #def namelessFunc(self, t):
-        #pass  
-              
-    #def _dispatch(self, t):
-        #if (isinstance(t, Comment)):
-            #self.comment(t)
-        #elif (isinstance(t, ParameterDefinition)):
-            #self.parameterDefinition(t)
-        #elif (isinstance(t, NamelessData)):
-            #self.namelessData(t)
-        #elif (isinstance(t, MonoOpExpressionCall)):
-            #self.monoOpExpressionCall(t)
-        #elif (isinstance(t, ExpressionWithBodyBase)):
-            #if (isinstance(t, DataDefine)):
-                #self.dataDefine(t)
-            #elif (isinstance(t, ContextDefine)):
-                #self.contextDefine(t)
-            #elif (isinstance(t, ContextCall)):
-                #self.contextCall(t)
-            #elif (isinstance(t, ConditionalCall)):
-                #self.conditionalCall(t) 
-            #elif (isinstance(t, ConditionalContextCall)):
-                #self.conditionalContextCall(t)           
-            #elif (isinstance(t, NamelessFunc)):
-                #self.namelessFunc(t)            
-            #for e in t.body:
-                #self._dispatch(e)
-        #else:
-            #print("tree.Visitor: unrecognised tree. Kind:'{}'".format(type(t).__name__))

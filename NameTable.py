@@ -2,11 +2,10 @@ from trees.Trees import BuiltinCall
 
 from Keywords import KEY_EXPRESSIONS, KEY_KINDNAMES
 
-#import collections
 
+#! also needed---check call parameters
 #? Should be fully path qualified, or seperate tables for each scope
 #! also needed for Kinds
-
 #! what does a mark table need?
 #! to collect marks and verify one declaration
 #! the tree position, for errors

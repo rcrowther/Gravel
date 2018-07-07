@@ -244,7 +244,8 @@ def mkNamelessBody(position):
     return t
 
     
-    
+#! we need to figure what is useful in tree manipulation i.e. DefMixin
+# may be useful? ParamMixin?
 #! is ExpressionCall
 #! so waht about definitions? They are expressions.
 #! is the definition hasParams = True?
@@ -253,7 +254,7 @@ def mkNamelessBody(position):
 class Expression(Tree, NameMixin):
     '''
     Join an action name and a list of NamelessData/Expression.
-    The list is ''parameters'.
+    The list is ''parms'.
     e.g. +(3,2)
     '''
     parsedKind = ''
