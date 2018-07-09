@@ -2,16 +2,13 @@
 
 
 from Position import NoPosition
-#! https://contributors.scala-lang.org/t/improving-the-compilation-error-reporting-of-sbt/935
 
-#? need a flush?
-#? need a print
+#! need a flush?
+#! need a print
 class Reporter:
     '''
-    All reporters can return a summary string. 
-    The only functionality in this class is to count messages. Must be 
-    sucbclassed to generate output. See sublasses for details of how a 
-    reporter deals with output.
+    All reporters can return a summary string. See sublasses for details
+    of how a reporter deals with full output.
     '''
     def __init__(self):
         self.reset()
@@ -36,13 +33,13 @@ class Reporter:
     def infoCount(self):
         return self.infoCount
 
-    def error(self, msg):
+    def error(self, m, pos = NoPosition):
         self.errorCount += 1
 
-    def warning(self, msg):
+    def warning(self, m, pos = NoPosition):
         self.warningCount += 1
 
-    def info(self, msg):
+    def info(self, m, pos = NoPosition):
         self.infoCount += 1        
 
     def _pluralize(self, b, v):

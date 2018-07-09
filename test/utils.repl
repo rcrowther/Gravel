@@ -1,0 +1,51 @@
+= Reporters
+== Basic
+from reporters.ConsoleStreamReporter import ConsoleStreamReporter
+from reporters.Message import Message
+r = ConsoleStreamReporter()
+msg = Message('Heading out')
+r.error(msg)
+r.warning(msg)
+r.info(msg)
+
+== LineSource
+from gio.Source import *
+from reporters.ConsoleStreamReporter import ConsoleStreamReporter
+from reporters.Message import Message
+src = StringLineSource('x = x + y')
+r = ConsoleStreamReporter()
+msg = Message('Heading out', src)
+r.error(msg)
+r.warning(msg)
+r.info(msg)
+
+from gio.Source import *
+from Position import Position
+from reporters.ConsoleStreamReporter import ConsoleStreamReporter
+from reporters.Message import Message
+src = StringLineSource('x = 12 + y')
+pos = Position('/home/delly/test.gv', 45, 9)
+r = ConsoleStreamReporter()
+msg = Message('Undefined value: y', src, pos)
+msg.details = ['Try define the value?']
+# claret points to 'y'
+r.error(msg)
+r.warning(msg)
+r.info(msg)
+
+== FileSource
+
+    
+from gio.Source import *
+from Position import Position
+from reporters.ConsoleStreamReporter import ConsoleStreamReporter
+from reporters.Message import Message
+src = FileSource('test/syntax.gv')
+pos = Position('test/syntax.gv', 42, 4)
+r = ConsoleStreamReporter()
+msg = Message('Repeated definition names disallowed: "map"', src, pos)
+msg.details = ['Rename the function?']
+# claret points to 'y'
+r.error(msg)
+r.warning(msg)
+r.info(msg)

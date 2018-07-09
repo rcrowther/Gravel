@@ -1,7 +1,10 @@
 
 
 
-#! split source from display path
+# A position always implies a source
+#? maybe should carry a source?
+#? and why has it got a sourcepath anyhow?
+
 class Position:
     def __init__(self, srcPath, line, offset):
         self.srcPath = srcPath
@@ -13,7 +16,19 @@ class Position:
             self.line,
             self.offset,
             )
-            
+
+    def toLineString(self):
+        return '[{}]'.format(
+            self.line
+            )
+
+
+    def toOffsetCaretString(self):
+        return '{}{}'.format(
+            ' ' * self.offset, 
+            '^'
+            )
+                                    
     def toDisplayString(self):
         return '{} [{}:{}]'.format(
             self.srcPath,

@@ -45,6 +45,14 @@ for tok in it:
     tokenToString[tok], it.textOf()
     ))
 
+
+== Source
+from gio.Source import FileSource
+src = FileSource('test/tokens.gv')
+src.srcPath
+src.lineByIndex(0)
+src.lineByIndex(7)
+
 == Tokeniterator via Source
 === File
 from gio.Source import FileSource
@@ -66,8 +74,8 @@ from gio.Source import StringLineSource
 from reporters.ConsoleStreamReporter import ConsoleStreamReporter
 from Tokens import tokenToString
 r = ConsoleStreamReporter()
-src = StringLineSource()
-it = src.tokenIterator(r, 'val quip = 19')
+src = StringLineSource('val quip = 19')
+it = src.tokenIterator(r)
 for tok in it:
     print("[{},{}] '{}': '{}'".format(
     it.lineCount,

@@ -20,7 +20,7 @@ class TrackingIterator():
     LineCount starts from 1.
     lineOffset starts from 0 (col:...).
     lineOffset and lineCount are designed to give the point
-    when read after next().
+    after next().
     '''
 
     def __init__(self, codepointIt):

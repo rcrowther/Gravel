@@ -6,8 +6,9 @@ class CodePointIterator:
     ++
     - return unicode codepoints
     - throw StopIteration
-    - do any tidy, such as filedescriptor closing
+    - do any tidy, such as file descriptor closing
     +
+    Returned streams will include line ends.
     '''
     def __iter__(self):
         return self

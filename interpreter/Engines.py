@@ -71,6 +71,7 @@ from trees.Trees import *
 #! needs data storage
 class FileEngine(NonTraversingVisitor):
     def __init__(self):
+        #! needs to be scoped
         self.dataStash = {}
         self.returnStash = 22
         
