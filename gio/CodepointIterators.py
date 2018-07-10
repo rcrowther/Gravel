@@ -32,19 +32,51 @@ class FileIterator(CodePointIterator):
         return ord(c)
 
 
+
 #$ Clumsy for Python, but keeping it generic. 
-class StringLineIterator(CodePointIterator):
+class StringIterator(CodePointIterator):
 
     def __init__(self, line):
-        self.line = line
-        self.i = -1
-        self.len = len(line)
+        # ensuring newline
+        self.line = line.rstrip()
+        self.line += '\n'
+        self.i = 0
+        self.lineLen = len(self.line)
   
     def __next__(self):
-        self.i += 1   
-        if (self.i == self.len):
+        if (self.i >= self.lineLen):
             raise StopIteration
         else:  
-            return ord(self.line[self.i])
+            r = ord(self.line[self.i])
+            self.i += 1
+            return r
+
 
        
+class StringsIterator(CodePointIterator):
+
+    def __init__(self, strings):
+        assert (len(strings) > 0), "supplied 'strings' data has no content"
+        self.strings = strings
+        # ensure line ends
+        self.strings = [line.rstrip() + '\n' for line in self.strings]
+        self.lineI = 0
+        self.line = self.strings[0]
+        self.linesLen = len(self.strings)
+        self.cpI = 0
+        self.lineLen = len(self.line)
+  
+    def _nextLine(self):
+        self.lineI += 1
+        if (self.lineI >= self.linesLen):
+            raise StopIteration
+        self.line = self.strings[self.lineI]
+        self.lineLen = len(self.line)
+        self.cpI = 0
+ 
+    def __next__(self):
+        if (self.cpI >= self.lineLen):
+            self._nextLine()
+        r = ord(self.line[self.cpI])
+        self.cpI += 1   
+        return r

@@ -27,12 +27,19 @@ for cp in it:
 
 === StringLine
 from gio.CodepointIterators import StringLineIterator
-it = StringLineIterator('val quip = 19')
+it = StringIterator('val quip = 19')
 for cp in it:
     print(cp)
     print(chr(cp))
     print(type(cp))
 
+=== Strings
+from gio.CodepointIterators import StringsIterator
+it = StringsIterator(['val quip = 19', ' x = quip + beer', 'r = b[]' ])
+for cp in it:
+    print(cp)
+    print(chr(cp))
+    print(type(cp))
   
 == Tracking
 from gio.CodepointIterators import FileIterator
