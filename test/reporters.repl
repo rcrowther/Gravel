@@ -9,7 +9,7 @@ r.warning(msg)
 r.info(msg)
 
 == LineSource
-from gio.Source import *
+from gio.Sources import *
 from reporters.ConsoleStreamReporter import ConsoleStreamReporter
 from reporters.Message import Message
 src = StringLineSource('x = x + y')
@@ -19,12 +19,12 @@ r.error(msg)
 r.warning(msg)
 r.info(msg)
 
-from gio.Source import *
+from gio.Sources import *
 from Position import Position
 from reporters.ConsoleStreamReporter import ConsoleStreamReporter
 from reporters.Message import Message
 src = StringLineSource('x = 12 + y')
-pos = Position('/home/delly/test.gv', 45, 9)
+pos = Position(45, 9)
 r = ConsoleStreamReporter()
 msg = Message('Undefined value: y', src, pos)
 msg.details = ['Try define the value?']
@@ -34,18 +34,16 @@ r.warning(msg)
 r.info(msg)
 
 == FileSource
-
-    
-from gio.Source import *
+from gio.Sources import *
 from Position import Position
 from reporters.ConsoleStreamReporter import ConsoleStreamReporter
 from reporters.Message import Message
 src = FileSource('test/syntax.gv')
-pos = Position('test/syntax.gv', 42, 4)
+pos = Position(42, 4)
 r = ConsoleStreamReporter()
 msg = Message('Repeated definition names disallowed: "map"', src, pos)
 msg.details = ['Rename the function?']
-# claret points to 'y'
+# claret points to 'map'
 r.error(msg)
 r.warning(msg)
 r.info(msg)

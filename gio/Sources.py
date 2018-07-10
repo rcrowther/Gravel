@@ -1,6 +1,6 @@
-from gio.CodepointIterators import File, StringLine
-from gio.TokenIterator import TokenIterator
-from gio.TrackingIterator import TrackingIterator
+#from gio.CodepointIterators import File, StringLine
+#from gio.TokenIterator import TokenIterator
+#from gio.TrackingIterator import TrackingIterator
 
 
 #! A source should understand if it has a filepath or not
@@ -31,8 +31,8 @@ class Source:
         # e.g. File "<stdin>" (Python), <console> (Scala)
         pass
     
-    def tokenIterator(self, reporter):
-        pass         
+    #def tokenIterator(self, reporter):
+        #pass         
          
 
 
@@ -41,14 +41,13 @@ class FileSource(Source):
     def __init__(self, srcPath):
         self.srcPath = srcPath
         self.lineList = []
-
-
                 
     def lineByIndex(self, lineNum):
         '''
         Get a line from the file by index.
+        Indexes work from 1. 0 is an error.
         Caches the source, for faster calls on the same file.
-        Intended for error reporting, not initial handling.
+        Intended for error reporting, not processing.
         @throw error if index is out of range
         @return line is rstrip(), including line ends.
         '''
@@ -61,10 +60,10 @@ class FileSource(Source):
     def locationStr(self):
         return self.srcPath
                     
-    def tokenIterator(self, reporter):
-        it = File(self.srcPath)
-        it = TrackingIterator(it)
-        return TokenIterator(it, reporter, self.srcPath)
+    #def tokenIterator(self, reporter):
+        #it = File(self.srcPath)
+        #it = TrackingIterator(it)
+        #return TokenIterator(it, reporter, self.srcPath)
 
 
 
@@ -77,7 +76,7 @@ class StringLineSource(Source):
         '''
         Get the line.
         The index is disregarded.
-        Intended for error reporting, not initial handling.
+        Intended for error reporting, not processing.
         @return line is rstrip(), including line ends.
         '''
         return self.line.rstrip()
@@ -85,7 +84,27 @@ class StringLineSource(Source):
     def locationStr(self):
         return '<terminal>'
         
-    def tokenIterator(self, reporter):
-        it = StringLine(self.line)
-        it = TrackingIterator(it)
-        return TokenIterator(it, reporter, self.srcPath)
+    #def tokenIterator(self, reporter):
+        #it = StringLine(self.line)
+        #it = TrackingIterator(it)
+        #return TokenIterator(it, reporter, self.srcPath)
+
+
+#! not propagated through GIO chain
+class StringsSource(Source):
+    def __init__(self, strings):
+        assert (isinstance(strings, list)), 'Not a list: {}'.format(type(strings))
+        self.strings = strings
+
+    def lineByIndex(self, lineNum):
+        '''
+        Get the line by index.
+        Indexes work from 1. 0 is an error.
+        Intended for error reporting, not processing.
+        @return line is rstrip(), including line ends.
+        '''
+        assert lineNum > 0, "linenum (from a Position?) < 1"
+        return self.strings[lineNum - 1].rstrip()
+
+    def locationStr(self):
+        return '<terminal>'

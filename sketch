@@ -207,6 +207,8 @@ structure being partially filled. Explore...
 Imports: Probaly more useful is where the file is used, not what is used 
 there.
 
+Sloppy repl testing is a happy place. Formalize!
+
 The greatest feature of JIT is not that you compile before run, but that 
 you only break on what you are trying.
 

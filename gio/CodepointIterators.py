@@ -15,7 +15,7 @@ class CodePointIterator:
         
         
         
-class File(CodePointIterator):
+class FileIterator(CodePointIterator):
     # Changes the syntax from read-a-char
     # to __next__-for-a-char iteration
     def __init__(self, path):
@@ -33,7 +33,7 @@ class File(CodePointIterator):
 
 
 #$ Clumsy for Python, but keeping it generic. 
-class StringLine(CodePointIterator):
+class StringLineIterator(CodePointIterator):
 
     def __init__(self, line):
         self.line = line

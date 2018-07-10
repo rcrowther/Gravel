@@ -1,0 +1,27 @@
+= Syntaxer
+== Syntaxer
+from gio.Sources import FileSource
+from reporters.ConsoleStreamReporter import ConsoleStreamReporter
+from Syntaxer import Syntaxer
+src = FileSource('test/syntax.gv')
+r = ConsoleStreamReporter()
+s = Syntaxer(src, r)
+
+== Tree printing
+from gio.Sources import FileSource
+from reporters.ConsoleStreamReporter import ConsoleStreamReporter
+from Syntaxer import Syntaxer
+from trees.Visitors import RawPrint
+src = FileSource('test/syntax.gv')
+r = ConsoleStreamReporter()
+s = Syntaxer(src, r)
+RawPrint(s.ast)
+
+== Bad Syntax
+from gio.Sources import FileSource
+from reporters.ConsoleStreamReporter import ConsoleStreamReporter
+from Syntaxer import Syntaxer
+# Throws error
+src = FileSource('test/syntax_bad.gv')
+r = ConsoleStreamReporter()
+s = Syntaxer(src, r)

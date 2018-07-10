@@ -1,22 +1,4 @@
 
-==
-from reporters.ConsoleStreamReporter import ConsoleStreamReporter
-r = ConsoleStreamReporter()
-r.error('ouch')
-r.warning('ouch')
-r.info('ouch')
-
-== Syntaxer
-from gio.Source import FileSource
-from reporters.ConsoleStreamReporter import ConsoleStreamReporter
-from Syntaxer import Syntaxer
-src = FileSource('test/syntax.gv')
-r = ConsoleStreamReporter()
-s = Syntaxer(src, r)
-
-== Tree printing
-from trees.Visitors import RawPrint
-RawPrint(s.ast)
 
 == Phases
 from Phases import *

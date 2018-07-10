@@ -1,8 +1,11 @@
 import sys
+from gio.TokenIterator import mkTokenIterator
 from trees.Trees import *
-from Position import Position
 from Tokens import *
 import Keywords
+from Position import Position
+from reporters.Message import Message
+
 
 # We've got problems:
 # - Identifying by name alone does not split between '+' (monop) and
@@ -27,7 +30,8 @@ class Syntaxer:
     def __init__(self, source, reporter):
         self.source = source
         self.reporter = reporter
-        self.it = source.tokenIterator(reporter)
+        #self.it = source.tokenIterator(reporter)
+        self.it = mkTokenIterator(source, reporter)
         self.tok = None
         self.ast = mkNamelessFunc(NoPosition)
         # start me up
@@ -37,17 +41,14 @@ class Syntaxer:
    
     ## reporter helpers     
     def position(self):
-        return Position(self.source.srcPath, self.it.lineCount, self.it.lineOffset)
+        return Position(self.it.lineCount, self.it.lineOffset)
         
     def error(self, msg):
-        txt = self.it.textOf()
-        if (txt):
-            txtO = "\n                token text : '{0}'".format(txt)
-        else:
-            txtO = ''
-
-        #pos = Position(self.it.source(), self.prevLine, self.prevOffset)
-        self.reporter.error(msg + txtO, self.position())
+        tokenTxt = self.it.textOf()
+        msg = Message(msg, self.source, self.position())
+        if (tokenTxt):
+            msg.details = ["token text : '{0}'".format(tokenTxt)]
+        self.reporter.error(msg)
         sys.exit("Error message")
 
     def expectedTokenError(self, ruleName, tok):

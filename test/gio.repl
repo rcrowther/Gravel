@@ -1,16 +1,33 @@
 
 = IO
+
+== Source
+from gio.Sources import FileSource
+src = FileSource('test/tokens.gv')
+src.srcPath
+# Error
+src.lineByIndex(0)
+src.lineByIndex(8)
+
+from gio.Sources import StringsSource
+src = StringsSource(['oh\n', 'ah\n', 'umm\n'])
+src.srcPath
+# Error
+src.lineByIndex(0)
+src.lineByIndex(3)
+
+
 == Codepoint
 === File
-from gio.CodepointIterators import File
-it = File('test/gio.gv')
+from gio.CodepointIterators import FileIterator
+it = FileIterator('test/gio.gv')
 for cp in it:
     print(cp)
     print(type(cp))
 
 === StringLine
-from gio.CodepointIterators import StringLine
-it = StringLine('val quip = 19')
+from gio.CodepointIterators import StringLineIterator
+it = StringLineIterator('val quip = 19')
 for cp in it:
     print(cp)
     print(chr(cp))
@@ -18,26 +35,28 @@ for cp in it:
 
   
 == Tracking
-from gio.CodepointIterators import File
+from gio.CodepointIterators import FileIterator
 from gio.TrackingIterator import TrackingIterator
-it = File('test/gio.gv')
+it = FileIterator('test/gio.gv')
 it = TrackingIterator(it)
 for cp in it:
     print("[{},{}] '{}'".format(it.lineCount, it.lineOffset, chr(cp)))
 
 
 == TokenIterator Raw
-from gio.CodepointIterators import File
+from gio.Sources import FileSource
+from gio.CodepointIterators import FileIterator
 from gio.TrackingIterator import TrackingIterator
 from gio.TokenIterator import TokenIterator
 from Tokens import tokenToString
 from reporters.ConsoleStreamReporter import ConsoleStreamReporter
 
 srcPath = 'test/tokens.gv'
-it = File(srcPath)
+src = FileSource(srcPath)
+it = FileIterator(srcPath)
 it = TrackingIterator(it)
 r = ConsoleStreamReporter()
-it = TokenIterator(it, r, srcPath)
+it = TokenIterator(it, r, src)
 for tok in it:
     print("[{},{}] '{}': '{}'".format(
     it.lineCount,
@@ -45,23 +64,39 @@ for tok in it:
     tokenToString[tok], it.textOf()
     ))
 
-
-== Source
-from gio.Source import FileSource
-src = FileSource('test/tokens.gv')
-src.srcPath
-src.lineByIndex(0)
-src.lineByIndex(7)
-
-== Tokeniterator via Source
-=== File
-from gio.Source import FileSource
+== Tokeniterator fail
+from gio.Sources import FileSource
+from gio.CodepointIterators import FileIterator
+from gio.TrackingIterator import TrackingIterator
+from gio.TokenIterator import TokenIterator
+from Tokens import tokenToString
 from reporters.ConsoleStreamReporter import ConsoleStreamReporter
+
+srcPath = 'test/tokens_bad.gv'
+src = FileSource(srcPath)
+it = FileIterator(src.srcPath)
+it = TrackingIterator(it)
+r = ConsoleStreamReporter()
+
+it = TokenIterator(it, r, src)
+for tok in it:
+    print("[{},{}] '{}': '{}'".format(
+    it.lineCount,
+    it.lineOffset,
+    tokenToString[tok], it.textOf()
+    ))
+    
+    
+
+== Tokeniterator via Factory
+=== File
+from gio.Sources import FileSource
+from reporters.ConsoleStreamReporter import ConsoleStreamReporter
+from gio.TokenIterator import mkTokenIterator
 from Tokens import tokenToString
 r = ConsoleStreamReporter()
 src = FileSource('test/tokens.gv')
-src.srcPath
-it = src.tokenIterator(r)
+it = mkTokenIterator(src, r)
 for tok in it:
     print("[{},{}] '{}': '{}'".format(
     it.lineCount,
@@ -70,12 +105,13 @@ for tok in it:
     ))
     
 === StringLine
-from gio.Source import StringLineSource
+from gio.Sources import StringLineSource
 from reporters.ConsoleStreamReporter import ConsoleStreamReporter
+from gio.TokenIterator import mkTokenIterator
 from Tokens import tokenToString
 r = ConsoleStreamReporter()
 src = StringLineSource('val quip = 19')
-it = src.tokenIterator(r)
+it = mkTokenIterator(src, r)
 for tok in it:
     print("[{},{}] '{}': '{}'".format(
     it.lineCount,

@@ -1,6 +1,7 @@
 from Codepoints import *
 import Tokens
 from reporters.Reporter import Reporter
+from reporters.Message import Message
 from Position import Position
 
 
@@ -47,9 +48,11 @@ class TokenIterator():
     Brackets are stripped from MULTILINE_COMMENT and STRING. Warnings 
     are loaded to the Reporter if these brackets are not balanced.
     
+    Token iterators are not reusable. See also the factory method
+    mkTokenIterator()
     '''
-    def __init__(self, trackingIterator, reporter, srcPath):
-        self.srcPath = srcPath
+    def __init__(self, trackingIterator, reporter, src):
+        self.src = src
         self.exhausted = False
         self.reporter = reporter
         self.it = trackingIterator
@@ -169,7 +172,6 @@ class TokenIterator():
             self.tok = Tokens.COMMENT              
             self.brackets_closed = False
             self.start_pos = Position(
-                self.srcPath, 
                 self.lineCount, 
                 self.lineOffset
                 )
@@ -192,7 +194,6 @@ class TokenIterator():
             self.tok = Tokens.STRING
             self.brackets_closed = False
             self.start_pos = Position(
-                self.srcPath, 
                 self.lineCount, 
                 self.lineOffset
                 )
@@ -276,9 +277,25 @@ class TokenIterator():
                 # parser
                 if (not self.brackets_closed):
                     # MULTILINE_COMMENT && STRING 
-                    self.reporter.error('{} brackets opened but not closed by end of file.'.format(
-                    tokenToString[self.tok]),
-                    self.start_pos
+                    msg = 'Open {} brackets not closed by end of file.'.format(
+                    Tokens.tokenToString[self.tok]
                     )
+                    self.reporter.error(Message(msg, self.src, self.start_pos))
                 raise e
         return self.tok
+
+
+
+
+from gio.Sources import FileSource, StringLineSource
+from gio.CodepointIterators import FileIterator, StringLineIterator
+from gio.TrackingIterator import TrackingIterator
+
+def mkTokenIterator(src, reporter):
+    it = None
+    if (isinstance(src, FileSource)):
+        it = FileIterator(src.srcPath)
+    elif (isinstance(src, StringLineSource)):
+        it = StringLineIterator(src.line)
+    return TokenIterator(TrackingIterator(it), reporter, src)
+    
