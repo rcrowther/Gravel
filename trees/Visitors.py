@@ -281,19 +281,81 @@ class VisitorWithDepth():
 
 
 
+#class RawPrint2(VisitorWithDepth):
+    #'''    
+    #Print a representation of the data in a tree.
+    
+    #Designed for easy reading.
+    #Helpful especially in the first phases, when Marks have not been
+    #allocated, so are not visible through toString().
+    #'''
+    #chainIndent = 4
+        
+    #def _print(self, depth, chained, t):
+        #indent = ' ' * depth            
+        ##if (chained):
+        #if (t.isChained):
+            ## U+2500 BOX DRAWINGS LIGHT HORIZONTAL
+            ## U+2514 BOX DRAWINGS LIGHT UP AND RIGHT
+            ## U+251C BOX DRAWINGS LIGHT VERTICAL AND RIGHT
+            #indent += '┌── '
+        ##print("{}[{}, {}]".format(indent, t._in, t._out))
+        #print("{}{}('{}')".format(indent, type(t).__name__, t.parsedData))
+
+    #def multiLineComment(self, depth, chained, t):
+        #self._print(depth, chained, t)
+
+    #def singleLineComment(self, depth, chained, t):
+        #self._print(depth, chained, t)
+        
+    #def parameterDefinition(self, depth, chained, t):
+        #self._print(depth, chained, t)
+
+    #def namelessDataBase(self, depth, chained, t):
+        #self._print(depth, chained, t)
+
+    #def monoOpExpressionCall(self, depth, chained, t):
+        #self._print(depth, chained, t)
+        
+    #def dataDefine(self, depth, chained, t):
+        #self._print(depth, chained, t)
+
+    #def namelessBody(self, depth, chained, t):
+        #self._print(depth, chained, t)
+        
+    #def contextDefine(self, depth, chained, t):
+        #self._print(depth, chained, t)
+
+    #def contextCall(self, depth, chained, t):
+        #self._print(depth, chained, t)
+                      
+    #def conditionalCall(self, depth, chained, t):
+        #self._print(depth, chained, t)
+               
+    #def conditionalContextCall(self, depth, chained, t):
+        #self._print(depth, chained, t)
+        
+    #def namelessFunc(self, depth, chained, t):
+        #self._print(depth, chained, t)
+
+
 class RawPrint(VisitorWithDepth):
     '''    
     Print a representation of the data in a tree.
     
     Designed for easy reading.
-    Helpful especially in the first phases, when Marks have not been
-    allocated, so are not visible through toString().
     '''
+    indent = 2
     chainIndent = 4
-        
-    def _print(self, depth, chained, t):
+
+    def __init__(self, tree, showParams=True):
+        self.showParams = showParams
+        self._dispatch(0, tree, False)
+      
+    def _print(self, depth, t, isParam):
         indent = ' ' * depth            
-        #if (chained):
+        if (isParam):
+            indent += 'param: '
         if (t.isChained):
             # U+2500 BOX DRAWINGS LIGHT HORIZONTAL
             # U+2514 BOX DRAWINGS LIGHT UP AND RIGHT
@@ -302,41 +364,15 @@ class RawPrint(VisitorWithDepth):
         #print("{}[{}, {}]".format(indent, t._in, t._out))
         print("{}{}('{}')".format(indent, type(t).__name__, t.parsedData))
 
-    def multiLineComment(self, depth, chained, t):
-        self._print(depth, chained, t)
-
-    def singleLineComment(self, depth, chained, t):
-        self._print(depth, chained, t)
-        
-    def parameterDefinition(self, depth, chained, t):
-        self._print(depth, chained, t)
-
-    def namelessDataBase(self, depth, chained, t):
-        self._print(depth, chained, t)
-
-    def monoOpExpressionCall(self, depth, chained, t):
-        self._print(depth, chained, t)
-        
-    def dataDefine(self, depth, chained, t):
-        self._print(depth, chained, t)
-
-    def namelessBody(self, depth, chained, t):
-        self._print(depth, chained, t)
-        
-    def contextDefine(self, depth, chained, t):
-        self._print(depth, chained, t)
-
-    def contextCall(self, depth, chained, t):
-        self._print(depth, chained, t)
-                      
-    def conditionalCall(self, depth, chained, t):
-        self._print(depth, chained, t)
-               
-    def conditionalContextCall(self, depth, chained, t):
-        self._print(depth, chained, t)
-        
-    def namelessFunc(self, depth, chained, t):
-        self._print(depth, chained, t)
+    def _dispatch(self, depth, t, isParam):
+        self._print(depth, t, isParam)
+        newDepth = depth + self.indent
+        if (self.showParams and isinstance(t, Expression)):
+            for e in t.params:
+                self._dispatch(newDepth, e, True)                     
+        if (isinstance(t, BodyParameterMixin)):           
+            for e in t.body:
+                self._dispatch(newDepth, e, False)
 
 #? No point pluging into definitions unless called?
 #? but since we only have a name table, we need to allocate memory? Maybe.
