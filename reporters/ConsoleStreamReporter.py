@@ -2,8 +2,7 @@ from reporters.Reporter import Reporter
 from Position import NoPosition
 from library.io.AnsiColor import *
 
-##
-# Add colour
+## eg
 # test/syntax.gv [42:4]Error: Name definition repeated. name:"map" first declaration position:test/syntax.gv [38:4]
 
 class ConsoleStreamReporter(Reporter):

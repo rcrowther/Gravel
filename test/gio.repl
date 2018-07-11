@@ -95,7 +95,7 @@ for tok in it:
     
     
 
-== Tokeniterator via Factory
+== Tokeniterator via TokenIterator Factory
 === File
 from gio.Sources import FileSource
 from reporters.ConsoleStreamReporter import ConsoleStreamReporter
@@ -111,13 +111,13 @@ for tok in it:
     tokenToString[tok], it.textOf()
     ))
     
-=== StringLine
-from gio.Sources import StringLineSource
+=== String
+from gio.Sources import StringSource
 from reporters.ConsoleStreamReporter import ConsoleStreamReporter
 from gio.TokenIterator import mkTokenIterator
 from Tokens import tokenToString
 r = ConsoleStreamReporter()
-src = StringLineSource('val quip = 19')
+src = StringSource('val quip = 19')
 it = mkTokenIterator(src, r)
 for tok in it:
     print("[{},{}] '{}': '{}'".format(
@@ -126,3 +126,18 @@ for tok in it:
     tokenToString[tok], it.textOf()
     ))
     
+
+=== Strings
+from gio.Sources import StringsSource
+from reporters.ConsoleStreamReporter import ConsoleStreamReporter
+from gio.TokenIterator import mkTokenIterator
+from Tokens import tokenToString
+r = ConsoleStreamReporter()
+src = StringsSource(['val quip = 19', 'val audience = 3', 'r = quip + audience'])
+it = mkTokenIterator(src, r)
+for tok in it:
+    print("[{},{}] '{}': '{}'".format(
+    it.lineCount,
+    it.lineOffset,
+    tokenToString[tok], it.textOf()
+    ))

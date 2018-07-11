@@ -33,8 +33,14 @@ class Source:
     
     #def tokenIterator(self, reporter):
         #pass         
-         
-
+    def toString(self):
+        return '<Source srcPath:"{}" locationStr:{}>'.format(
+            self.srcPath,
+            self.locationStr(),
+            )
+            
+    def __repr__(self):
+        return self.toString()
 
          
 class FileSource(Source):
@@ -67,8 +73,7 @@ class FileSource(Source):
 
 
 
-#! should have StringLinesSource also/replaceing this.
-class StringLineSource(Source):
+class StringSource(Source):
     def __init__(self, line):
         self.line = line
 
@@ -90,7 +95,7 @@ class StringLineSource(Source):
         #return TokenIterator(it, reporter, self.srcPath)
 
 
-#! not propagated through GIO chain
+
 class StringsSource(Source):
     def __init__(self, strings):
         assert (isinstance(strings, list)), 'Not a list: {}'.format(type(strings))

@@ -287,15 +287,23 @@ class TokenIterator():
 
 
 
-from gio.Sources import FileSource, StringLineSource
-from gio.CodepointIterators import FileIterator, StringLineIterator
+from gio.Sources import FileSource, StringSource, StringsSource
+from gio.CodepointIterators import (
+    FileIterator,
+    StringIterator,
+    StringsIterator
+    )
 from gio.TrackingIterator import TrackingIterator
 
 def mkTokenIterator(src, reporter):
     it = None
     if (isinstance(src, FileSource)):
         it = FileIterator(src.srcPath)
-    elif (isinstance(src, StringLineSource)):
-        it = StringLineIterator(src.line)
+    elif (isinstance(src, StringSource)):
+        it = StringIterator(src.line)
+    elif (isinstance(src, StringsSource)):
+        it = StringsIterator(src.strings)
+    else:
+        raise Exception('recieved unknown Source: source type: {}'.format(type(src)))
     return TokenIterator(TrackingIterator(it), reporter, src)
     
