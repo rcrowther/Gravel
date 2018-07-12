@@ -2,6 +2,9 @@
 #from MarkTables import ExpressionMarkTable, KindMarkTable
 
 # RunnerContext
+from reporters.Message import Message
+
+
 
 class PhasePipeline():        
     def __init__(self, 
@@ -29,13 +32,14 @@ class PhasePipeline():
 
         for p in self.phaseList:
             if (settings.reportPhaseNames):
-                reporter.info("phase: '{0}'".format(p.name))
+                reporter.info(Message("phase: '{0}'".format(p.name), compilationUnit.source))
             p.run(compilationUnit, reporter, settings)
             if (reporter.hasErrors()):
                 break
 
         if (reporter.hasErrors()):
-            # detailed output of errors handled by idividual reporters
+            # detailed output of errors is handled by individual
+            # reporters
             print('errors...')
             print(reporter.summaryString())
              #sys.exit("Error message")

@@ -34,6 +34,7 @@ class Syntaxer:
         self.it = mkTokenIterator(source, reporter)
         self.tok = None
         self.ast = mkNamelessFunc(NoPosition)
+        self.chainedItem = None
         # start me up
         self.root()
         #print(self.ast.toString())
@@ -313,6 +314,9 @@ class Syntaxer:
         '''
         bracketted = self.optionallySkipToken(LBRACKET)
         if (bracketted):
+            #if(self.chainedItem):
+                #lst.append(self.chainedItem)
+                #self.chainedItem = None
             self.zeroOrMoreDelimited(lst, self.expressionCall, RBRACKET)          
         return True
         
@@ -371,7 +375,7 @@ class Syntaxer:
                 #continue
             #break
         
-    def functionCall(self, lst):
+    def functionCall(self, lst, isDotChained):
         '''
         (Identifier | OPERATER) ~ Arguments ~ Option(Kind)
         
@@ -381,21 +385,29 @@ class Syntaxer:
         if(commit):       
             # node    
             t = mkContextCall(self.position(), self.textOf())
+            
+            # if chained (in either way), grab last expression and use 
+            # as first parameter to this expression
+            if (isDotChained or isInfix(self.textOf())):
+                t.params.append(lst.pop()) 
+                             
             lst.append(t)
             self._next()
             
             # params
-            # Allow for the special case of infix (binop) operator 
-            # params, with no brackets and one parameter
             if (not isInfix(t.parsedData)):
                 self.parametersForFunctionCall(t.params)
             else:
+                # Allow for the special case of infix (binop) operator 
+                # params, with no brackets and one parameter.
+                #print('    infixing : ' + str(t.parsedData))
                 self.oneOrError(t.params, 
                     self.expressionCall, 
                     'functionCall infix operator params',
                     'expressionCall'
                     )
-                    
+                #print('    infixed : ' + str(t.params))
+
             # Kind
             self.optionalKindAnnotation(t)
         return commit 
@@ -466,26 +478,47 @@ class Syntaxer:
         of allocation etc.?)
         '''
         #print('expression')
+        #! need a way to spot dot-chaining misapplied 
+        isDotChained = self.optionallySkipToken(PERIOD)
+
         commit = (
             self.namelessDataExpression(lst) 
-            or self.functionCall(lst)
+            or self.functionCall(lst, isDotChained)
             or self.operaterMonoFunctionCall(lst)
             or self.namelessBodyCall(lst)
             )
             
         # chaining
         #! Not DRY (because not convinced of final form yet).
-        if (commit):
-            t = lst[-1]
-            if (self.optionallySkipToken(PERIOD)):
-                t.isChained = True
-            # The iterator is resting on the next op. What if it's an 
-            # infix? Prefer this sneaky look-forward to a 
-            # high-engineered look-back
-            elif ((self.isToken(IDENTIFIER) or self.isToken(OPERATER)) and isInfix(self.it.textOf())):
-                t.isChained = True
-            #elif (isinstance(t, NameMixin) and isInfix(t.parsedData) and len(lst) > 1):
-                #lst[-2].isChained = True
+        # for the interpreter, we catch the last return
+        # For the compiler, we do inner first.
+        #if (commit):
+          
+            ##t = lst[-1]
+            ##if (self.optionallySkipToken(PERIOD)):
+            ##    t.isChained = True
+            ## The iterator is resting on the next op. What if it's an 
+            ## infix? Prefer this sneaky look-forward to a 
+            ## high-engineered look-back
+            ##elif ((self.isToken(IDENTIFIER) or self.isToken(OPERATER)) and isInfix(self.it.textOf())):
+            ##    t.isChained = True
+            ##elif (isinstance(t, NameMixin) and isInfix(t.parsedData) and len(lst) > 1):
+                ##lst[-2].isChained = True
+            ## if this was chained, add in tree for parameter
+            #if(self.chainedItem):
+                #print('    chaining tree: ' + str(self.chainedItem))
+                #print('    ...to: ' + str(lst[-1]))
+                #lst[-1].params.insert(0, self.chainedItem)
+                #self.chainedItem = None
+                
+            #isBinopId = ((self.isToken(IDENTIFIER) or self.isToken(OPERATER)) and isInfix(self.it.textOf()))
+            #if (
+                #isBinopId
+                #or self.optionallySkipToken(PERIOD)
+                #):
+                #print('    popping: ' + str(lst[-1]))
+                #self.chainedItem = lst.pop()
+                
         return commit
         
     def seqContents(self, lst):

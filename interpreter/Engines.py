@@ -1,9 +1,10 @@
-from reporters.ConsoleStreamReporter import ConsoleStreamReporter
-from gio.Source import StringLineSource
-
+from gio.Sources import StringSource
 from Tokens import tokenToString
 from trees.Visitors import Visitor
 import Keywords
+
+from reporters.ConsoleStreamReporter import ConsoleStreamReporter
+from reporters.Message import Message
 
 
 
@@ -61,7 +62,7 @@ import Keywords
 
 from PrebuiltPipelines import Stock
 from reporters.ConsoleStreamReporter import ConsoleStreamReporter
-from gio.Source import FileSource
+from gio.Sources import FileSource
 from CompilationUnit import CompilationUnit
 from trees.Visitors import NonTraversingVisitor
 from trees.Trees import *
@@ -70,17 +71,28 @@ from trees.Trees import *
 #! incomplete, will we use the typechecked tree?
 #! needs data storage
 class FileEngine(NonTraversingVisitor):
+  
     def __init__(self):
         #! needs to be scoped
         self.dataStash = {}
-        self.returnStash = 22
+        #! why use the stash, and not return? Clean code?
+        self.returnStash = None
         
     def _evaluateBody(self, body):
         for e in body:
             # the last return is interesting,
             #! as are any 'returns'
             self.visit(e)
-        
+
+    def _evaluateParams(self, params):
+        b = []
+        for e in params:
+            self.visit(e)
+            b.append(self.returnStash)
+        self.returnStash = b
+
+
+                  
     #for AST?
     def multiLineComment(self, t):
         pass
@@ -92,7 +104,7 @@ class FileEngine(NonTraversingVisitor):
         pass
 
     def namelessDataBase(self, t):
-        print('...namelessDataBase: ' + str(t))
+        #print('...namelessDataBase: ' + str(t))
         if isinstance(t, IntegerNamelessData):
             self.returnStash = int(t.parsedData)
         if isinstance(t, FloatNamelessData):
@@ -105,36 +117,32 @@ class FileEngine(NonTraversingVisitor):
         
     def dataDefine(self, t):
         self._evaluateBody(t.body)
-        self.dataStash[t.parsedData] = self.returnStash 
-        #pass
+        self.dataStash[t.parsedData] = self.returnStash
          
     def namelessBody(self, t):
-        pass
+        self._evaluateBody(t.body)
         
     def contextDefine(self, t):
         pass
         
     def contextCall(self, t):
+        #! evaluate params
+        #! pump into function
+        # Note that signatures should have been checked
         if(t.parsedData in Keywords.INFIX):
-            print('context call isChained: ' + str(t.isChained))
-            #self.returnStash
-            print('context call: ' + t.parsedData)
-            if(t.isChained):
-                print('ret val: ' + str(self.returnStash))
-                print('parameters: ' + str(t.params))
-                chainValue = self.returnStash
-                self.visit(t.params[0])
-                self.returnStash = chainValue + self.returnStash
-                print('chainval: ' + str(self.returnStash))
-        #elif(t.parsedData in Keywords.MONOP):
-        else:
-            #custom call
-
-                
-            
-        
-        #print('def count: ' + str(len(t.body)))
-        
+            #print('paramList: ' + str(t.parsedData))
+            #print('paramList: ' + str(t.params))
+            self._evaluateParams(t.params)
+            #print('eval paramList: ' + str(self.returnStash))
+            if (t.parsedData == '+'):
+                self.returnStash = self.returnStash[0] + self.returnStash[1]
+            if (t.parsedData == '-'):
+                self.returnStash = self.returnStash[0] - self.returnStash[1]
+            if (t.parsedData == '*'):
+                self.returnStash = self.returnStash[0] * self.returnStash[1]
+            if (t.parsedData == '/'):
+                self.returnStash = self.returnStash[0] / self.returnStash[1]
+            print(t.position.toPositionString() + ' binop count: ' + str(self.returnStash))
         #pass 
                 
     def conditionalCall(self, t):
@@ -144,23 +152,24 @@ class FileEngine(NonTraversingVisitor):
         pass
         
     def namelessFunc(self, t):
-        print('twaddle')
-        for e in t.body:
-            self.visit(e) 
+        self._evaluateBody(t.body)
 
 
-    def evaluate(self, filePath='test/syntax.gv'):
-      
-        # build an AST from the sources
+
+    def evaluate(self, filePath='test/syntax.gv'):      
         r = ConsoleStreamReporter()
-        p = Stock()
+
+        # build an AST from the sources
         cu = CompilationUnit(FileSource(filePath))
+        p = Stock()
         p.run(cu, r)
         
         if (r.hasErrors()):
-            print('Parse Errors: interpretation not attempted')
+            r.info(Message('Parse Errors: interpretation not attempted', cu.source))
         else:
             # ok, now interpret the tree
+            #? does the interpreter require the reporter, also?
             self.visit(cu.tree)
-  
-        print('interpreter datashtash:\n' + str(self.dataStash))
+        msg = Message('interpreter dataStash:', cu.source)
+        msg.details.append( str(self.dataStash)  )
+        r.info(msg)

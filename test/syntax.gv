@@ -29,7 +29,7 @@ lines
 val pi{3.143}
 
 # can be followed by kind annotation
-var life: Choice {3.144}
+var waterFilter: Int32 {10}
 
 ## Function definition
 #
@@ -91,19 +91,19 @@ println(spiral) : Nothing
 ## Chained functions
 #
 # nameFunctions can be chained
-grabList().filter2().filter3()
+grabList().filter1().filter3()
 
 # opFunctions can be chained
->%.>%.>$
+>£.>$.>%.>^
 
 # opFunctions can be chained without periods or brackets (as BinOps)
-1 + 2 - 3
+1 + 2 - 4
 
 # can be chained with nameless functions
-Gervaise + {2 / 3}
+Gervaise != {5 / 6}
 
 # can be chained with operater functions
-filter - 44
+waterFilter ?- 7
 
 
 

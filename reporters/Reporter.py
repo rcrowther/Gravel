@@ -2,6 +2,7 @@
 
 
 from Position import NoPosition
+from reporters.Message import Message
 #! https://contributors.scala-lang.org/t/improving-the-compilation-error-reporting-of-sbt/935
 
 #? need a flush?
@@ -37,12 +38,24 @@ class Reporter:
         return self.infoCount
 
     def error(self, msg):
+        assert isinstance(msg, Message), "Type error: message given to reporter is not message class: val: {}: type:{}: ".format(
+            type(msg),
+            msg
+            )
         self.errorCount += 1
 
     def warning(self, msg):
+        assert isinstance(msg, Message), "Type error: message given to reporter is not message class: val: {}: type:{}: ".format(
+            type(msg),
+            msg
+            )
         self.warningCount += 1
 
     def info(self, msg):
+        assert isinstance(msg, Message), "Type error: message given to reporter is not message class: val: {}: type:{}: ".format(
+            type(msg),
+            msg
+            )
         self.infoCount += 1        
 
     def _pluralize(self, b, v):
