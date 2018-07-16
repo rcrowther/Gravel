@@ -1,0 +1,25 @@
+Though with no current end target of usage, I'm suggesting a set
+of categories for classifying phase actions.
+
+https://pdos.csail.mit.edu/~rsc/rsc-thesis.pdf
+
+
+++
+~ Disambiguates
+: Split non-equivalent but same-written expressions e.g. +=(x:String) +=(x:Int)
+
+~ Normalizations
+: Unify equivalent but differently-written expressions e.g in expressions, i+j+k and (i+j)+k, or reduction of types.
+
+~ Checks
+: Test consistency of structures e.g. stated kinds are consistent.
+
+~ Analysis
+: Derive new material from structures. e.g. printers, docuemtation, statistics.
+
+~ Parsers
+: Generate an AST tree from source code.
+
+~ Generaters
+: Generate machine code from an AST tree
++

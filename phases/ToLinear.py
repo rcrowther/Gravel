@@ -3,7 +3,7 @@ from trees.Visitors import VisitorForBodies
 
 
 
-#! needs to visit call parameters too
+#x
 class ChainsReverse(VisitorForBodies):
       def chainReverse(self, b, it, firstChild):
           #print('trverse:' + str(firstChild))

@@ -15,7 +15,7 @@ for p in pl:
     print(p.toDisplayString())
 
 == CompilationUnit
-from gio.Source import FileSource
+from gio.Sources import FileSource
 from CompilationUnit import CompilationUnit
 src = FileSource('test/syntax.gv')
 cu = CompilationUnit(src)
@@ -26,7 +26,7 @@ cu = CompilationUnit(src)
 
 from PrebuiltPipelines import PrintTokens
 from reporters.ConsoleStreamReporter import ConsoleStreamReporter
-from gio.Source import FileSource
+from gio.Sources import FileSource
 from CompilationUnit import CompilationUnit
 r = ConsoleStreamReporter()
 p = PrintTokens()
@@ -37,7 +37,7 @@ p.run(cu, r)
 
 from PrebuiltPipelines import PrintTree
 from reporters.ConsoleStreamReporter import ConsoleStreamReporter
-from gio.Source import FileSource
+from gio.Sources import FileSource
 from CompilationUnit import CompilationUnit
 r = ConsoleStreamReporter()
 p = PrintTree()
@@ -47,16 +47,17 @@ p.run(cu, r)
 
 from PrebuiltPipelines import Stock
 from reporters.ConsoleStreamReporter import ConsoleStreamReporter
-from gio.Source import FileSource
+from gio.Sources import FileSource
 from CompilationUnit import CompilationUnit
 r = ConsoleStreamReporter()
 p = Stock()
 cu = CompilationUnit(FileSource('test/syntax.gv'))
 p.run(cu, r)
 
+# (see also 'gaveldoc' utility)
 from PrebuiltPipelines import Documentation
 from reporters.ConsoleStreamReporter import ConsoleStreamReporter
-from gio.Source import FileSource
+from gio.Sources import FileSource
 from CompilationUnit import CompilationUnit
 r = ConsoleStreamReporter()
 p = Documentation()

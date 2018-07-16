@@ -108,134 +108,85 @@ class StripComments(Phase):
 
 
 
-from trees.Visitors import VisitorNodeDispatch
-from trees.Trees import (NameMixin, ParameterDefinition, DataDefine, ContextDefine)
-#from MarkTable import ExpressionMarkTable
-from NameTable import ExpressionNameTable
-
-
-class NamesVerifyVisitor(VisitorNodeDispatch):
-    def __init__(self, tree, reporter):
-        self.table = ExpressionNameTable()
-        self.reporter = reporter
-        super().__init__(tree)
-        
-    def node(self, t):
-        # check something is there
-        if (isinstance(t, NameMixin)):
-            if (
-                #! establishes a new scope
-                #isinstance(t, ParameterDefinition)
-                isinstance(t, DataDefine)
-                or isinstance(t, ContextDefine)
-            ):
-                r = self.table.define(t.parsedData, t)
-                if (r):
-                   # oh dear, double definition
-                   name = t.parsedData
-                   nameNode = self.table(name)
-                   msg = 'Name definition repeated. name:"{}" first declaration position:{}'.format(
-                      name,
-                      nameNode.definitionTree.position.toDisplayString()
-                      )
-                   self.reporter.error(msg, r.position)
-                return
-            print('named item: ' + str(t.parsedData))
-            self.table.note(t.parsedData, t)
-
-            
-class NamesVerify(Phase):
-    #? after Syntax so there is a tree (and typecheck)
-    def __init__(self):
-        Phase.__init__(self,
-            "Check names have a definition.",
-            "This will also build, on the compilation unit, a name tree.",
-            True
-            )
-
-    def run(self, compilationUnit, reporter, settings):
-        #! settings for everything
-        NamesVerifyVisitor(compilationUnit.tree, reporter)
-
 #x
-class InfixChainingVisitor(VisitorForBodies):
-    def nodeWithBody(self, t):
-        # check something is there
-        if(t.body):
-            node = t.body[0]
-            nxt = node._next
-            # until we run out of data 
-            while (nxt):
-                if (isinstance(node, ContextCall) and isinstance(nxt, ContextCall) and isInfix(nxt.parsedData)):
-                  node.isChained = True
-                node = nxt
-                nxt = node._next
+#class InfixChainingVisitor(VisitorForBodies):
+    #def nodeWithBody(self, t):
+        ## check something is there
+        #if(t.body):
+            #node = t.body[0]
+            #nxt = node._next
+            ## until we run out of data 
+            #while (nxt):
+                #if (isinstance(node, ContextCall) and isinstance(nxt, ContextCall) and isInfix(nxt.parsedData)):
+                  #node.isChained = True
+                #node = nxt
+                #nxt = node._next
 
-                  # or isinstance(node, ContextCall) and )
-        #t.body = [child for child in t.body if (not(isinstance(child, CommentBase)))]
+                  ## or isinstance(node, ContextCall) and )
+        ##t.body = [child for child in t.body if (not(isinstance(child, CommentBase)))]
 
             
-class ChainsInfixMark(Phase):
-    #? after Syntax so there is a tree (and typecheck)
-    def __init__(self):
-        Phase.__init__(self,
-            "Mark Infix Chains",
-            "The parser will not mark infixed expressions, so this phase handles that.",
-            True
-            )
-
-    def run(self, compilationUnit, reporter, settings):
-        #! settings for everything
-        InfixChainingVisitor(compilationUnit.tree)
+#class ChainsInfixMark(Phase):
+    ##? after Syntax so there is a tree (and typecheck)
     #def __init__(self):
         #Phase.__init__(self,
-            #"Tree tidy",
-            #"Where possible, blend mono operations into values, and nest infix binops.",
+            #"Mark Infix Chains",
+            #"The parser will not mark infixed expressions, so this phase handles that.",
             #True
             #)
 
     #def run(self, compilationUnit, reporter, settings):
-        ## How to scan and rebuild at same time?
-        #for t in compilationUnit.tree:
-            ## merge +VE/-VE mono operations into values
-            #if (
-            #isinstance(t, MonoOpExpressionCall) and
-            #(t.parsedData == '-' or t.parsedData == '+')
-            #):
-                ## nxt = t.nextInSeq()
-                #nxt = t.next
-                #if(
-                #isinstance(nxt, IntegerNamelessData) or 
-                #isinstance(nxt, FloatNamelessData)
-                #):
-                    #nxt.parsedData = t.parsedData + nxt.parsedData
-                    ##? remove the node Mono node
-                    #mo.remove()
+        ##! settings for everything
+        #InfixChainingVisitor(compilationUnit.tree)
+    ##def __init__(self):
+        ##Phase.__init__(self,
+            ##"Tree tidy",
+            ##"Where possible, blend mono operations into values, and nest infix binops.",
+            ##True
+            ##)
+
+    ##def run(self, compilationUnit, reporter, settings):
+        ### How to scan and rebuild at same time?
+        ##for t in compilationUnit.tree:
+            ### merge +VE/-VE mono operations into values
+            ##if (
+            ##isinstance(t, MonoOpExpressionCall) and
+            ##(t.parsedData == '-' or t.parsedData == '+')
+            ##):
+                ### nxt = t.nextInSeq()
+                ##nxt = t.next
+                ##if(
+                ##isinstance(nxt, IntegerNamelessData) or 
+                ##isinstance(nxt, FloatNamelessData)
+                ##):
+                    ##nxt.parsedData = t.parsedData + nxt.parsedData
+                    ###? remove the node Mono node
+                    ##mo.remove()
         
-            ## assemble chains
-            #if (
-            #isinstance(t, ContextCall)
-            #):
+            ### assemble chains
+            ##if (
+            ##isinstance(t, ContextCall)
+            ##):
               
-                ## nxt = t.nextInSeq()
-                #while(True):
-                    #nxt = t.next
-                    #if (
-                        #(nxt == ContextCall) and isInfix(nxt.parsedData)
-                        #):
-                        #t.chain.append(nxt)
-                        #nxt.remove()
+                ### nxt = t.nextInSeq()
+                ##while(True):
+                    ##nxt = t.next
+                    ##if (
+                        ##(nxt == ContextCall) and isInfix(nxt.parsedData)
+                        ##):
+                        ##t.chain.append(nxt)
+                        ##nxt.remove()
                       
 
-#class TypecheckTree(Phase):
-    #def __init__(self):
-        #Phase.__init__(self,
-            #"Typecheck Tree",
-            #"Generate a tree suitable for typecheckng.",
-            #True
-            #)
+##class TypecheckTree(Phase):
+    ##def __init__(self):
+        ##Phase.__init__(self,
+            ##"Typecheck Tree",
+            ##"Generate a tree suitable for typecheckng.",
+            ##True
+            ##)
 
-    #def run(self, compilationUnit, reporter, settings):
-          ## Need to dive into binops
-          ## need to work from inside namespaces to out
+    ##def run(self, compilationUnit, reporter, settings):
+          ### Need to dive into binops
+          ### need to work from inside namespaces to out
           

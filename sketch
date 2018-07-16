@@ -180,16 +180,26 @@ chainLast: to label
 After param calcs
 if ... some loops
 
+==
 
 == Thoughts
-Yes, we want to be able to DSL. So we can write code like,
+== Interesting
+https://github.com/mrakgr/The-Spiral-Language
+""Inlining means no heap" ???
 
+== Polymorphic funcs
+If we an write many funcs with one type, we must be able to write one 
+func with many types i.e. polymorphic funcs.
+
+== DSL
+Yes, we want to be able to DSL. So we can write code like,
+>>
 == Box(x, y, width, height)
 Line(x, y, x + width, y)
 Line(x, y, x, y + height)
 Line(x, y + height, x + width, y + height)
 Line(x + width, y + height, x + width, y)
-
+>
 Better written as (which proves some variable sets can be generated rather than explicit),
 
 
@@ -223,3 +233,9 @@ thing)? Note: should Maps only contain the
 connection ('map') between subjectID and the objectID, not the 
 subjects and objects themselves? What about references, or is that 
 cheating? 
+
+
+== Further interesting
+Alef
+Quite good for multithreading,
+https://pdos.csail.mit.edu/~rsc/rsc-thesis.pdf

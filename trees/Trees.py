@@ -154,7 +154,7 @@ class ParameterDefinition(Tree, NameMixin):
     
     def __init__(self, nameStr):
         super().__init__()
-        self.parsedData = nameStr   
+        self.parsedData = nameStr
 
     def toString(self):
         return "ParameterDefinition('{}')".format(self.parsedData)

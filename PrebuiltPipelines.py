@@ -7,15 +7,18 @@ from phases.Basic import (
     TreePrint, 
     TreePrintDisplay, 
     StripComments,
-    NamesVerify,
     #NamesValidate
     )
 
-from phases.ToLinear import (
-    TreeChainsReverse
+from phases.Checks import (
+    NamesVerify,
     )
     
-from phases.Documentation import GravelDoc
+#from phases.ToLinear import (
+    #TreeChainsReverse
+    #)
+    
+
 
 
 
@@ -60,10 +63,23 @@ def Stock():
         #codeGenContext, 
         )
 
-def Documentation():
+#from phases import Documentation
+import phases.Documentation
+
+def GDoc():
     phaseList = [
         SyntaxPhase(),
-        GravelDoc(),
+        phases.Documentation.GravelDoc(),
+        ]
+    return PhasePipeline( 
+        phaseList 
+        )
+
+
+def GDocToTerminal():
+    phaseList = [
+        SyntaxPhase(),
+        phases.Documentation.GDocToTerminal(),
         ]
     return PhasePipeline( 
         phaseList 

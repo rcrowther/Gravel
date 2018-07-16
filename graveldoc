@@ -1,0 +1,20 @@
+#!/usr/bin/env python3
+
+from reporters.ConsoleStreamReporter import ConsoleStreamReporter
+from gio.Sources import FileSource
+from CompilationUnit import CompilationUnit
+from PrebuiltPipelines import (
+GDoc,
+GDocToTerminal
+)
+
+
+
+
+#! needs args to take file sets
+
+r = ConsoleStreamReporter()
+cu = CompilationUnit(FileSource('test/syntax.gv'))
+p = GDoc()
+#p = GDocToTerminal()
+p.run(cu, r)
