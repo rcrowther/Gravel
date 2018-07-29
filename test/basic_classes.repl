@@ -14,6 +14,14 @@ INT_NUM
 tokenToString[LSQUARE]
 
 
+== Mark
+from Mark import *
+from Kinds  import *
+globalPackage
+gp = globalPackage
+Mark('main', Any, gp)
+canine = Mark('Canine', Any, gp)
+Mark('Dogs', Any, canine)
 
 == NameTable
 from NameTable import *
@@ -105,3 +113,41 @@ mkContextDefine(NoPosition, 'doopy')
 mkContextCall(NoPosition, 'dpong')
 mkMonoOpExpressionCall(NoPosition, 'dponth')
 mkNamelessFunc(NoPosition)
+
+== ScopeEntry
+from Scope import *
+from Marks import testMark, Mark
+globalScope
+ScopeEntry(testMark, globalScope)
+
+== Scopes
+from Scope import *
+from Marks import testMark, testMark2, Mark
+s = Scope()
+s.isEmpty()
+s.size()
+s.addMark(testMark)
+s.size()
+s.addMark(testMark)
+s.size()
+s.addMark(testMark)
+# is 3
+s.size()
+s.toList()
+s
+e = s.findEntry('TestMark')
+s.findNextEntry(e)
+# == False
+s.containsName('testMark')
+# == True
+s.containsName('TestMark')
+# == TestMark
+s.findMark('TestMark')
+sc = s.newChildScope()
+sc
+# == 1
+sc.depth
+# == 4
+sc.size()
+s.addUniqueMark(testMark)
+s.addUniqueMark(testMark2)

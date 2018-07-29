@@ -23,7 +23,7 @@ class NameInfo():
         self.trees = []
        
     def addDefinition(self, definitionTree):
-        assert (self.isDefined == False), "Attrempted to define node, but already defined. definitionTree:{}".format(
+        assert (self.isDefined == False), "Attempted to define node, but already defined. definitionTree:{}".format(
             self.definitionTree
             )
         self.isDefined = True

@@ -39,18 +39,18 @@ fnc map() {
 }
 
 # ...and have kinded parameters
-fnc map2(dom: Int node: Float) {
+fnc map2(dom: Int plode: Float) {
 }
 
 # ...and handle optional trailing kinds
-fnc map3(dom: Int node: Float) : Float {
+fnc map3(dom: Int knode: Float) : Float {
 }
 
 ## Operater definition
 #
 
 # ...same as function definition
-fnc ++=(dom: Int node: String) : String {
+fnc ++=(dom: Int strode: String) : String {
 }
 
 
@@ -100,7 +100,7 @@ grabList().filter1().filter3()
 1 + 2 - 4
 
 # can be chained with nameless functions
-Gervaise != {5 / 6}
+Gervaise != {5 % 6}
 
 # can be chained with operater functions
 waterFilter ?- 7
@@ -119,6 +119,6 @@ waterFilter ?- 7
 
 
 #?
-#++= 49333 - 93 / (45 * 3) 
+#++= 49333 - 93 % (45 * 3) 
 #++= 49333 - 93 
 

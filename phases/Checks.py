@@ -14,6 +14,13 @@ from trees.Trees import (NameMixin, ParameterDefinition, DataDefine, ContextDefi
 from NameTable import ExpressionNameTable
 
 
+#! I am not happy. Python checks types, after a fashion, probably by 
+#! dragging them round with an object. Scala checks types.
+#? how do we know if we have found the right name if one name has 
+#? different types? +=(:String) +=(:Int)
+#? Also: Is it not faster to look for type in a scope type key, rather 
+#? than scope first (a potentially massive search?) i.e. can we keep 
+#? lists of methoids registered to a type?
 class NamesVerifyVisitor(VisitorNodeDispatch):
     def __init__(self, tree, reporter):
         self.table = ExpressionNameTable()

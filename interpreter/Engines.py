@@ -140,7 +140,7 @@ class FileEngine(NonTraversingVisitor):
                 self.returnStash = self.returnStash[0] - self.returnStash[1]
             if (t.parsedData == '*'):
                 self.returnStash = self.returnStash[0] * self.returnStash[1]
-            if (t.parsedData == '/'):
+            if (t.parsedData == '%'):
                 self.returnStash = self.returnStash[0] / self.returnStash[1]
             print(t.position.toPositionString() + ' binop count: ' + str(self.returnStash))
         #pass 

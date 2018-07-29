@@ -180,7 +180,21 @@ chainLast: to label
 After param calcs
 if ... some loops
 
-==
+==Conceptual interesting
+An import uses a path, right? That's not dots
+
+import canine/dogs/terriers
+
+or 
+
+dog = terriers/canine()
+
+but paths uses the slash, which is a shame for division, as nothing much else would do besides '%',
+
+1 + (4 % 3)
+
+though that has advantages in forcing the difficult act (on a keyboard)
+
 
 == Thoughts
 == Interesting
