@@ -40,13 +40,14 @@ class Mark:
         Mark._id += 1
         return Mark._id
         
-    def __init__(self, name, kind, owner):
-        assert isinstance(owner, Mark), "Is not Mark: owner:{}".format(owner)
+    def __init__(self, name, kind):
+        #assert isinstance(scope, Scope), "Is not Scope: scope:{}".format(scope)
         assert isinstance(kind, Kind), "Is not Kind: kind:{}".format(kind)
         id = self.newId() 
         self.name = name
         self.kind = kind
-        self.owner = owner
+        # Scope is added automatically
+        self.scope = None
         
     #! how do we effectively key?
     def key(self):
@@ -54,32 +55,18 @@ class Mark:
         return ''
         
     def toString(self):
-        return 'Mark(name:"{}" kind:{} owner:{})'.format(
+        return 'Mark(name:"{}" kind:{})'.format(
             self.name,
             self.kind,
-            self.owner
+            #self.owner
             )
             
     def __repr__(self):
         return self.toString()
 
 
-
-class BaseMark(Mark):
-    def __init__(self, name, kind):
-        id = 0
-        self.name = name
-        self.kind = kind
-        self.owner = None
-
-    def toString(self):
-        return "BaseMark(name:{} kind:{})".format(
-            self.name,
-            self.kind
-            )
-
-#x
-globalPackage = BaseMark('GlobalPackage', Any)
+#?
+globalPackage = Mark('GlobalPackage', Any)
     
-testMark = BaseMark('TestMark', Any)
-testMark2 = BaseMark('TestMark2', Any)
+testMark = Mark('TestMark', Any)
+testMark2 = Mark('TestMark2', Any)

@@ -4,7 +4,7 @@ from trees.Visitors import Visitor
 import Keywords
 
 from reporters.ConsoleStreamReporter import ConsoleStreamReporter
-from reporters.Message import Message
+from reporters.Message import MessageNoPos
 
 
 
@@ -165,11 +165,11 @@ class FileEngine(NonTraversingVisitor):
         p.run(cu, r)
         
         if (r.hasErrors()):
-            r.info(Message('Parse Errors: interpretation not attempted', cu.source))
+            r.info(MessageNoPos('Parse Errors: interpretation not attempted', cu.source))
         else:
             # ok, now interpret the tree
             #? does the interpreter require the reporter, also?
             self.visit(cu.tree)
-        msg = Message('interpreter dataStash:', cu.source)
+        msg = MessageNoPos('interpreter dataStash:', cu.source)
         msg.details.append( str(self.dataStash)  )
         r.info(msg)

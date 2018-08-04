@@ -205,6 +205,14 @@ https://github.com/mrakgr/The-Spiral-Language
 If we an write many funcs with one type, we must be able to write one 
 func with many types i.e. polymorphic funcs.
 
+== overriding
+Is much simpler if you just use the scope of the class, rather than guessing through ''super'.
+
+e.g.
+   BaseRecord.create(elem)
+not
+   super.create(elem)
+
 == DSL
 Yes, we want to be able to DSL. So we can write code like,
 >>

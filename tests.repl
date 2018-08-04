@@ -44,7 +44,7 @@ p = PrintTree()
 cu = CompilationUnit(FileSource('test/syntax.gv'))
 p.run(cu, r)
 
-
+# Stock
 from PrebuiltPipelines import Stock
 from reporters.ConsoleStreamReporter import ConsoleStreamReporter
 from gio.Sources import FileSource

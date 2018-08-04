@@ -172,6 +172,7 @@ class TokenIterator():
             self.tok = Tokens.COMMENT              
             self.brackets_closed = False
             self.start_pos = Position(
+                self.src,
                 self.lineCount, 
                 self.lineOffset
                 )
@@ -194,6 +195,7 @@ class TokenIterator():
             self.tok = Tokens.STRING
             self.brackets_closed = False
             self.start_pos = Position(
+                self.src,
                 self.lineCount, 
                 self.lineOffset
                 )
@@ -280,7 +282,7 @@ class TokenIterator():
                     msg = 'Open {} brackets not closed by end of file.'.format(
                     Tokens.tokenToString[self.tok]
                     )
-                    self.reporter.error(Message(msg, self.src, self.start_pos))
+                    self.reporter.error(Message(msg, self.start_pos))
                 raise e
         return self.tok
 

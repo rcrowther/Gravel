@@ -2,27 +2,40 @@
 
 
 # A position always implies a source
-#? maybe should carry a source?
+#! maybe should carry a source?
 #? and why has it got a sourcepath anyhow?
 # because we stash in the tree support data?
 
+class PositionBase:
+    def __init__(self, source):
+        self.source = source
+        
+
+
+class PositionNoPos(PositionBase):
+    def __init__(self, source):
+        super().__init__(source)
+        
+
+                
 class Position:
     '''
     Record a position in a source.
     '''
-    def __init__(self, line, offset):
-        self.line = line
+    def __init__(self, source, lineNum, offset):
+        self.source = source
+        self.lineNum = lineNum
         self.offset = offset
 
     def toPositionString(self):
         return '[{}:{}]'.format(
-            self.line,
+            self.lineNum,
             self.offset,
             )
 
-    def toLineString(self):
+    def toLineNumString(self):
         return '[{}]'.format(
-            self.line
+            self.lineNum
             )
 
 
@@ -34,15 +47,16 @@ class Position:
                                     
     def toDisplayString(self):
         return '[{}:{}]'.format(
-            self.line,
+            self.lineNum,
             self.offset,
             )
 
 
 
+
 class _NoPosition(Position):
     def __init__(self):
-        Position.__init__(self, 0, 0)
+        Position.__init__(self, None, 0, 0)
 
     def toPositionString(self):
         return ''

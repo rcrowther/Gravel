@@ -23,7 +23,7 @@ class ConsoleStreamReporter(Reporter):
     def srcStr(self, b, src):
         if (src):
             srcStyleStr = ''
-            if (src.srcPath):
+            if (src.isFileSource):
                 b.append( UNDERLINED )
                 b.append( src.locationStr() )
                 b.append( RESET )
@@ -35,13 +35,13 @@ class ConsoleStreamReporter(Reporter):
         #! everything, then lop off the first and replace with a space.
         b = []
         b.append( statusStr )
-        self.srcStr(b, msg.src)
-        # Always a source, if there is a pos
         if (msg.pos):
+            # Always a source, if there is a pos
+            self.srcStr(b, msg.pos.source)
             b.append(':')
-            b.append( str(msg.pos.line) )
-        if (msg.src):
-            b.append(': ')
+            if (msg.pos.lineNum):
+                b.append( str(msg.pos.lineNum) )
+                b.append(': ')
         b.append(msg.msg)
         b.append('\n')
 
@@ -51,10 +51,10 @@ class ConsoleStreamReporter(Reporter):
             b.append( detail )
             b.append('\n')
 
-        if (msg.pos):
-            b.append( statusStr )
+        if (msg.pos and msg.pos.source.isLinebasedSource()):
             b.append( self.indent)
-            b.append( msg.src.lineByIndex(msg.pos.line) )
+            #! too epic for me
+            b.append( msg.pos.source.lineByIndex(msg.pos.lineNum) )
             b.append('\n')
             b.append( statusStr )
             b.append( self.indent)

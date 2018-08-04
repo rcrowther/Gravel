@@ -151,3 +151,30 @@ sc.depth
 sc.size()
 s.addUniqueMark(testMark)
 s.addUniqueMark(testMark2)
+
+== MarkTable
+from MarkTable import *
+from Marks import testMark, testMark2, Mark
+mt = MarkTable()
+s = Scope(mt)
+s.create(testMark)
+s.create(testMark2)
+# == False
+s.create(testMark2)
+# == 2
+s.size()
+s.findByName('TestMark')
+s.findIndexByName('TestMark2')
+s.readByName('TestMark')
+s.deleteByName('TestMark')
+# == 1
+s.size()
+# == True
+s.containsName('TestMark2')
+
+sc = s.newChildScope()
+sc.create(testMark)
+# == 2
+sc.size()
+# == 1
+s.size()

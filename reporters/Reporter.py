@@ -1,6 +1,3 @@
-
-
-
 from Position import NoPosition
 from reporters.Message import Message
 #! https://contributors.scala-lang.org/t/improving-the-compilation-error-reporting-of-sbt/935

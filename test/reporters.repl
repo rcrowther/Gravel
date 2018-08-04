@@ -23,10 +23,10 @@ from gio.Sources import *
 from Position import Position
 from reporters.ConsoleStreamReporter import ConsoleStreamReporter
 from reporters.Message import Message
-src = StringLineSource('x = 12 + y')
-pos = Position(45, 9)
+src = StringSource('x = 12 + y')
+pos = Position(src, 45, 9)
 r = ConsoleStreamReporter()
-msg = Message('Undefined value: y', src, pos)
+msg = Message('Undefined value: y', pos)
 msg.details = ['Try define the value?']
 # claret points to 'y'
 r.error(msg)
@@ -39,9 +39,9 @@ from Position import Position
 from reporters.ConsoleStreamReporter import ConsoleStreamReporter
 from reporters.Message import Message
 src = FileSource('test/syntax.gv')
-pos = Position(42, 4)
+pos = Position(src, 42, 4)
 r = ConsoleStreamReporter()
-msg = Message('Repeated definition names disallowed: "map"', src, pos)
+msg = Message('Repeated definition names disallowed: "map"', pos)
 msg.details = ['Rename the function?']
 # claret points to 'map'
 r.error(msg)

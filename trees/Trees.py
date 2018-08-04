@@ -150,6 +150,7 @@ class ParameterDefinition(Tree, NameMixin):
     - are tree leaves (no body) always???
     They also print out with explicit kind??? (no)
     '''
+    #! None, surely
     parsedKind = ''
     
     def __init__(self, nameStr):

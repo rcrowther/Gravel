@@ -1,22 +1,6 @@
 
 = IO
 
-== Source
-from gio.Sources import FileSource
-src = FileSource('test/tokens.gv')
-src.srcPath
-# Error
-src.lineByIndex(0)
-src.lineByIndex(8)
-
-from gio.Sources import StringsSource
-src = StringsSource(['oh\n', 'ah\n', 'umm\n'])
-src.srcPath
-# Error
-src.lineByIndex(0)
-src.lineByIndex(3)
-
-
 == Codepoint
 === File
 from gio.CodepointIterators import FileIterator

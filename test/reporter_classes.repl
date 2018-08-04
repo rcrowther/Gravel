@@ -1,0 +1,29 @@
+
+= Reporter classes
+
+== Source
+from gio.Sources import FileSource
+src = FileSource('test/tokens.gv')
+src.locationStr()
+# == Error
+src.lineByIndex(0)
+src.lineByIndex(8)
+
+from gio.Sources import StringsSource
+src = StringsSource(['oh\n', 'ah\n', 'umm\n'])
+src.locationStr()
+# == Error
+src.lineByIndex(0)
+src.lineByIndex(3)
+
+
+
+== Position
+from gio.Sources import FileSource
+from Position import *
+src = FileSource('test/syntax.gv')
+pos = Position(src, 53, 8)
+pos.toLineString()
+pos.toOffsetCaretString()
+
+

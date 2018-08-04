@@ -42,11 +42,11 @@ class Syntaxer:
    
     ## reporter helpers     
     def position(self):
-        return Position(self.it.lineCount, self.it.lineOffset)
+        return Position(self.source, self.it.lineCount, self.it.lineOffset)
         
     def error(self, msg):
         tokenTxt = self.it.textOf()
-        msg = Message(msg, self.source, self.position())
+        msg = Message(msg, self.position())
         if (tokenTxt):
             msg.details = ["token text : '{0}'".format(tokenTxt)]
         self.reporter.error(msg)
