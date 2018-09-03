@@ -27,3 +27,13 @@ pos.toLineString()
 pos.toOffsetCaretString()
 
 
+== Messages
+from reporters.Message import Message
+m = Message('howdy')
+str(m)
+from gio.Sources import FileSource
+src = FileSource('test/syntax.gv')
+m = Message.withSrc('howdy', src)
+from Position import *
+pos = Position(src, 53, 8)
+m = Message.withPos('howdy', src, pos)

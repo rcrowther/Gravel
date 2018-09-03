@@ -35,21 +35,21 @@ class Reporter:
         return self.infoCount
 
     def error(self, msg):
-        assert isinstance(msg, Message), "Type error: message given to reporter is not message class: val: {}: type:{}: ".format(
+        assert isinstance(msg, Message), "Type error: value given to reporter is not message class: val: {}: type:{}: ".format(
             type(msg),
             msg
             )
         self.errorCount += 1
 
     def warning(self, msg):
-        assert isinstance(msg, Message), "Type error: message given to reporter is not message class: val: {}: type:{}: ".format(
+        assert isinstance(msg, Message), "Type error: value given to reporter is not message class: val: {}: type:{}: ".format(
             type(msg),
             msg
             )
         self.warningCount += 1
 
     def info(self, msg):
-        assert isinstance(msg, Message), "Type error: message given to reporter is not message class: val: {}: type:{}: ".format(
+        assert isinstance(msg, Message), "Type error: value given to reporter is not message class: val: {}: type:{}: ".format(
             type(msg),
             msg
             )

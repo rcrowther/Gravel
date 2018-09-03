@@ -66,9 +66,9 @@ from Kinds import Any
 #? different types? +=(:String) +=(:Int)
 #? Also: Is it not faster to look for type in a scope type key, rather 
 #? than scope first (a potentially massive search?) i.e. can we keep 
-#? lists of methoids registered to a type?
+#? lists of methods registered to a type?
 #! not a check anymore?
-class NamesVerifyVisitor(VisitorNodeDispatch):
+class MakeSymbolTableVisitor(VisitorNodeDispatch):
     def __init__(self, tree, reporter):
         self.table = ExpressionScope
         #self.table = ExpressionNameTable()
@@ -92,8 +92,9 @@ class NamesVerifyVisitor(VisitorNodeDispatch):
                 or isinstance(t, ContextDefine)
             ):
                 #r = self.table.define(t.parsedData, t)
-                ??? need to know where we parse the kind
-                r = self.table.create(Mark(t.parsedData, t.parsedKind))
+                #??? need to know where we parse the kind
+                #decision---here
+                r = self.table.create(Mark(t.parsedData))
                 if (not r):
                    # oh dear, double definition
                    name = t.parsedData
@@ -109,7 +110,7 @@ class NamesVerifyVisitor(VisitorNodeDispatch):
             #r = self.table.create(Mark(t.parsedData, t.parsedKind))
 
             
-class NamesVerify(Phase):
+class MakeSymbolTable(Phase):
     #? after Syntax so there is a tree (and typecheck)
     def __init__(self):
         Phase.__init__(self,
@@ -120,4 +121,4 @@ class NamesVerify(Phase):
 
     def run(self, compilationUnit, reporter, settings):
         #! settings for everything
-        NamesVerifyVisitor(compilationUnit.tree, reporter)
+        MakeSymbolTableVisitor(compilationUnit.tree, reporter)

@@ -2,8 +2,6 @@
 
 
 # A position always implies a source
-#! maybe should carry a source?
-#? and why has it got a sourcepath anyhow?
 # because we stash in the tree support data?
 
 class PositionBase:

@@ -2,6 +2,9 @@ from reporters.Reporter import Reporter
 from Position import NoPosition
 from library.io.AnsiColor import *
 
+
+
+
 ## eg
 # test/syntax.gv [42:4]Error: Name definition repeated. name:"map" first declaration position:test/syntax.gv [38:4]
 
@@ -16,50 +19,66 @@ class ConsoleStreamReporter(Reporter):
         
         
     def statusStr(self, statusStr, statusColor):
-        return '[{color}{status}{reset}] '.format(
+        return '[{color}{status}{reset}]'.format(
             color=statusColor, status=statusStr, reset=RESET
             )
             
     def srcStr(self, b, src):
         if (src):
-            srcStyleStr = ''
-            if (src.isFileSource):
+            b.append( ' ' )
+            if (src.isFileSource()):
                 b.append( UNDERLINED )
                 b.append( src.locationStr() )
                 b.append( RESET )
             else:
                 b.append( src.locationStr() )
-         
-    def messageDisplay(self, statusStr, msg):
-        #! A formatting mess. Best would be to add colons before 
-        #! everything, then lop off the first and replace with a space.
-        b = []
-        b.append( statusStr )
-        if (msg.pos):
+
+    def posStr(self, b, pos, printLineDetail):
+        if (pos):
             # Always a source, if there is a pos
-            self.srcStr(b, msg.pos.source)
             b.append(':')
-            if (msg.pos.lineNum):
-                b.append( str(msg.pos.lineNum) )
-                b.append(': ')
+            b.append( str(pos.lineNum) )
+            if (not printLineDetail):
+                b.append('/')
+                b.append( str(pos.offset) )
+            b.append(':')
+
+                
+            
+
+                     
+    def messageDisplay(self, statusStr, msg):
+        # using a 'if data is there, set up the print prefix delimiter'
+        # method.
+        b = []
+
+        b.append( statusStr )
+                
+        self.srcStr(b, msg.src)
+        printLineDetail = msg.isLinePrintable()
+        self.posStr(b, msg.pos, printLineDetail)
+        
+        b.append( ' ' )        
         b.append(msg.msg)
-        b.append('\n')
 
         for detail in msg.details:
-            b.append( statusStr )
-            b.append( self.indent)
-            b.append( detail )
             b.append('\n')
+            b.append( statusStr )
+            b.append( self.indent )
+            b.append( detail )
 
-        if (msg.pos and msg.pos.source.isLinebasedSource()):
+        if (printLineDetail):
+            b.append('\n')
+            b.append( statusStr )
             b.append( self.indent)
             #! too epic for me
-            b.append( msg.pos.source.lineByIndex(msg.pos.lineNum) )
+            #b.append( msg.pos.source.lineByIndex(msg.pos.lineNum) )
+            b.append( msg.src.lineByIndex(msg.pos.lineNum) )
             b.append('\n')
             b.append( statusStr )
-            b.append( self.indent)
+            b.append( self.indent )
             b.append( msg.pos.toOffsetCaretString() )
-            b.append('\n')
+        b.append('\n')       
         return ''.join(b)
         
     def error(self, msg):

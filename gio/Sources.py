@@ -15,7 +15,7 @@ class Source:
     def cmp(self, other):
         raise NotImplementedError()
         
-    def isLinebasedSource(Self):
+    def isLinebasedSource(self):
         '''
         If it is a linebased source, it's worth printing a line
         position.
@@ -121,7 +121,7 @@ class StringSource(Source):
         return self.line.rstrip()
 
     def locationStr(self):
-        return '<terminal>'
+        return '<console>'
 
 
 
@@ -138,4 +138,4 @@ class StringsSource(Source):
         return self.strings[lineNum - 1].rstrip()
 
     def locationStr(self):
-        return '<terminal>'
+        return '<console>'

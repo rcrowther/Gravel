@@ -20,6 +20,6 @@ https://pdos.csail.mit.edu/~rsc/rsc-thesis.pdf
 ~ Parsers
 : Generate an AST tree from source code.
 
-~ Generaters
+~ Unparsers
 : Generate machine code from an AST tree
 +

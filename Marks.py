@@ -24,8 +24,8 @@ class Mark:
     The unique key must include:
     ~ name
     : an important id for a user
-    ~ type
-    : because same names may be isolated by type
+    ~ type?
+    : because same names may be isolated by type?
     - owner
     : because all name/types can be duplicated across owners
     
@@ -40,12 +40,13 @@ class Mark:
         Mark._id += 1
         return Mark._id
         
-    def __init__(self, name, kind):
+    def __init__(self, name):
         #assert isinstance(scope, Scope), "Is not Scope: scope:{}".format(scope)
-        assert isinstance(kind, Kind), "Is not Kind: kind:{}".format(kind)
+        #assert isinstance(kind, Kind), "Is not Kind: kind:{}".format(kind)
         id = self.newId() 
         self.name = name
         self.kind = kind
+        self.kind = Any
         # Scope is added automatically
         self.scope = None
         
@@ -66,7 +67,7 @@ class Mark:
 
 
 #?
-globalPackage = Mark('GlobalPackage', Any)
+globalPackage = Mark('GlobalPackage')
     
-testMark = Mark('TestMark', Any)
-testMark2 = Mark('TestMark2', Any)
+testMark = Mark('TestMark')
+testMark2 = Mark('TestMark2')

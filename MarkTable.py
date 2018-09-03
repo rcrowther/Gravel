@@ -53,7 +53,9 @@ class MarkTable():
     def size(self):
         return len(self.underlying)
 
-
+from trees.Trees import (
+    NameMixin
+    )
 
 class Scope():
     '''
@@ -129,7 +131,7 @@ class Scope():
         copies this scope's marks.
         Mark data must be entered by flat downward traversal. If depths
         are recursed first, lower levels will not recieve later (higher)
-        scope addittions.
+        scope additions.
         '''
         s = Scope(self.markTable)
         s.marks = [e for e in self.marks]    
