@@ -3,6 +3,8 @@ from Kinds import *
 from TreeInfo import TreeInfo, UndefinedTreeInfo, NoTreeInfo
 
 
+#! needs rework
+#! probably replace with simple attributes, like isDefinition
 class BodyParameterMixin():
     '''
     Mixin for any Tree accepting a body as a parameter.
@@ -84,6 +86,9 @@ class Tree():
     _prev = None
     _next = None
     
+    isDefinition =  False
+    isMark =  False
+    
     def __init__(self):
         self.parsedData = None
         self.treeInfo = UndefinedTreeInfo
@@ -108,6 +113,8 @@ class BuiltinCall(Tree):
     '''
     def toString(self):
         return 'BuiltinCall()'    
+
+
 
 class CommentBase(Tree):
     typeStr = "Call on CommentBase, do not do this, use subtypes"
@@ -155,6 +162,8 @@ class ParameterDefinition(Tree, NameMixin):
     
     def __init__(self, nameStr):
         super().__init__()
+        self.isDefinition = True
+        self.isMark = True
         self.parsedData = nameStr
 
     def toString(self):
@@ -248,7 +257,7 @@ def mkNamelessBody(position):
 #! we need to figure what is useful in tree manipulation i.e. DefMixin
 # may be useful? ParamMixin?
 #! is ExpressionCall
-#! so waht about definitions? They are expressions.
+#! so what about definitions? They are expressions.
 #! is the definition hasParams = True?
 #x not necessary. Main/EntryPoint can be a context func. Namespace also.
 # Others are just a Seq (NamelessBody)?
@@ -321,7 +330,9 @@ class DataDefine(ExpressionWithBodyBase):
     e.g. val pi { 3.142 }
     '''
     def __init__(self, nameStr, body):
-        super().__init__(nameStr, params=[], body=body)
+        super().__init__(nameStr, [], body)
+        self.isDefinition = True
+        self.isMark = True
 
     def toString(self):
         return "DataDefine('{}', {})".format(self.parsedData, self.body)
@@ -340,6 +351,11 @@ class ContextDefine(ExpressionWithBodyBase):
     Special case
     e.g. def mult(x, y) { *(x, y) }
     '''
+    def __init__(self, nameStr, params, body):
+        super().__init__(nameStr, params, body)
+        self.isDefinition = True
+        self.isMark = True
+
     def toString(self):
         return "ContextDefine('{}', {})".format(self.parsedData, self.params, self.body)
                 
@@ -353,8 +369,12 @@ def mkContextDefine(position, nameStr):
 class ContextCall(ExpressionWithBodyBase):
     '''
     Call on a function/operator.
-    Like a ContextCall, can take a name, parameters and a body (for closures).
+    Can take a name, parameters and a body (for closures).
     '''
+    def __init__(self, nameStr, params, body):
+        super().__init__(nameStr, params, body)
+        self.isMark = True
+
     def toString(self):
         return "ContextCall('{}', {})".format(self.parsedData, self.params, self.body)
             
@@ -363,6 +383,8 @@ def mkContextCall(position, nameStr):
     t.position = position
     return t
         
+        
+        
 # should this exist, or should we drop it?
 # was here for infixing, I recall
 class MonoOpExpressionCall(Expression):
@@ -370,6 +392,10 @@ class MonoOpExpressionCall(Expression):
     Operator Expression with one parameter 
     Parameter can be a chain
     '''
+    def __init__(self, nameStr, params):
+        super().__init__(nameStr, params)
+        self.isMark = True
+
     def toString(self):
         chainStr = '.'.join([e.toString for e in self.chain])
         return "MonoOpExpression('{}', {}){}".format(self.parsedData, self.params, chainStr)
@@ -388,6 +414,10 @@ class ConditionalCall(ExpressionWithBodyBase):
     Special case
     e.g. if gt(x, y) { *(x, y) }
     '''
+    def __init__(self, nameStr, params, body):
+        super().__init__(nameStr, params, body)
+        self.isMark = True
+        
     def toString(self):
         return "ConditionalCall('{}', {})".format(self.parsedData, self.params, self.body)
 
@@ -400,7 +430,11 @@ class ConditionalContextCall(ExpressionWithBodyBase):
     loops
     Special case
     e.g. def while(x, y) { *(x, y) }
-    '''    
+    ''' 
+    def __init__(self, nameStr, params, body):
+        super().__init__(nameStr, params, body)
+        self.isMark = True
+        
     def toString(self):
         return "ConditionalContextCall('{}', {})".format(self.parsedData, self.params, self.body)
        
@@ -419,7 +453,7 @@ class NamelessFunc(ExpressionWithBodyBase):
         #! the name needs some thought
         # diven a valid name because the attribute is tested, 
         # here and there
-        super().__init__('namelessFunc', params=[], body=body)
+        super().__init__('namelessFunc', [], body)
         self.body = body
 
     def toString(self):

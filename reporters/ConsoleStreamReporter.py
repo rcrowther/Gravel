@@ -43,18 +43,14 @@ class ConsoleStreamReporter(Reporter):
                 b.append( str(pos.offset) )
             b.append(':')
 
-                
-            
-
-                     
     def messageDisplay(self, statusStr, msg):
         # using a 'if data is there, set up the print prefix delimiter'
         # method.
         b = []
-
+        
         b.append( statusStr )
-                
         self.srcStr(b, msg.src)
+        
         printLineDetail = msg.isLinePrintable()
         self.posStr(b, msg.pos, printLineDetail)
         

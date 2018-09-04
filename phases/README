@@ -18,8 +18,8 @@ https://pdos.csail.mit.edu/~rsc/rsc-thesis.pdf
 : Derive new material from structures. e.g. printers, docuemtation, statistics.
 
 ~ Parsers
-: Generate an AST tree from source code.
+: Generate data from source code, such as an AST tree and MarkTables.
 
 ~ Unparsers
-: Generate machine code from an AST tree
+: Generate destination code from parsed data, such as an AST Tree.
 +

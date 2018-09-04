@@ -2,6 +2,7 @@ from Phases import Phase
 from Syntaxer import Syntaxer
 from Tokens import tokenToString
 
+from gio.TokenIterator import mkTokenIterator
 
 #? could do this using a setting in the pipeline,
 #? but this may be useful too
@@ -18,7 +19,9 @@ class PrintTokensPhase(Phase):
         src = compilationUnit.source
         #parser = Syntaxer(src, reporter)
         #compilationUnit.tree = parser.ast
-        it = src.tokenIterator(reporter)
+        #it = src.tokenIterator(reporter)
+        it = mkTokenIterator(src, reporter)
+
         for tok in it:
             print("[{},{}] '{}': '{}'".format(
             it.lineCount,

@@ -20,6 +20,8 @@ from reporters.Message import Message
 def isInfix(name):
   return ((name[-1] == '=') or (name in Keywords.INFIX))
   
+  
+  
 class Syntaxer:
     '''
     Tree holding the structure of tokens.
@@ -46,7 +48,7 @@ class Syntaxer:
         
     def error(self, msg):
         tokenTxt = self.it.textOf()
-        msg = Message(msg, self.position())
+        msg = Message.withPos(msg, self.source, self.position())
         if (tokenTxt):
             msg.details = ["token text : '{0}'".format(tokenTxt)]
         self.reporter.error(msg)

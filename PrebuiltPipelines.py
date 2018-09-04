@@ -10,10 +10,13 @@ from phases.Basic import (
     #NamesValidate
     )
 
-from phases.Checks import (
-    MakeSymbolTable,
+from phases.Parsers import (
+    MakeMarkTable,
     )
-    
+
+from phases.Checks import (    
+    MarkTableValidate
+    )
 #from phases.UnParsers import (
     #TreeChainsReverse
     #)
@@ -54,7 +57,8 @@ def Stock():
         SyntaxPhase(),
         StripComments(),
         #TreeChainsReverse(),
-        MakeSymbolTable(),
+        MakeMarkTable(),
+        MarkTableValidate(),
         TreePrintDisplay(),
         ]
     reporter = ConsoleStreamReporter()

@@ -2,7 +2,8 @@
 #from MarkTables import ExpressionMarkTable, KindMarkTable
 
 # RunnerContext
-from reporters.Message import MessageNoPos
+#from reporters.Message import MessageNoPos
+from reporters.Message import Message
 
 
 
@@ -32,7 +33,8 @@ class PhasePipeline():
 
         for p in self.phaseList:
             if (settings.reportPhaseNames):
-                reporter.info(MessageNoPos("phase: '{0}'".format(p.name), compilationUnit.source))
+                #reporter.info(MessageNoPos("phase: '{0}'".format(p.name), compilationUnit.source))
+                reporter.info(Message.withSrc("phase: '{0}'".format(p.name), compilationUnit.source))
             p.run(compilationUnit, reporter, settings)
             if (reporter.hasErrors()):
                 break

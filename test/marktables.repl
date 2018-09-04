@@ -1,0 +1,61 @@
+== MarkTable
+from MarkTable import MarkTable
+from Marks import *
+t = MarkTable()
+t.isEmpty()
+t.append(testMark)
+t.append(testMark2)
+t.size()
+t.toList()
+t.isEmpty()
+t.delete(testMark2)
+t.size()
+t
+
+== NameIndexedMarkTable
+from MarkTable import NameIndexedMarkTable
+from Marks import *
+t = NameIndexedMarkTable()
+t.isEmpty()
+t.add(testMark)
+t.add(testMark2)
+t.size()
+t.toList()
+t.isEmpty()
+t.contains('TestMark2')
+t.getOrError('TestMark2')
+t.get('TestMark2')
+t.delete(testMark2)
+t.size()
+t.contains('TestMark2')
+t
+
+== ScopeTable
+from MarkTable import ScopeTable
+from trees.Trees import *
+from Position import NoPosition
+cmt = mkSingleLineComment(NoPosition, 'No comment on single line comments')
+#data = mkDataDefine(NoPosition, 'xboxData')
+#prmd = mkParameterDefinition(NoPosition, 'xboxParameter')
+ctxDef = mkContextDefine(NoPosition, 'pong')
+ctxCall = mkContextCall(NoPosition, 'pong')
+
+t = ScopeTable()
+# Fail on assert
+t.add(cmt)
+t.add(ctxDef)
+# contains ctxDef
+t.getOrError("pong").definitionTrees
+t.add(ctxCall)
+t.add(ctxCall)
+t.add(ctxCall)
+# contains ctxCall * 3
+t.getOrError("pong").instanceTrees
+
+t2 = t.newChildScope()
+# == 1
+t2.depth
+# == t
+t2.parent
+# contains( 'pong')
+t2

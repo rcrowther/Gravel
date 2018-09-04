@@ -14,8 +14,8 @@ from Kinds import Kind, Any
 # type owners, 
 class Mark:
     '''
-    Identifier for a program construct.
-    This could be a variable, function, namespace etc.
+    Data for an identifier in a program.
+    The identifier could be a variable, function, namespace etc.
     Due to allowing one_name/many_types and many_names/one_type entities
     The code must provide unique keys (this is sometimes called a Symbol, 
     but usage of the word is often wandering, or includes opportunistic 
@@ -45,10 +45,13 @@ class Mark:
         #assert isinstance(kind, Kind), "Is not Kind: kind:{}".format(kind)
         id = self.newId() 
         self.name = name
-        self.kind = kind
+        #self.kind = kind
         self.kind = Any
         # Scope is added automatically
+        #x Should it be here at all?
         self.scope = None
+        self.definitionTrees = []
+        self.instanceTrees = []
         
     #! how do we effectively key?
     def key(self):

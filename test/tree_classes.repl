@@ -1,0 +1,36 @@
+== Trees
+from trees.Trees import *
+from Position import NoPosition
+mkSingleLineComment(NoPosition, 'No comment on single line comments')
+mkMultiLineComment(NoPosition, 'Multiline comments?\nEasy')
+mkParameterDefinition(NoPosition, 'xboxParameter')
+mkIntegerNamelessData(NoPosition, 44)
+mkFloatNamelessData(NoPosition, 78.6)
+mkStringNamelessData(NoPosition, 'doopy')
+mkDataDefine(NoPosition, 'xboxData')
+mkContextDefine(NoPosition, 'pongContext')
+mkContextCall(NoPosition, 'pongCall')
+mkMonoOpExpressionCall(NoPosition, 'dponth')
+mkNamelessFunc(NoPosition)
+
+== Tree properites
+t = mkIntegerNamelessData(NoPosition, 44)
+# False
+t.isDefinition
+t = mkParameterDefinition(NoPosition, 'xboxParameter')
+t.isDefinition
+t = mkDataDefine(NoPosition, 'xboxData')
+t.isDefinition
+t = mkContextDefine(NoPosition, 'pongContext')
+t.isDefinition
+
+
+t = mkSingleLineComment(NoPosition, 'No comment on single line comments')
+# False
+t.isMark
+t = mkParameterDefinition(NoPosition, 'xboxParameter')
+t.isMark
+t = mkContextDefine(NoPosition, 'pongContext')
+t.isMark
+t = mkContextCall(NoPosition, 'pongCall')
+t.isMark

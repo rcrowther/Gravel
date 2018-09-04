@@ -10,15 +10,17 @@
 class CompilationUnit:
     '''
     Would usually represent one source file, or similar.
-    Composes the source file with parse data such as the 
-    AST tree/live ranges etc. As the tree is 
-    transformed, maintains the connection with source data and error reporting.
+    Composes the source file with derived data such as the 
+    AST tree/marktables/live ranges etc. As the tree is 
+    transformed, maintains the connection with source data and 
+    error reporting.
     '''
     def __init__(self, source):
       #? rename 'src' for consistency
       self.source = source
       #self.reporter = reporter
       self.tree = None
+      self.markTable = None
 
       # May seem an odd addition,
       # But the temp names are associated 
