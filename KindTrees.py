@@ -157,6 +157,7 @@ class KindNameNode(MPTTNode):
 class KindNameTree(MPTT):
     '''
     Register valid kinds.
+    The tree is pre-initialised with KEY_KINDS.
     The tree is only for registering kind names and 
     establishing/reporting on a structure between them. It is not for 
     typechecking.
@@ -189,30 +190,43 @@ class KindNameTree(MPTT):
         node = KindNameNode(name)
         self.nameToNode[name] = node
         return super().insert(parentNode, node)
+    
+    def contains(self, name):
+        return (name in self.nameToNode)
         
+    #! this is internal, surely?
+    #? and called ...getOrErrorNode
     def find(self, name):
         '''
         Find a name.
-        @return None if not exists.
+        @return A tree node, or None if not exists.
         '''
         return self.nameToNode.get(name)
-        
+    
     def narrow(self, name, otherName):
+        '''
+        Return the most specialised of two kinds.
+        @return the most specialised kind, or None (if kinds not in same tree)
+        '''
         node = self.find(name)
         otherNode = self.find(otherName)
         if(self.isParent(node, otherNode)): 
-            return otherNode.name
-        elif(self.isChild(node, otherNode)): 
             return node.name
+        elif(self.isChild(node, otherNode)): 
+            return otherNode.name
         else:
             return None
 
     def widen(self, name, otherName):
+        '''
+        Return the least specialised of two kinds.
+        @return the least specialised kind, or None (if kinds not in same tree)
+        '''
         node = self.find(name)
         otherNode = self.find(otherName)
         if(self.isParent(node, otherNode)): 
-            return node.name
-        elif(self.isChild(node, otherNode)): 
             return otherNode.name
+        elif(self.isChild(node, otherNode)): 
+            return node.name
         else:
             return None

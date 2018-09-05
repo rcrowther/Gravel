@@ -1,0 +1,59 @@
+
+#== KindNameTable
+#from NameTable import *
+#t = KindNameTable()
+#t
+
+== Kinds
+from Kinds import *
+Any
+AnyVal
+AnyRef
+Integer
+Float
+String
+List(Integer)
+Seq(Float) 
+Iterable(AnyVal)
+
+#t = Integer
+#t.narrow(AnyVal)
+
+#l = List(Integer)
+#l.narrow(AnyVal)
+
+=== MPTT
+from KindTrees import MPTT, Node
+t1 = Node()
+t = MPTT(t1)
+t2 = t.insert(t1, Node())
+t3 = t.insert(t1, Node())
+t4 = t.insert(t2, Node())
+t5 = t.insert(t2, Node())
+t
+# = 1,2,4
+t.parents(t4)
+# 4,5
+t.children(t2)
+# True
+t.isChild(t1, t5)
+t.isParent(t4, t2)
+# False
+t.isChild(t2, t3)
+t.isParent(t4, t3)
+
+== KindNameTree
+from KindTrees import KindNameTree
+t = KindNameTree()
+t
+t.find('String')
+t.find('Traversable')
+# == None
+t.find('Summertime')
+# 'AnyRef'
+t.narrow('Seq', 'AnyRef')
+t.narrow('AnyRef', 'Seq')
+# 'Seq'
+t.widen('Seq', 'AnyRef')
+# None
+t.widen('Map', 'String')

@@ -155,7 +155,8 @@ class Syntaxer:
         '''
         coloned = self.optionallySkipToken(COLON)
         if (coloned):
-            tree.kindStr = self.getTokenOrError('Kind Annotation', IDENTIFIER) 
+            #tree.kindStr = self.getTokenOrError('Kind Annotation', IDENTIFIER) 
+            tree.parsedKind = self.getTokenOrError('Kind Annotation', IDENTIFIER) 
             # add contents
             #self.optionalGenericParams(k)
         return coloned

@@ -12,6 +12,7 @@ from phases.Basic import (
 
 from phases.Parsers import (
     MakeMarkTable,
+    MarkTableKindDetermine,
     )
 
 from phases.Checks import (    
@@ -59,6 +60,7 @@ def Stock():
         #TreeChainsReverse(),
         MakeMarkTable(),
         MarkTableValidate(),
+        MarkTableKindDetermine(),
         TreePrintDisplay(),
         ]
     reporter = ConsoleStreamReporter()

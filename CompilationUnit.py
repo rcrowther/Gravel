@@ -21,6 +21,7 @@ class CompilationUnit:
       #self.reporter = reporter
       self.tree = None
       self.markTable = None
+      self.kindTree = None
 
       # May seem an odd addition,
       # But the temp names are associated 
