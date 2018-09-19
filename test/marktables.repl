@@ -59,3 +59,11 @@ t2.depth
 t2.parent
 # contains( 'pong')
 t2
+
+
+== BuiltinMarks
+from MarkTableBuiltins import Integer
+Integer
+sr = Integer.getOrError('>>')
+sr.description
+sr.evaluate(32, 2)

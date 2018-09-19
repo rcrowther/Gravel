@@ -1,0 +1,10 @@
+The opcode reference comes from,
+
+http://ref.x86asm.net/
+
+It needs conversion to a data structure. And the op-codes interpreting into something that computer code can write.
+
+
+I had a go at a write-it-myself ELF file. Can't remember if it works. Which is annoying.
+
+

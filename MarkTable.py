@@ -1,5 +1,6 @@
-
-
+from Marks import BuiltinMark
+        
+        
         
 # This stack is a little oddly constructed.
 # Partially, this is Python. So we have lists, where a raw list 
@@ -86,6 +87,8 @@ from trees.Trees import (
     )
 from Marks import Mark
 
+# Maybe, given builtins, we need a more sophisticated joining of 
+# Scope tables? Even if Scala seems to deal with no more than this?
 class ScopeTable(NameIndexedMarkTable):
     '''
     A list of Marks.
@@ -114,6 +117,26 @@ class ScopeTable(NameIndexedMarkTable):
         else:
             existingMark.instanceTrees.append(tree)
 
+    #! Uses the same collection, but Builtin marks not union with
+    # freemarks?
+    def builtinAdd(self, 
+            name,
+            receivesReturn,
+            paramKinds,
+            returnKind,
+            evaluate,
+            description
+            ):
+            m = BuiltinMark(
+                name,
+                receivesReturn, 
+                paramKinds, 
+                returnKind, 
+                evaluate, 
+                description
+                )
+            super().add( m )
+        
     #! delete not yet implemented
     # for reasons of uncertainty
     
