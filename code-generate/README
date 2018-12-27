@@ -1,9 +1,17 @@
+== ELF
+Despite a day-long effort, I cannot get the Tiny ELF file to transpose 
+into Python without a segfault. So generation of ELF files probably 
+needs to be dropped. Must use NASM and subprocess it?
+
+
+== OPCode Reference
 The opcode reference comes from,
 
 http://ref.x86asm.net/
 
 It needs conversion to a data structure. And the op-codes interpreting into something that computer code can write.
 
+x64 register_base is a sort of database effort for registers
 
 I had a go at a write-it-myself ELF file. Can't remember if it works. Which is annoying.
 

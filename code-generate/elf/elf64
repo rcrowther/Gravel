@@ -1,0 +1,15 @@
+     1                                  BITS 64
+     2                                  GLOBAL main
+     3                                  SECTION .text
+     4                                  main:
+     5                                  
+     6                                      ; your program here
+     7                                      ; mov     bl, 42
+     8                                      ; xor     eax, eax
+     9                                      ; inc     eax
+    10                                      ; int     0x80
+    11                                  
+    12 00000000 B801000000                  mov     rax, 1
+    13 00000005 BB2A000000                  mov     rbx, 42  
+    14 0000000A CD80                        int     0x80
+    15                                                  

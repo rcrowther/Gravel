@@ -1,0 +1,17 @@
+== 32 tiny
+nasm -f bin -o a.out tiny.asm
+chmod +x a.out
+./a.out ; echo $?
+
+== 64 tiny 
+Different, cruder, because I didn't want to redo the custom ELF file
+
+nasm -f elf64 tiny64.asm
+gcc -Wall -s tiny64.o
+./a.out ; echo $?
+
+
+For a code listing,
+nasm -l elf64 tiny64.asm
+then view,
+elf64

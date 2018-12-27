@@ -1,0 +1,15 @@
+
+
+-reflect
+--names
+Is used mainly to separate Term names from Type names. It also functions as a slighly boosted string class---it can search down dotted fdpath names. It's also a custom hashtable respresentation, stashed in one array, which is all probably for effieincy, but makes it look a lot more complex than it is.
+
+Names contains the NameTransformer, which is difficult to find. It's here,
+
+library/scala/reflect/NameTransformer.scala:
+
+which mainly ddoes stuff like
+
+  enterOp('>', "$greater")
+
+Why is this done? because they are not valid Java identifiers?

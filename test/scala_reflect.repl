@@ -9,3 +9,4 @@ typeOf[Test].members
 
 val testMember = typeOf[Test].member("test":TermName).asMethod
 
+typeOf[List[_]].member(newTermName("map"))
