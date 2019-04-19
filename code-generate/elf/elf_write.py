@@ -7,6 +7,12 @@ import os
 import sys
 import stat
 
+# From Spec:
+# Files used to build a process image (execute a program) must have a 
+# program header table; relocatable files do not need one. 
+# Files used during linking must have a section header table; other 
+# object files may or may not have one
+
 # 64 bit not working. However, probably close. Needs testing against
 # the (working) tiny64 a.out (even if very different files...)
 # Annoying - lint with no errors
@@ -218,13 +224,18 @@ def elfHeader32(b):
     
     return EEntryPos, EPHoffPos, ESHoffPos
     
-def genericChecks(fileType):
+def genericChecks(fileType, machineType):
     if (fileType < 0 or fileType > 4):
         error("filetype = {}\n  Must be Relocatable = 1, executable = 2, shared = 3".format(fileType))
-     
+    #  AMD x86-64 = 17???
+    # What is this test if 64 for inteel64 is valid??
+    if (machineType < 0):
+        #error("machineType = {}\n Common values are 1 = AT&T WE, 2 = SPARC, 3 = Intel Architecture, 4 Motorola 6800, 5= Motorola 88000, 7 = Intel 80860, 8 = MIPS RS3000 Big-Endian, 10 = MIPS RS4000 Big-Endian".format(machineType))
+        error("machineType = {}\n Common values are 3 = Intel Architecture, 62 = AMD x86-64".format(machineType))
+
 # fileType Relocatable = 1, executable = 2, shared = 3    
-def elfHeader64(b, fileType=2):
-    genericChecks(fileType)
+def elfHeader64(b, fileType=2, machineType=62):
+    genericChecks(fileType, machineType)
     # Magic
     # magic lead
     b.append(int('0x7F', 16))
@@ -261,7 +272,9 @@ def elfHeader64(b, fileType=2):
     
     # e_machine x86 = 0x03, x86-64 = 0x3E (used?)
     # 2 bytes
-    b.extend(int('0x3E', 16).to_bytes(2, byteorder='little'))
+    # machineType 0x3E = 64
+    #b.extend(int('0x3E', 16).to_bytes(2, byteorder='little'))
+    b.extend(int(machineType).to_bytes(2, byteorder='little'))
 
     # e_version, nearly always 1
     # 4 bytes
