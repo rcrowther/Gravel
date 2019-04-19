@@ -4,6 +4,8 @@
 
 import subprocess
 import os
+import sys
+import stat
 
 # 64 bit not working. However, probably close. Needs testing against
 # the (working) tiny64 a.out (even if very different files...)
@@ -18,6 +20,10 @@ def write(data, filename):
 BASE_ADDRESS32 = int('0x08048000', 16)
 BASE_ADDRESS64 = int('0x00400000', 16)
 
+def error(msg):
+    print("error: " + msg)
+    sys.exit()
+    
 def toAddress32(offset):
     return BASE_ADDRESS32 + offset
 
@@ -124,7 +130,7 @@ def programHeader64(b):
     return (PVAddrPos, PPAddrPos, PFileszPos, PMemszPos)
 
 
-def header32(b):
+def elfHeader32(b):
     # Magic
     # magic lead
     b.append(int('0x7F', 16))
@@ -212,8 +218,13 @@ def header32(b):
     
     return EEntryPos, EPHoffPos, ESHoffPos
     
-    
-def header64(b):
+def genericChecks(fileType):
+    if (fileType < 0 or fileType > 4):
+        error("filetype = {}\n  Must be Relocatable = 1, executable = 2, shared = 3".format(fileType))
+     
+# fileType Relocatable = 1, executable = 2, shared = 3    
+def elfHeader64(b, fileType=2):
+    genericChecks(fileType)
     # Magic
     # magic lead
     b.append(int('0x7F', 16))
@@ -246,7 +257,7 @@ def header64(b):
     
     # e_type, file type Relocatable = 1, executable = 2, shared = 3, 
     # 2 bytes
-    b.extend(int(2).to_bytes(2, byteorder='little'))
+    b.extend(int(fileType).to_bytes(2, byteorder='little'))
     
     # e_machine x86 = 0x03, x86-64 = 0x3E (used?)
     # 2 bytes
@@ -321,7 +332,7 @@ def numberInsert8(b, insertPos, i):
             
 b = bytearray()
 
-EEntryPos, EPHoffPos, ESHoffPos = header64(b)
+EEntryPos, EPHoffPos, ESHoffPos = elfHeader64(b, fileType=2)
 
 # Add this, program header coming next...
 # We can leave sections, because we have none
@@ -333,7 +344,6 @@ numberInsert8(b, EPHoffPos, len(b))
 ## program header
 programHeaderStart = len(b)
 PVAddrPos, PPAddrPos, PFileszPos, PMemszPos = programHeader64(b)
-
 
 
 # Fix these addresses
@@ -390,3 +400,7 @@ print(len(b))
 # for raw view  (xxd better illustration than hexdump)
 # xxd elfTest
 write(b, 'elfTest')
+
+# Change permissions, so don't be evil to users or me.
+# also stat.S_IXGRP, stat.S_IXOTH
+os.chmod('elfTest', stat.S_IRUSR | stat.S_IWUSR | stat.S_IRGRP | stat.S_IROTH | stat.S_IXUSR)
