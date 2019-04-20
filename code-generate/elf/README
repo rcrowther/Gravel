@@ -3,10 +3,14 @@ Despite a day-long effort, I cannot get the Tiny ELF file to transpose
 into Python without a segfault. So generation of ELF files probably 
 needs to be dropped. Must use NASM and subprocess it?
 
+eu-readelf -h elf64
+eu-readelf elf64
+eu-elflint elf64
+xxd elf64
 
 WP
 https://en.wikipedia.org/wiki/Executable_and_Linkable_Format
-GENERIC
+
 
 AMD 64
 http://refspecs.linuxbase.org/elf/x86_64-abi-0.99.pdf

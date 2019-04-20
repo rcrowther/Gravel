@@ -85,16 +85,21 @@ def programHeader32(b):
     return (PVAddrPos, PPAddrPos, PFileszPos, PMemszPos)
 
 
+def phChecks(phType):
+    if (phType < 1 or phType > 4):
+        error("program header type = {}\n  Must be 1 = Loadable segment, 2 = Dynamic linking information, 3 = Interpreter information, 4 = Auxiliary information".format(phType))
+
     
-def programHeader64(b):
+def programHeader64(b, phType = 1):
     # program headers
     # 64bit = 56bits long
+    phChecks(phType)
 
     #? Not completed
 
     # p_type, type of the segment.
     # 4 bytes
-    b.extend(int(1).to_bytes(4, byteorder='little'))
+    b.extend(int(phType).to_bytes(4, byteorder='little'))
 
     # p_flags
     # 4 bytes
@@ -105,13 +110,15 @@ def programHeader64(b):
     # (0 in 32bits) 4 bytes
     b.extend(bytearray(8))
 
-    #p_vaddr, virtual address of the segment in memory. Usually $$???
+    #p_vaddr, virtual address of the segment in memory. 
+    # Tiny $$ (beginning of the current section)
     # 8 bytes
     PVAddrPos = len(b)
     b.extend(bytearray(8))
     
     #p_paddr, on systems where physical address is relevant, reserved 
-    # for segment's physical address. Usually $$???
+    # for segment's physical address.
+    # Tiny $$ (beginning of the current section)
     # 8 bytes
     PPAddrPos = len(b)
     b.extend(bytearray(8))    
@@ -135,6 +142,15 @@ def programHeader64(b):
 
     return (PVAddrPos, PPAddrPos, PFileszPos, PMemszPos)
 
+def programHeaderInsertAddresses64(b, PVAddrPos, PPAddrPos, programHeaderAddress):
+    # Virtual and physical addresses missing. Add them here.
+    numberInsert8(b, PVAddrPos, programHeaderAddress)
+    numberInsert8(b, PPAddrPos, programHeaderAddress)
+
+def programHeaderInsertSizes64(b, PFileszPos, PMemszPos, fileSize):
+    # headers want filesizes and mem sizes. For now, not flexible.
+    numberInsert8(b, PFileszPos, fileSize)
+    numberInsert8(b, PMemszPos, fileSize)
 
 def elfHeader32(b):
     # Magic
@@ -236,6 +252,7 @@ def genericChecks(fileType, machineType):
 # fileType Relocatable = 1, executable = 2, shared = 3    
 def elfHeader64(b, fileType=2, machineType=62):
     genericChecks(fileType, machineType)
+    
     # Magic
     # magic lead
     b.append(int('0x7F', 16))
@@ -257,12 +274,12 @@ def elfHeader64(b, fileType=2, machineType=62):
     # Not checked, Linux
     b.append(1)
     
-    # EI_OSABI OS System 5 = 0
+    # EI_OS ABI OS System 5 = 0
     # Not checked, Linux???
     # (often ignored for 0)
     b.append(0)
     
-    #EI_ABIVERSION + EI_PAD
+    #EI_ABI VERSION + EI_PAD
     # Not checked, Linux
     b.extend(bytearray(8))
     
@@ -282,7 +299,8 @@ def elfHeader64(b, fileType=2, machineType=62):
 
     
     ## variable length fields 32 = 4bytes, 64 = 8bytes
-    # e_entry, entry point for executables
+    # e_entry, entry point for executables. Start of code under a 
+    # program header, so not yet known. Placeholder.
     # offset = 24
     EEntryPos = len(b)
     b.extend(bytearray(8))
@@ -345,7 +363,7 @@ def numberInsert8(b, insertPos, i):
             
 b = bytearray()
 
-EEntryPos, EPHoffPos, ESHoffPos = elfHeader64(b, fileType=2)
+EEntryPos, EPHoffPos, ESHoffPos = elfHeader64(b, fileType=2, machineType=62)
 
 # Add this, program header coming next...
 # We can leave sections, because we have none
@@ -364,8 +382,13 @@ PVAddrPos, PPAddrPos, PFileszPos, PMemszPos = programHeader64(b)
 programHeaderAddress = toAddress64(programHeaderStart)
 numberInsert8(b, PVAddrPos, programHeaderAddress)
 numberInsert8(b, PPAddrPos, programHeaderAddress)
+programHeaderInsertAddresses64(b, PVAddrPos, PPAddrPos, programHeaderAddress)
 
 # Last ELF header data
+# 
+# is 0x400078
+# more like 0x4f0
+
 numberInsert8(b, EEntryPos, toAddress64(len(b)))
 
 #addCode(b)
@@ -394,8 +417,13 @@ b.append(int('80', 16))
                 
 ## Finish with last inserts into program header
 fileSize = len(b)
-numberInsert8(b, PFileszPos, fileSize)
-numberInsert8(b, PMemszPos, fileSize)
+print('fileSize:')
+print(str(fileSize))
+
+programHeaderInsertSizes64(b, PFileszPos, PMemszPos, fileSize)
+
+#numberInsert8(b, PFileszPos, fileSize)
+#numberInsert8(b, PMemszPos, fileSize)
 
 
 

@@ -1,18 +1,19 @@
 
 ; Undone. Untried. Not  enough info.
+
 BITS 64
+            ;org     0x08048000
+            org     0x00400000
 
-            org     0x08048000
-
-ehdr:                                                 ; Elf32_Ehdr
-            db      0x7F, "ELF", 1, 1, 1, 0         ;   e_ident
+ehdr:                                                 ; Elf64_Ehdr
+            db      0x7F, "ELF", 2, 1, 1, 0         ;   e_ident
     times 8 db      0
             dw      2                               ;   e_type
-            dw      3                               ;   e_machine
+            dw      62                              ;   e_machine
             dd      1                               ;   e_version
-            dd      _start                          ;   e_entry
-            dd      phdr - $$                       ;   e_phoff
-            dd      0                               ;   e_shoff
+            dq      _start                          ;   e_entry
+            dq      phdr - $$                       ;   e_phoff
+            dq      0                               ;   e_shoff
             dd      0                               ;   e_flags
             dw      ehdrsize                        ;   e_ehsize
             dw      phdrsize                        ;   e_phentsize
@@ -25,20 +26,26 @@ ehdrsize      equ     $ - ehdr
 
 phdr:                                                 ; Elf32_Phdr
             dd      1                               ;   p_type
-            dd      0                               ;   p_offset
-            dd      $$                              ;   p_vaddr
-            dd      $$                              ;   p_paddr
-            dd      filesize                        ;   p_filesz
-            dd      filesize                        ;   p_memsz
             dd      5                               ;   p_flags
-            dd      0x1000                          ;   p_align
+            dq      0                               ;   p_offset
+            dq      $$                              ;   p_vaddr
+            dq      $$                              ;   p_paddr
+            dq      filesize                        ;   p_filesz
+            dq      filesize                        ;   p_memsz
+            dq      0x1000                          ;   p_align
 
 phdrsize      equ     $ - phdr
 
 _start:
 
-; your program here
+    ; your program here
+    ; mov     bl, 42
+    ; xor     eax, eax
+    ; inc     eax
+    ; int     0x80
 
+    mov     eax, 1
+    mov     ebx, 42  
+    int     0x80
+    
 filesize      equ     $ - $$
-
-            

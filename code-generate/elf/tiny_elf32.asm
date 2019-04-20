@@ -1,4 +1,5 @@
 
+; Original tiny file
 
 BITS 32
 

@@ -1,7 +1,12 @@
 == 32 tiny
-nasm -f bin -o a.out tiny.asm
-chmod +x a.out
-./a.out ; echo $?
+nasm -f bin -o elf32 tiny_elf32.asm
+chmod +x elf32
+./elf32 ; echo $?
+
+== 64 tiny
+nasm -f bin -o elf64 tiny_elf64.asm
+chmod +x elf64
+./elf64 ; echo $?
 
 == 64 tiny 
 Different, cruder, because I didn't want to redo the custom ELF file
