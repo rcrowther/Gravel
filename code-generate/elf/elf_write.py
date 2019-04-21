@@ -21,7 +21,7 @@ def write(data, filename):
     with open(filename, "wb") as f:
         f.write(data)
 
-## Load address 
+## Load addresses 
 #https://stackoverflow.com/questions/7187981/whats-the-memory-before-0x08048000-used-for-in-32-bit-machine
 BASE_ADDRESS32 = int('0x08048000', 16)
 BASE_ADDRESS64 = int('0x00400000', 16)
@@ -36,6 +36,24 @@ def toAddress32(offset):
 def toAddress64(offset):
     return BASE_ADDRESS64 + offset 
 
+
+            
+def numberInsert4(b, insertPos, i):
+    # 4 bytes, 32 bit
+    print('inseting 32bit num: {}'.format(i))
+    b2 = int(i).to_bytes(4, byteorder='little')
+    for i, x in enumerate(range(insertPos, insertPos + 4)):
+        b[x] = b2[i]
+        
+def numberInsert8(b, insertPos, i):
+    # 8 bytes, 64 bit
+    print('inseting 64bit num: {}'.format(i))
+    b2 = int(i).to_bytes(8, byteorder='little')
+    for i, x in enumerate(range(insertPos, insertPos + 8)):
+        b[x] = b2[i]
+        
+        
+            
 def programHeader32(b):
     # program headers
     # 32bit = 32 bits long
@@ -103,7 +121,9 @@ def programHeader64(b, phType = 1):
 
     # p_flags
     # 4 bytes
-    b.extend(bytearray(4))
+    #??? Why 5
+    b.extend(int(5).to_bytes(4, byteorder='little'))
+    #b.extend(bytearray(4))
 
     # p_offset, offset of the segment in the file image. 
     # 8 bytes. Usually 0
@@ -111,14 +131,14 @@ def programHeader64(b, phType = 1):
     b.extend(bytearray(8))
 
     #p_vaddr, virtual address of the segment in memory. 
-    # Tiny $$ (beginning of the current section)
+    # Placeholder
     # 8 bytes
     PVAddrPos = len(b)
     b.extend(bytearray(8))
     
     #p_paddr, on systems where physical address is relevant, reserved 
     # for segment's physical address.
-    # Tiny $$ (beginning of the current section)
+    # Placeholder
     # 8 bytes
     PPAddrPos = len(b)
     b.extend(bytearray(8))    
@@ -136,11 +156,12 @@ def programHeader64(b, phType = 1):
     # p_align
     # 8 bytes
     # '0x1000' = 4096
-    #b.extend(int('0x1000', 16).to_bytes(8, byteorder='little'))
-    b.extend(int(0).to_bytes(8, byteorder='little'))
-    #b.extend(int(8).to_bytes(8, byteorder='little'))
+    #???Taken from Tiny code -> needs research 
+    # is significant?
+    b.extend(int('0x1000', 16).to_bytes(8, byteorder='little'))
 
     return (PVAddrPos, PPAddrPos, PFileszPos, PMemszPos)
+
 
 def programHeaderInsertAddresses64(b, PVAddrPos, PPAddrPos, programHeaderAddress):
     # Virtual and physical addresses missing. Add them here.
@@ -151,7 +172,8 @@ def programHeaderInsertSizes64(b, PFileszPos, PMemszPos, fileSize):
     # headers want filesizes and mem sizes. For now, not flexible.
     numberInsert8(b, PFileszPos, fileSize)
     numberInsert8(b, PMemszPos, fileSize)
-
+    pass
+    
 def elfHeader32(b):
     # Magic
     # magic lead
@@ -239,6 +261,7 @@ def elfHeader32(b):
     b.extend([0, 0])
     
     return EEntryPos, EPHoffPos, ESHoffPos
+    
     
 def genericChecks(fileType, machineType):
     if (fileType < 0 or fileType > 4):
@@ -346,21 +369,6 @@ def elfHeader64(b, fileType=2, machineType=62):
     return EEntryPos, EPHoffPos, ESHoffPos
 
 
-            
-def numberInsert4(b, insertPos, i):
-    print('inseting num: {}'.format(i))
-    b2 = int(i).to_bytes(4, byteorder='little')
-    for i, x in enumerate(range(insertPos, insertPos + 4)):
-        b[x] = b2[i]
-        
-def numberInsert8(b, insertPos, i):
-    print('inseting num: {}'.format(i))
-    b2 = int(i).to_bytes(8, byteorder='little')
-    for i, x in enumerate(range(insertPos, insertPos + 8)):
-        b[x] = b2[i]
-        
-        
-            
 b = bytearray()
 
 EEntryPos, EPHoffPos, ESHoffPos = elfHeader64(b, fileType=2, machineType=62)
@@ -378,16 +386,15 @@ PVAddrPos, PPAddrPos, PFileszPos, PMemszPos = programHeader64(b)
 
 
 # Fix these addresses
-#! are they addresses?
+#! 
 programHeaderAddress = toAddress64(programHeaderStart)
-numberInsert8(b, PVAddrPos, programHeaderAddress)
-numberInsert8(b, PPAddrPos, programHeaderAddress)
-programHeaderInsertAddresses64(b, PVAddrPos, PPAddrPos, programHeaderAddress)
+#numberInsert8(b, PVAddrPos, BASE_ADDRESS64)
+#numberInsert8(b, PPAddrPos, programHeaderStart)
+programHeaderInsertAddresses64(b, PVAddrPos, PPAddrPos, BASE_ADDRESS64)
 
 # Last ELF header data
 # 
 # is 0x400078
-# more like 0x4f0
 
 numberInsert8(b, EEntryPos, toAddress64(len(b)))
 
@@ -403,7 +410,8 @@ b.append(int('B8', 16))
 b.extend(int(1).to_bytes(4, byteorder='little'))
 # BB2A000000                  mov     rbx, 42  
 b.append(int('BB', 16))
-b.extend(int('42', 16).to_bytes(4, byteorder='little'))
+#b.extend(int('42', 16).to_bytes(4, byteorder='little'))
+b.extend(int('2A', 16).to_bytes(4, byteorder='little'))
 #CD80                        int     0x80
 b.append(int('CD', 16))
 b.append(int('80', 16))
@@ -420,8 +428,8 @@ fileSize = len(b)
 print('fileSize:')
 print(str(fileSize))
 
+# puts two 8400 in - these are ok
 programHeaderInsertSizes64(b, PFileszPos, PMemszPos, fileSize)
-
 #numberInsert8(b, PFileszPos, fileSize)
 #numberInsert8(b, PMemszPos, fileSize)
 
