@@ -1,15 +1,15 @@
-== 32 tiny
+== 32 tiny elf
 nasm -f bin -o elf32 tiny_elf32.asm
 chmod +x elf32
 ./elf32 ; echo $?
 
-== 64 tiny
+== 64 tiny elf
 nasm -f bin -o elf64 tiny_elf64.asm
 chmod +x elf64
 ./elf64 ; echo $?
 
 == 64 tiny 
-Different, cruder, because I didn't want to redo the custom ELF file
+Different, cruder, conventional.
 
 nasm -f elf64 tiny64.asm
 gcc -Wall -s tiny64.o

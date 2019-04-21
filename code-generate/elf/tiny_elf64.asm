@@ -1,8 +1,7 @@
 
-; Undone. Untried. Not  enough info.
+; Working
 
 BITS 64
-            ;org     0x08048000
             org     0x00400000
 
 ehdr:                                                 ; Elf64_Ehdr

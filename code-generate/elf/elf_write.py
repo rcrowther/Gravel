@@ -6,6 +6,7 @@ import subprocess
 import os
 import sys
 import stat
+import argparse
 
 # From Spec:
 # Files used to build a process image (execute a program) must have a 
@@ -13,9 +14,7 @@ import stat
 # Files used during linking must have a section header table; other 
 # object files may or may not have one
 
-# 64 bit not working. However, probably close. Needs testing against
-# the (working) tiny64 a.out (even if very different files...)
-# Annoying - lint with no errors
+# Now up to 32Bit header ajustments...
 
 def write(data, filename):
     with open(filename, "wb") as f:
@@ -29,6 +28,30 @@ BASE_ADDRESS64 = int('0x00400000', 16)
 def error(msg):
     print("error: " + msg)
     sys.exit()
+    
+def addReturnProgram(b):
+    # From Tiny. 
+    # Close, or close enough, to the (working) 64bit a.out
+    #00000000 B801000000                  mov     rax, 1
+    #00000005 BB2A000000                  mov     rbx, 42  
+    #0000000A CD80                        int     0x80
+    
+    # Parameter to command 'exit'
+    # B801000000                  mov     rax, 1
+    b.append(int('B8', 16))
+    b.extend(int(1).to_bytes(4, byteorder='little'))
+    
+    # Return numeric code to exit with
+    # BB2A000000                  mov     rbx, 42  
+    b.append(int('BB', 16))
+    b.extend(int('2A', 16).to_bytes(4, byteorder='little'))
+    
+    # Make system call---to exit
+    #CD80                        int     0x80
+    b.append(int('CD', 16))
+    b.append(int('80', 16))
+    
+    
     
 def toAddress32(offset):
     return BASE_ADDRESS32 + offset
@@ -99,6 +122,225 @@ def numberInsert8(b, insertPos, i):
         
         
             
+
+def elfHeader32(b, pvData, fileType=2, machineType=3):
+    #! Untested
+    genericChecks(fileType, machineType)
+    
+    # Magic
+    # magic lead
+    b.append(int('0x7F', 16))
+    
+    # magic id
+    # 'ascii' for standard, though 'utf-8' would work.
+    b.extend(bytearray('ELF', 'ascii'))
+    
+    
+    # EI_CLASS, 32-bit = 1, 64-bit = 2
+    # Not checked, Linux
+    b.append(1)
+    
+    # EI_DATA, endian little = 1, big = 2
+    # Not checked, Linux
+    b.append(1)
+    
+    # EI_VERSION (always 1)
+    # Not checked, Linux
+    b.append(1)
+    
+    # EI_OSABI OS System 5 = 0
+    # Not checked, Linux???
+    # (often ignored for 0)
+    b.append(0)
+    
+    # EI_ABIVERSION + EI_PAD
+    # Not checked, Linux
+    b.extend(bytearray(8))
+    
+    # e_type, file type Relocatable = 1, executable = 2, shared = 3, 
+    # 2 bytes
+    b.extend(int(fileType).to_bytes(2, byteorder='little'))
+    
+    # e_machine x86 = 0x03, x86-64 = 0x3E (used?)
+    # 2 bytes
+    b.extend(int(machineType).to_bytes(2, byteorder='little'))
+
+    # e_version, nearly always 1
+    # 4 bytes
+    b.extend(int(1).to_bytes(4, byteorder='little'))
+
+    ## variable length fields 32 = 4bytes, 64 = 8bytes
+    # e_entry, entry point for executables
+    # offset = 24
+    pvData.pos['Entry'] = len(b)
+    b.extend(bytearray(4))
+    
+    # e_phoff, program header offset
+    # Assuming immediate follows ELF header, saving
+    # 'PHoff' if it is not.
+    pvData.pos['PHoff'] = len(b)
+    b.extend(int('0x34', 16).to_bytes(4, byteorder='little'))
+    
+    # e_shoff, section header offset
+    pvData.pos['SHoff'] = len(b)
+    b.extend(bytearray(4))
+    
+    # e_flags (unused on Intel)
+    # 4 bytes
+    b.extend(bytearray(4))
+    
+    # e_ehsize, size of this header, usually 64-bit = 64, 32-bit = 52
+    # 2 bytes
+    # Not checked, Linux
+    b.extend(int(52).to_bytes(2, byteorder='little'))
+
+    # e_phentsize, size of a program header table entry.
+    # 2 bytes
+    # Surely e_phentsize/e_shentsize are fixed for architecture?
+    # and not read by linux?
+    b.extend(int(32).to_bytes(2, byteorder='little'))
+    
+    # e_phnum, number of entries in the program header table. 
+    # 2 bytes
+    b.extend(int(1).to_bytes(2, byteorder='little'))
+    
+    # e_shentsize, the size of a section header table entry. 
+    # 2 bytes
+    # Surely e_phentsize/e_shentsize are fixed for architecture?
+    # and not read by linux?
+    b.extend(bytearray(2))
+    
+    # e_shnum, number of entries in the section header table. 
+    # Assume 0, 'SHnum' if it is not.
+    pvData.pos['SHnum'] = len(b)
+    b.extend(bytearray(2))
+    
+    # e_shstrndx, index of the section header table entry that contains 
+    # the section names. 
+    # Assume 0, 'SHstrndx' if it is not.
+    pvData.pos['SHstrndx'] = len(b)
+    b.extend(bytearray(2))    
+    
+    
+def genericChecks(fileType, machineType):
+    if (fileType < 0 or fileType > 4):
+        error("filetype = {}\n  Must be Relocatable = 1, executable = 2, shared = 3".format(fileType))
+    #  AMD x86-64 = 17???
+    # What is this test if 62 for intel64 is valid??
+    if (machineType < 0):
+        #error("machineType = {}\n Common values are 1 = AT&T WE, 2 = SPARC, 3 = Intel Architecture, 4 Motorola 6800, 5= Motorola 88000, 7 = Intel 80860, 8 = MIPS RS3000 Big-Endian, 10 = MIPS RS4000 Big-Endian".format(machineType))
+        error("machineType = {}\n Common values are 3 = Intel Architecture, 62 = AMD x86-64".format(machineType))
+
+
+
+def programHeaderInsertAddresses64(b, PVAddrPos, PPAddrPos, programHeaderAddress):
+    # Virtual and physical addresses missing. Add them here.
+    numberInsert8(b, PVAddrPos, programHeaderAddress)
+    numberInsert8(b, PPAddrPos, programHeaderAddress)
+
+def programHeaderInsertSizes64(b, PFileszPos, PMemszPos, fileSize):
+    # headers want filesizes and mem sizes. For now, not flexible.
+    numberInsert8(b, PFileszPos, fileSize)
+    numberInsert8(b, PMemszPos, fileSize)
+
+# fileType relocatable = 1, executable = 2, shared = 3, core file = 4    
+def elfHeader64(b, pvData, fileType=2, machineType=62):
+    genericChecks(fileType, machineType)
+
+    # Magic
+    # magic lead
+    b.append(int('0x7F', 16))
+    
+    # magic id
+    # 'ascii' for standard, though 'utf-8' would work.
+    b.extend(bytearray('ELF', 'ascii'))
+    
+    # EI_CLASS, 32-bit = 1, 64-bit = 2
+    # Not checked, Linux
+    b.append(2)
+    
+    # EI_DATA, endian little = 1, big = 2
+    # Not checked, Linux
+    b.append(1)
+    
+    # EI_VERSION (always 1)
+    # Not checked, Linux
+    b.append(1)
+    
+    # EI_OS ABI OS System 5 = 0
+    # Not checked, Linux???
+    # (often ignored for 0)
+    b.append(0)
+    
+    #EI_ABI VERSION + EI_PAD
+    # Not checked, Linux
+    b.extend(bytearray(8))
+    
+    # e_type, file type Relocatable = 1, executable = 2, shared = 3, 
+    # 2 bytes
+    b.extend(int(fileType).to_bytes(2, byteorder='little'))
+    
+    # e_machine x86 = 0x03, x86-64 = 0x3E (used?)
+    # 2 bytes
+    # machineType 0x3E = 64
+    b.extend(int(machineType).to_bytes(2, byteorder='little'))
+
+    # e_version, nearly always 1
+    # 4 bytes
+    b.extend(int(1).to_bytes(4, byteorder='little'))
+
+    
+    ## variable length fields 32 = 4bytes, 64 = 8bytes
+    # e_entry, entry point for executables. Start of code under a 
+    # program header, so not yet known. Placeholder.
+    # offset = 24
+    pvData.pos['Entry'] = len(b)
+    b.extend(bytearray(8))
+    
+    # e_phoff, program header offset
+    # Assuming this is almost always this value, but saving
+    # 'PHoff' if it is not.
+    # offset = 32 = 64
+    pvData.pos['PHoff'] = len(b)
+    b.extend(int('0x40', 16).to_bytes(8, byteorder='little'))
+    
+    # e_shoff, section header offset
+    # offset = 40
+    pvData.pos['SHoff'] = len(b)
+    b.extend(bytearray(8))
+    
+    # e_flags (unused on Intel)
+    # 4 bytes
+    b.extend(bytearray(4))
+    
+    # e_ehsize, size of this header, usually 64-bit = 64
+    # 2 bytes e.g. 64
+    # Not checked, Linux
+    b.extend(int(64).to_bytes(2, byteorder='little'))
+
+    # e_phentsize, size of a program header table entry.
+    # 2 bytes, e.g. 56
+    b.extend(int(56).to_bytes(2, byteorder='little'))
+    
+    # e_phnum, number of entries in the program header table. 
+    # 2 bytes
+    b.extend(int(1).to_bytes(2, byteorder='little'))
+    
+    # e_shentsize, the size of a section header table entry. Typical 64 
+    # 2 bytes e.g. 64
+    b.extend([0, 0])
+    
+    # e_shnum, number of entries in the section header table. 
+    # Assume 0, 'SHnum' if it is not.
+    pvData.pos['SHnum'] = len(b)
+    b.extend(bytearray(2))
+    
+    # e_shstrndx, index of the section header table entry that contains 
+    # the section names. 
+    # Assume 0, 'SHstrndx' if it is not.
+    pvData.pos['SHstrndx'] = len(b)
+    b.extend(bytearray(2))
+
 def programHeader32(b):
     # program headers
     # 32bit = 32 bits long
@@ -206,294 +448,102 @@ def programHeader64(b, data, phType = 1):
 
 
     
-def elfHeader32(b, pvData, fileType=2, machineType=3):
-    #! Untested
-    genericChecks(fileType, machineType)
-    
-    # Magic
-    # magic lead
-    b.append(int('0x7F', 16))
-    
-    # magic id
-    # 'ascii' for standard, though 'utf-8' would work.
-    b.extend(bytearray('ELF', 'ascii'))
-    
-    
-    # EI_CLASS, 32-bit = 1, 64-bit = 2
-    # Not checked, Linux
-    b.append(2)
-    
-    # EI_DATA, endian little = 1, big = 2
-    # Not checked, Linux
-    b.append(1)
-    
-    # EI_VERSION (always 1)
-    # Not checked, Linux
-    b.append(1)
-    
-    # EI_OSABI OS System 5 = 0
-    # Not checked, Linux???
-    # (often ignored for 0)
-    b.append(0)
-    
-    # EI_ABIVERSION + EI_PAD
-    # Not checked, Linux
-    b.extend(bytearray(8))
-    
-    # e_type, file type Relocatable = 1, executable = 2, shared = 3, 
-    # 2 bytes
-    b.extend(int(fileType).to_bytes(2, byteorder='little'))
-    
-    # e_machine x86 = 0x03, x86-64 = 0x3E (used?)
-    # 2 bytes
-    b.extend(int(machineType).to_bytes(2, byteorder='little'))
+ETypeToCode = {'rel': 1, 'exec': 2, 'dyn': 3, 'core': 4}
 
-    # e_version, nearly always 1
-    # 4 bytes
-    b.extend(int(1).to_bytes(4, byteorder='little'))
-
-    ## variable length fields 32 = 4bytes, 64 = 8bytes
-    # e_entry, entry point for executables
-    # offset = 24
-    pvData.pos['Entry'] = len(b)
-    b.extend(bytearray(4))
+# bits: bit width as str, '64'/'32' 
+# code: function taking a builder to append code
+def mkELF(bits, etype, sections, code):
+    b = bytearray()
     
-    # e_phoff, program header offset
-    # Assuming immediate follows ELF header, saving
-    # 'PHoff' if it is not.
-    pvData.pos['PHoff'] = len(b)
-    b.extend(int('0x34', 16).to_bytes(4, byteorder='little'))
+    elfData = ElfData()
     
-    # e_shoff, section header offset
-    pvData.pos['SHoff'] = len(b)
-    b.extend(bytearray(4))
-    
-    # e_flags (unused on Intel)
-    # 4 bytes
-    b.extend(bytearray(4))
-    
-    # e_ehsize, size of this header, usually 64-bit = 64, 32-bit = 52
-    # 2 bytes
-    # Not checked, Linux
-    b.extend(int(52).to_bytes(2, byteorder='little'))
-
-    # e_phentsize, size of a program header table entry.
-    # 2 bytes
-    # Surely e_phentsize/e_shentsize are fixed for architecture?
-    # and not read by linux?
-    b.extend(int(32).to_bytes(2, byteorder='little'))
-    
-    # e_phnum, number of entries in the program header table. 
-    # 2 bytes
-    b.extend(int(1).to_bytes(2, byteorder='little'))
-    
-    # e_shentsize, the size of a section header table entry. 
-    # 2 bytes
-    # Surely e_phentsize/e_shentsize are fixed for architecture?
-    # and not read by linux?
-    b.extend([0, 0])
-    
-    # e_shnum, number of entries in the section header table. 
-    # Assume 0, 'SHnum' if it is not.
-    pvData.pos['SHnum'] = len(b)
-    b.extend(bytearray(2))
-    
-    # e_shstrndx, index of the section header table entry that contains 
-    # the section names. 
-    # Assume 0, 'SHstrndx' if it is not.
-    pvData.pos['SHstrndx'] = len(b)
-    b.extend(bytearray(2))    
-    
-    
-def genericChecks(fileType, machineType):
-    if (fileType < 0 or fileType > 4):
-        error("filetype = {}\n  Must be Relocatable = 1, executable = 2, shared = 3".format(fileType))
-    #  AMD x86-64 = 17???
-    # What is this test if 64 for intel64 is valid??
-    if (machineType < 0):
-        #error("machineType = {}\n Common values are 1 = AT&T WE, 2 = SPARC, 3 = Intel Architecture, 4 Motorola 6800, 5= Motorola 88000, 7 = Intel 80860, 8 = MIPS RS3000 Big-Endian, 10 = MIPS RS4000 Big-Endian".format(machineType))
-        error("machineType = {}\n Common values are 3 = Intel Architecture, 62 = AMD x86-64".format(machineType))
-
-
-
-def programHeaderInsertAddresses64(b, PVAddrPos, PPAddrPos, programHeaderAddress):
-    # Virtual and physical addresses missing. Add them here.
-    numberInsert8(b, PVAddrPos, programHeaderAddress)
-    numberInsert8(b, PPAddrPos, programHeaderAddress)
-
-def programHeaderInsertSizes64(b, PFileszPos, PMemszPos, fileSize):
-    # headers want filesizes and mem sizes. For now, not flexible.
-    numberInsert8(b, PFileszPos, fileSize)
-    numberInsert8(b, PMemszPos, fileSize)
-        
-# fileType Relocatable = 1, executable = 2, shared = 3    
-def elfHeader64(b, pvData, fileType=2, machineType=3):
-    genericChecks(fileType, machineType)
-
-    # Magic
-    # magic lead
-    b.append(int('0x7F', 16))
-    
-    # magic id
-    # 'ascii' for standard, though 'utf-8' would work.
-    b.extend(bytearray('ELF', 'ascii'))
-    
-    # EI_CLASS, 32-bit = 1, 64-bit = 2
-    # Not checked, Linux
-    b.append(2)
-    
-    # EI_DATA, endian little = 1, big = 2
-    # Not checked, Linux
-    b.append(1)
-    
-    # EI_VERSION (always 1)
-    # Not checked, Linux
-    b.append(1)
-    
-    # EI_OS ABI OS System 5 = 0
-    # Not checked, Linux???
-    # (often ignored for 0)
-    b.append(0)
-    
-    #EI_ABI VERSION + EI_PAD
-    # Not checked, Linux
-    b.extend(bytearray(8))
-    
-    # e_type, file type Relocatable = 1, executable = 2, shared = 3, 
-    # 2 bytes
-    b.extend(int(fileType).to_bytes(2, byteorder='little'))
-    
-    # e_machine x86 = 0x03, x86-64 = 0x3E (used?)
-    # 2 bytes
-    # machineType 0x3E = 64
-    b.extend(int(machineType).to_bytes(2, byteorder='little'))
-
-    # e_version, nearly always 1
-    # 4 bytes
-    b.extend(int(1).to_bytes(4, byteorder='little'))
+    ## ELF header
+    tpe = ETypeToCode[etype]
+    if (bits == '32'):
+        elfHeader32(b, elfData.eHeader, fileType=tpe, machineType=3)
+    else:
+        elfHeader64(b, elfData.eHeader, fileType=tpe, machineType=62)
 
     
-    ## variable length fields 32 = 4bytes, 64 = 8bytes
-    # e_entry, entry point for executables. Start of code under a 
-    # program header, so not yet known. Placeholder.
-    # offset = 24
-    pvData.pos['Entry'] = len(b)
-    b.extend(bytearray(8))
+    ## program header
+    programHeaderOffset = len(b)
+    pv = elfData.addProgramHeader(programHeaderOffset) 
+    # Needs this now
+    #if (bits == '32'):
+    #programHeader32(b, pv)
+    #else:
+    programHeader64(b, pv)
     
-    # e_phoff, program header offset
-    # Assuming this is almost always this value, but saving
-    # 'PHoff' if it is not.
-    # offset = 32 = 64
-    pvData.pos['PHoff'] = len(b)
-    b.extend(int('0x40', 16).to_bytes(8, byteorder='little'))
     
-    # e_shoff, section header offset
-    # offset = 40
-    pvData.pos['SHoff'] = len(b)
-    b.extend(bytearray(8))
+    # Program header addresses
+    # These may not be as basic as this,
+    # which loads the whole file from start.
+    #programHeaderAddress = toAddress64(programHeaderOffset)
+    pheaders0Pos = pv.pos
+    programHeaderInsertAddresses64(b, pheaders0Pos['VAddr'], pheaders0Pos['PAddr'], BASE_ADDRESS64)
     
-    # e_flags (unused on Intel)
-    # 4 bytes
-    b.extend(bytearray(4))
+    # Last ELF header data - Entry point
+    # know this because all headers in place
+    numberInsert8(b, elfData.eHeader.pos['Entry'], toAddress64(len(b)))
     
-    # e_ehsize, size of this header, usually 64-bit = 64
-    # 2 bytes e.g. 64
-    # Not checked, Linux
-    b.extend(int(64).to_bytes(2, byteorder='little'))
-
-    # e_phentsize, size of a program header table entry.
-    # 2 bytes, e.g. 56
-    b.extend(int(56).to_bytes(2, byteorder='little'))
+    # Put in a simple program
+    if (code):
+        code(b)
+      
+    ## Finish with last inserts into program header
+    fileSize = len(b)
+    elfData.eHeader.value['FileSize'] = fileSize
     
-    # e_phnum, number of entries in the program header table. 
-    # 2 bytes
-    b.extend(int(1).to_bytes(2, byteorder='little'))
+    # Program headers need to see this
+    # Basic, loading everything using filesize.
+    pheaders0Pos = elfData.pHeaders[0].pos
+    programHeaderInsertSizes64(b, pheaders0Pos['Filesz'], pheaders0Pos['Memsz'], fileSize)
     
-    # e_shentsize, the size of a section header table entry. Typical 64 
-    # 2 bytes e.g. 64
-    b.extend([0, 0])
+    print('data:')
+    print(str(elfData))
     
-    # e_shnum, number of entries in the section header table. 
-    # Assume 0, 'SHnum' if it is not.
-    pvData.pos['SHnum'] = len(b)
-    b.extend(bytearray(2))
+    write(b, 'elfTest')
     
-    # e_shstrndx, index of the section header table entry that contains 
-    # the section names. 
-    # Assume 0, 'SHstrndx' if it is not.
-    pvData.pos['SHstrndx'] = len(b)
-    b.extend(bytearray(2))
+    # Change permissions, so don't be evil to users or me.
+    # also stat.S_IXGRP, stat.S_IXOTH
+    os.chmod('elfTest', stat.S_IRUSR | stat.S_IWUSR | stat.S_IRGRP | stat.S_IROTH | stat.S_IXUSR)
 
 
-def addReturnProgram(b):
-    # From Tiny. 
-    # Close, or close enough, to the (working) 64bit a.out
-    #00000000 B801000000                  mov     rax, 1
-    #00000005 BB2A000000                  mov     rbx, 42  
-    #0000000A CD80                        int     0x80
+parser = argparse.ArgumentParser(description='A runner for ELFWrite.')
+parser.add_argument('-addCode', 
+    action="store_true",
+    dest="addCode",
+    help='Add a snippet of code to the ELF to return 42.'
+    )
     
-    # Parameter to command 'exit'
-    # B801000000                  mov     rax, 1
-    b.append(int('B8', 16))
-    b.extend(int(1).to_bytes(4, byteorder='little'))
+parser.add_argument('-bits', 
+    default='64',  
+    choices=['64', '32'], 
+    help='Choose a bit-width (default=64).'
+    )
+
+parser.add_argument('-type',
+    default = 'exec',
+    dest= 'etype',
+    #choices=['rel', 'exec', 'dyn', 'core'], 
+    choices=ETypeToCode.keys(), 
+    help='Type (or intended usage) of the file.',
+    )
     
-    # Return numeric code to exit with
-    # BB2A000000                  mov     rbx, 42  
-    b.append(int('BB', 16))
-    b.extend(int('2A', 16).to_bytes(4, byteorder='little'))
+# Only needed for shared objects.
+# Do not implement yet? 
+parser.add_argument('-sections',
+    choices=['rodata', 'lrodata', 'data', 'ldata', 'bss', 'tdata', 'tbss', 'lbss', 'debug', 'comment'], 
+    nargs='*',
+    help='Add sections to the ELF.',
+    )
     
-    # Make system call---to exit
-    #CD80                        int     0x80
-    b.append(int('CD', 16))
-    b.append(int('80', 16))
+args = parser.parse_args()
+#print (args.etype)
 
-
-b = bytearray()
-
-elfData = ElfData()
-
-## ELF header
-elfHeader64(b, elfData.eHeader, fileType=2, machineType=62)
-
-
-## program header
-programHeaderOffset = len(b)
-pv = elfData.addProgramHeader(programHeaderOffset) 
-programHeader64(b, pv)
-
-
-# Program header addresses
-# These may not be as basic as this,
-# which loads the whole file from start.
-#programHeaderAddress = toAddress64(programHeaderOffset)
-pheaders0Pos = pv.pos
-programHeaderInsertAddresses64(b, pheaders0Pos['VAddr'], pheaders0Pos['PAddr'], BASE_ADDRESS64)
-
-# Last ELF header data - Entry point
-# know this because all headers in place
-numberInsert8(b, elfData.eHeader.pos['Entry'], toAddress64(len(b)))
-
-# Put in a simple program
-addReturnProgram(b)
-  
-  
-## Finish with last inserts into program header
-fileSize = len(b)
-elfData.eHeader.value['FileSize'] = fileSize
-
-# Program headers need to see this
-# Basic, loading everything using filesize.
-pheaders0Pos = elfData.pHeaders[0].pos
-programHeaderInsertSizes64(b, pheaders0Pos['Filesz'], pheaders0Pos['Memsz'], fileSize)
-
-
-
-
-print('data:')
-print(str(elfData))
-
-write(b, 'elfTest')
-
-# Change permissions, so don't be evil to users or me.
-# also stat.S_IXGRP, stat.S_IXOTH
-os.chmod('elfTest', stat.S_IRUSR | stat.S_IWUSR | stat.S_IRGRP | stat.S_IROTH | stat.S_IXUSR)
+# Do this all the time until valid alternatives.
+givenCode = addReturnProgram
+if (args.addCode):
+    givenCode=addReturnProgram
+    
+mkELF(args.bits, args.etype, args.sections, givenCode)

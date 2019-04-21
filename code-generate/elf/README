@@ -5,6 +5,7 @@ needs to be dropped. Must use NASM and subprocess it?
 
 ==== ELF headers
 eu-readelf -h elf64
+
 ==== Program headers
 eu-readelf -l elf64
 eu-readelf elf64
