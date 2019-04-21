@@ -81,16 +81,18 @@ class ElfData:
     def __str__(self):
         return self.__repr__()
 
+
 def numberInsert4(b, insertPos, i):
     # 4 bytes, 32 bit
-    print('inseting 32bit num: {}'.format(i))
+    #print('inserting 32bit num: {}'.format(i))
     b2 = int(i).to_bytes(4, byteorder='little')
     for i, x in enumerate(range(insertPos, insertPos + 4)):
         b[x] = b2[i]
+
         
 def numberInsert8(b, insertPos, i):
     # 8 bytes, 64 bit
-    print('inseting 64bit num: {}'.format(i))
+    #print('inserting 64bit num: {}'.format(i))
     b2 = int(i).to_bytes(8, byteorder='little')
     for i, x in enumerate(range(insertPos, insertPos + 8)):
         b[x] = b2[i]
@@ -423,6 +425,28 @@ def elfHeader64(b, pvData, fileType=2, machineType=3):
     b.extend(bytearray(2))
 
 
+def addReturnProgram(b):
+    # From Tiny. 
+    # Close, or close enough, to the (working) 64bit a.out
+    #00000000 B801000000                  mov     rax, 1
+    #00000005 BB2A000000                  mov     rbx, 42  
+    #0000000A CD80                        int     0x80
+    
+    # Parameter to command 'exit'
+    # B801000000                  mov     rax, 1
+    b.append(int('B8', 16))
+    b.extend(int(1).to_bytes(4, byteorder='little'))
+    
+    # Return numeric code to exit with
+    # BB2A000000                  mov     rbx, 42  
+    b.append(int('BB', 16))
+    b.extend(int('2A', 16).to_bytes(4, byteorder='little'))
+    
+    # Make system call---to exit
+    #CD80                        int     0x80
+    b.append(int('CD', 16))
+    b.append(int('80', 16))
+
 
 b = bytearray()
 
@@ -449,56 +473,25 @@ programHeaderInsertAddresses64(b, pheaders0Pos['VAddr'], pheaders0Pos['PAddr'], 
 # know this because all headers in place
 numberInsert8(b, elfData.eHeader.pos['Entry'], toAddress64(len(b)))
 
-#addCode(b)
+# Put in a simple program
+addReturnProgram(b)
   
-# Close, or close enough, to the (working) 64bit a.out
-#00000000 B801000000                  mov     rax, 1
-#00000005 BB2A000000                  mov     rbx, 42  
-#0000000A CD80                        int     0x80
-
-# B801000000                  mov     rax, 1
-b.append(int('B8', 16))
-b.extend(int(1).to_bytes(4, byteorder='little'))
-# BB2A000000                  mov     rbx, 42  
-b.append(int('BB', 16))
-#b.extend(int('42', 16).to_bytes(4, byteorder='little'))
-b.extend(int('2A', 16).to_bytes(4, byteorder='little'))
-#CD80                        int     0x80
-b.append(int('CD', 16))
-b.append(int('80', 16))
-
-#b.append(88)
-#88
-#CC 
-#b.append(88)
-#b.append(88)
-
-                
+  
 ## Finish with last inserts into program header
 fileSize = len(b)
-print('fileSize:')
-print(str(fileSize))
+elfData.eHeader.value['FileSize'] = fileSize
 
-# puts two 8400 in - these are ok
+# Program headers need to see this
+# Basic, loading everything using filesize.
 pheaders0Pos = elfData.pHeaders[0].pos
 programHeaderInsertSizes64(b, pheaders0Pos['Filesz'], pheaders0Pos['Memsz'], fileSize)
 
 
 
 
-#print(b)
 print('data:')
 print(str(elfData))
 
-
-
-# eu-elflint elfTest
-
-# for header... but fails if file fails
-# eu-readelf -h elfTest 
-
-# for raw view  (xxd better illustration than hexdump)
-# xxd elfTest
 write(b, 'elfTest')
 
 # Change permissions, so don't be evil to users or me.
