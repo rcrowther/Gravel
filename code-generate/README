@@ -1,18 +1,19 @@
-== ELF
-Despite a day-long effort, I cannot get the Tiny ELF file to transpose 
-into Python without a segfault. So generation of ELF files probably 
-needs to be dropped. Must use NASM and subprocess it?
+=== NASM frame
+Abase for NASM compiling. Now we have working ELF generation, not so
+important. But still here for reference.
 
 
-== OPCode Reference
-The opcode reference comes from,
+=== x64 register_base
+a database effort for registers
 
-http://ref.x86asm.net/
+=== GUIs
+The GTK one oworks and you can see how simple tooltips and completion 
+may work. But very limited visuals.
 
-It needs conversion to a data structure. And the op-codes interpreting into something that computer code can write.
+Clutter seemed much more like it, but getting the actor stuff to even 
+give a pull-down menu is hard. i.e. documentations and maybe even 
+structural problems.
 
-x64 register_base is a sort of database effort for registers
-
-I had a go at a write-it-myself ELF file. Can't remember if it works. Which is annoying.
-
-
+Whats really needed here is a simple opCode builder, I think. A really 
+simple opCodebuilder.
+See Crenshaw?

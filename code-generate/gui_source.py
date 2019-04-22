@@ -11,6 +11,10 @@ gi.require_version('GtkSource', '3.0')
 
 from gi.repository import GObject, Gtk, Pango, GtkSource
 
+## Short poke at GTK, sourceView widget, Glade generated GUI
+# Not convincing as no visuals easily embeddable. A do-what-you-can
+#not what-you-want affair.
+
 # Building from Glade may seem cool, but Glade/Gtk is erratic with late 
 # entries to the build code. Which gives us a problem for 
 # GtkSourceView. We are getting by. I will not write custom XML for it.

@@ -254,7 +254,7 @@ flags = {
     AF: FD(4, 'AF',	'Adjust', 'Denotes Binary Coded Decimal in-byte carry'),
     ZF: FD(6, 'ZF',	'Zero', 'Result was 0'),
     SF: FD(7, 'SF',	'Sign', 'Most significant bit of result is 1'),
-    OF: FD(11, 'OF',	'Overflow', 'Overflow on signed operation'),
-    DF: FD(10, 'DF',		'Direction', 'Direction string instructions operate (increment or decrement)'),
-    ID: FD(21, 'ID',	'Identification', 'Changeability denotes presence of CPUID instruction'),
+    OF: FD(11, 'OF','Overflow', 'Overflow on signed operation'),
+    DF: FD(10, 'DF', 'Direction', 'Direction string instructions operate (increment or decrement)'),
+    ID: FD(21, 'ID', 'Identification', 'Changeability denotes presence of CPUID instruction'),
 }

@@ -1,0 +1,11 @@
+What we need is an organised and structured opcode database, but in Python.
+
+== XML Getter
+We have a data source. In XML. 
+
+== DB generator
+Is working, but is wanting much data for real usage.
+
+There is a big bridge to cross before getting data into a GUI or
+generating codes for a map usage. Probably stick to getting working 
+code, for a start.

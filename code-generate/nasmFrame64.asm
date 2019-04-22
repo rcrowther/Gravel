@@ -1,3 +1,4 @@
+; Simple frame for NASM compiling.
 BITS 64
 
 

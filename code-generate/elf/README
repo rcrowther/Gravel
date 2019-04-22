@@ -1,7 +1,8 @@
 == ELF
-Despite a day-long effort, I cannot get the Tiny ELF file to transpose 
-into Python without a segfault. So generation of ELF files probably 
-needs to be dropped. Must use NASM and subprocess it?
+Tiny ELF file transposes to Python, though is currently ratty. 
+No need for NASM, FASM, etc. though.
+
+./elfTest ; echo $?
 
 ==== ELF headers
 eu-readelf -h elf64

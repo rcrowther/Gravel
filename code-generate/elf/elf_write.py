@@ -1,21 +1,25 @@
 #!/usr/bin/env python3
 
 # debian ''elfutils' contains eu-readelf, and eu-elflint, among others.
-
+# Tiny ELF discussion on linking and tables,
+# http://www.muppetlabs.com/~breadbox/software/tiny/somewhat.html
 import subprocess
 import os
 import sys
 import stat
 import argparse
 
+#? Some consistency checks e.g. only shared data has a section header 
+# file
 # From Spec:
 # Files used to build a process image (execute a program) must have a 
 # program header table; relocatable files do not need one. 
 # Files used during linking must have a section header table; other 
 # object files may or may not have one
 
-# Now up to 32Bit header ajustments...
-
+#? Now up to 32Bit header adjustments...
+#? and need to test on Intel machines
+#? and file name output
 def write(data, filename):
     with open(filename, "wb") as f:
         f.write(data)

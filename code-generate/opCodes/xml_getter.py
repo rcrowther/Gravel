@@ -1,18 +1,23 @@
 #!/usr/bin/env python3
 """
-Generate some CSV files from online sources.
-Copy,
-http://www-01.sil.org/iso639-3/iso-639-3.tab
-to
-iso3.txt
-attributation: www.sil.org/iso639-3/ 
+Grab Intel opcodes from online sources.
+http://ref.x86asm.net/
+Works from
+http://ref.x86asm.net/x86reference.xml
+Also on github
+https://github.com/Barebit/x86reference
 """
 import os
 import re
 import codecs
 from urllib import request
 
-
+#? Not enough info to identify opCodes and define usage.
+#? Opcodes visited, but not pretty printed like
+#? website HTML.
+#? Also, operator codes are subtrees in XML source.
+#? Not currently being visited.
+#? http://ref.x86asm.net/#Instruction-Operand-Codes
 def X86OpcodeData():
     location='http://ref.x86asm.net/x86reference.xml'
     data = request.urlopen(location)    
