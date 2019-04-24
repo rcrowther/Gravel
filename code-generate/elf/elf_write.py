@@ -39,7 +39,11 @@ def addReturnProgram(b):
     #00000000 B801000000                  mov     rax, 1
     #00000005 BB2A000000                  mov     rbx, 42  
     #0000000A CD80                        int     0x80
-    
+    # NASM
+    # b801 000000
+    # bb2a 000000 
+    # cd80
+
     # Parameter to command 'exit'
     # B801000000                  mov     rax, 1
     b.append(int('B8', 16))

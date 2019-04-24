@@ -1,5 +1,5 @@
 === NASM frame
-Abase for NASM compiling. Now we have working ELF generation, not so
+A base for NASM compiling. Now we have working ELF generation, not so
 important. But still here for reference.
 
 
@@ -16,4 +16,10 @@ structural problems.
 
 Whats really needed here is a simple opCode builder, I think. A really 
 simple opCodebuilder.
+https://en.wikipedia.org/wiki/X86_instruction_listings
+https://stackoverflow.com/questions/45801447/x86-assembly-how-to-calculate-instruction-opcodes-length-in-bytes?noredirect=1
+https://stackoverflow.com/questions/1399861/what-is-the-size-of-each-asm-instruction
 See Crenshaw?
+
+~ Java bytecode
+https://en.wikipedia.org/wiki/Java_bytecode_instruction_listings

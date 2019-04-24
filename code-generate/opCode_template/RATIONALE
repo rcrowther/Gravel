@@ -1,0 +1,34 @@
+So, we need a template to operate across different code architectures.
+
+This must do a few things,
+- It must never abstract far enough so it offers options in 
+implementation.
+: That would defeat the purpose of a lock on processor instructions
+~ But it should abstract as far as possible
+: to remove hinderences
+
+'Never be abstract enough' means that DEC INC should be offered? Though
+can they be detected?
+'...abstract as far as possible' means that DEC INC should be offered
+
+== Representation
+Is this in bytecode or in text? Or both? 
+~ Bytecode is not enough
+: Better to signal general with using a modifier? Wich should be a 
+suffix, at least in code.
+
+So this is lower than Java Bytrcode and BCPL. But those and similar 
+languages may provide clues :)
+
+== Difficulties
+Do we bother about sources and destinations? The variants on ''add',
+for example?
+Do we deal with registers?
+At what level do we deal with variables? They can be stacked or in 
+memory, recall, and even in heap. And may be direct or referenced.
+
+
+== Refs
+
+Java Byte code
+https://en.wikipedia.org/wiki/Java_bytecode_instruction_listings
