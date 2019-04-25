@@ -11,6 +11,12 @@ implementation.
 can they be detected?
 '...abstract as far as possible' means that DEC INC should be offered
 
+== Preanalysis
+Is some preanalysis acceptable?
+e.g.
+x + 1 is an increment?
+passing simple numbers can be done by params?
+
 == Representation
 Is this in bytecode or in text? Or both? 
 ~ Bytecode is not enough
