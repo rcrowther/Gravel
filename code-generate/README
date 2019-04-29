@@ -7,7 +7,7 @@ important. But still here for reference.
 a database effort for registers
 
 === GUIs
-The GTK one oworks and you can see how simple tooltips and completion 
+The GTK one works and you can see how simple tooltips and completion 
 may work. But very limited visuals.
 
 Clutter seemed much more like it, but getting the actor stuff to even 

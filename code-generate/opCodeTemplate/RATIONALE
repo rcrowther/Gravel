@@ -17,6 +17,13 @@ e.g.
 x + 1 is an increment?
 passing simple numbers can be done by params?
 
+== Code sequences
+Need some way to represent these, nad template variable in.
+Short list of stuff that needs it:
+- Some divides
+- Method calls
+
+
 == Representation
 Is this in bytecode or in text? Or both? 
 ~ Bytecode is not enough

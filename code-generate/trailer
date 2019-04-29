@@ -1,0 +1,10 @@
+#!/bin/bash
+# A sample Bash script, by Ryan
+
+# python opCodeTrailer.py
+nasm -f bin -o asmTrailer nasmFrame64Trailer.asm
+#gcc -o asmTrailer nasmFrame64Trailer.o
+#rm nasmFrame64Trailer.o
+xxd asmTrailer
+rm -f asmTrailer
+echo Done

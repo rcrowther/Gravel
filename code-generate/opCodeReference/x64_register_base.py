@@ -21,13 +21,21 @@ bit_widths = {
 }
 
 # tokens
+# accumulator
 RAX = 0
+# index register for MOVe, base index (for use with arrays)
 RBX = 1
+# count for string operations & shifts,
 RCX = 2
+#  port address for IN and OUT, extend precision,
 RDX = 3
+# points to base of stack frame
 RBP = 4
+# points to a source in stream operations, source index for strings
 RSI = 5
+# points to a destination in stream operations, destination index for strings
 RDI = 6
+# points to top of stack
 RSP = 7
 
 # second 8 64-bit registers
