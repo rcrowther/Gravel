@@ -1,5 +1,5 @@
 #!/bin/bash
-# A sample Bash script, by Ryan
+# Run the trailer
 
 # python opCodeTrailer.py
 nasm -f bin -o asmTrailer nasmFrame64Trailer.asm

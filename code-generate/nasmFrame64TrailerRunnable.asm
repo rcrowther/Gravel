@@ -1,0 +1,74 @@
+; Simple frame for NASM testing.
+; Trial compile easily using the script trailer.
+BITS 64
+DEFAULT REL
+
+
+;SECTION .data
+    ;dispMsg db 'You have entered: '
+    ;lenDispMsg equ $-dispMsg 
+
+
+;SECTION .text          ;Code Segment
+   
+;main:
+
+    ;;Output the message 'The entered number is: '
+    ;mov eax, 4
+    ;mov ebx, 1
+    ;mov ecx, dispMsg
+    ;mov edx, lenDispMsg
+    ;int 80h  
+
+
+    
+    ;ret
+
+section	.data
+    userPrompt db 'Please enter a number: ' ;Ask the user to enter a number
+    lenUserPrompt equ $-userPrompt    ;length of the message
+    msg db 'Hello, world!', 0xa ;string to be printed
+    len equ $ - msg             ;length of the string
+
+section .bss           ;Uninitialized data
+    num resb 9
+        
+section	.text
+    global main
+	
+main:
+    ;prompt
+    mov	rax, 1      ;system call number (sys_write)
+    mov	rdi, 1      ;file descriptor (stdout)
+    mov	rsi, userPrompt     ;message to write
+    mov	rdx, lenUserPrompt  ;message length
+    syscall
+    
+    ;Read and store the user input
+    mov rax, 0      ;system call number (sys_read)
+    mov rdi, 2      ;file descriptor
+    mov rsi, num  
+    mov rdx, 9      ;5 bytes (numeric, 1 for sign) of that information
+    syscall
+   
+    ;mov qword[num], 62
+   
+    ;Output the number entered
+    mov rax, 1      ;system call number (sys_write)
+    mov	rdi, 1      ;file descriptor (stdout)
+    mov rsi, num
+    mov rdx, 5      ;5 bytes (numeric, 1 for sign)
+    syscall
+    
+    ;Output the message
+    mov	rax, 1      ;system call number (sys_write)
+    mov	rdi, 1      ;file descriptor (stdout)
+    mov	rsi, msg    ;message to write
+    mov	rdx, len    ;message length
+    syscall
+    
+    mov	rax, 60     ;system call number (sys_exit)
+    mov	rdi, 42     ;system call number return
+    syscall
+
+
