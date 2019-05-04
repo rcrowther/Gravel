@@ -1,0 +1,13 @@
+import x86
+b = []
+# ret - simple as it gets...
+x86.build(b, 63, [])
+b
+
+# RAX <- lit
+x86.build(b, 20, [42])
+b
+
+61 : ('483b0425{}75{}eb{}{}', 4, 1, '?', '?')
+x86.build(b, 61, [97, ])
+b

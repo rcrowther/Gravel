@@ -1,5 +1,7 @@
 ; Simple frame for NASM testing.
 ; Trial compile easily using the script trailer.
+; The script will not link, outly output a bin compile. Short, often 
+; not working.
 BITS 64
 
 global main

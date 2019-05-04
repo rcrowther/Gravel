@@ -1,5 +1,6 @@
 ; Simple frame for NASM testing.
 ; Trial compile easily using the script trailer.
+; The runners fully link.
 BITS 64
 DEFAULT REL
 

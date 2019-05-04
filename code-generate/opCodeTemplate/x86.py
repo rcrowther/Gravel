@@ -18,11 +18,11 @@ registerEnumerate = [
 # Try using NASM? Cross check?
 # opCode, width, map reference
 # 	81 		0 					L 	ADD 	r/m16/32/64 	imm16/32
-{
+Opcodes = {
 # Storage
 1 : ('8b1c25{}', 4), #"mov'  {}'ebx', {}'lit"
 2 : ('8b0425{}', 4), #"mov'  {}'eax', {}'lit"
-3 : ('488b0425{}' 4), #"mov'  {}'rax', {}'lit"
+3 : ('488b0425{}', 4), #"mov'  {}'rax', {}'lit"
 4 : ('488b1c25{}', 4), #"mov'  {}'rbx', {}'lit"
 5 : ('488b0c25{}', 4), #"mov'  {}'rcx', {}'lit"
 6 : ('488b1425{}', 4), #"mov'  {}'rdx', {}'lit"
@@ -55,8 +55,8 @@ registerEnumerate = [
 # Object manipulation
 
 # stack manipulation
-50 : ('58'), # pop rax
-51 : ('50'), # push rax
+50 : ('58',), # pop rax
+51 : ('50',), # push rax
 
 # control transfer
 # That's annoying, could use a simple calculation; len(block)
@@ -66,5 +66,57 @@ registerEnumerate = [
 
 # method calling
 62 : ('{}c3e8{}', '?', 4), # simple call, body, method offset 
-63 : ('c3'), #"ret"
+63 : ('c3',), #"ret"
+64 : ('0f05',), # syscall
+
+    
+# Snippets
+100 : ('B801000000BF0100000048BE{}BA050000000F05', 8)  # print num, addr
+101 : ('B801000000BF0100000048BE{}BA0E0000000F05', 4), # print str, addr
+102 : ('{}', 4), # println str, addr
+103 : ('{}', 4), # println str, addr
 }
+
+# Place string representations of bytes on a builder.
+# Dedcimal numbers are turned to hex, then padded to a width specified 
+# in the template.
+# When complete, the builder needs joining and changing to bytes.
+# c = ''.join(b)
+# c.encode()
+#
+# b: array used as a builder. 
+# code: for template
+# args: args for the template. A decimal number, or if the arg code 
+#     is '?', a string of hex codes.
+#! using strings is inefficient? and prone to error (big numbers? 
+#! negatives? floats?). However, it lets me use string templates,
+#! which is tidy on top. No byte array templater. 
+def build(b, code, args):
+    #! test
+    #? build is an iterable
+    #! code
+    opcodeData = Opcodes[code]
+    
+    # test the count
+    parameterCount = len(opcodeData) - 1
+    #print(parameterCount)
+    if (parameterCount != len(args)):
+        #! make an error
+        print("Error: Incorrect number of parameters. count:{} args:{}".format(parameterCount, args))
+
+    # pad args
+    for x, arg in enumerate(args):
+        # + 1 because the template is first in the data
+        padLen = opcodeData[x + 1]
+        if (padLen != '?'):
+            # for numbers
+            # convert dec str to padded hex str
+            args[x] = format(arg, 'x').ljust(padLen, '0')
+            #args[x] = arg.to_bytes(length=padLen, byteorder='little', signed=True)
+            print(arg) 
+        #else:
+            
+    opcodeTemplate = opcodeData[0]
+    # print (opcodeTemplate)
+    formattedOpcode = opcodeTemplate.format(*args)
+    b.append(''.join(formattedOpcode))
