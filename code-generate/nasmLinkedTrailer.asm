@@ -26,10 +26,10 @@ DEFAULT REL
     ;ret
 
 section	.data
-    userPrompt db 'Please enter a number: ' ;Ask the user to enter a number
-    lenUserPrompt equ $-userPrompt    ;length of the message
-    msg db 'Hello, world!', 0xa ;string to be printed
-    len equ $ - msg             ;length of the string
+    ;userPrompt db 'Please enter a number: ' ;Ask the user to enter a number
+    ;lenUserPrompt equ $-userPrompt    ;length of the message
+    ;msg db 'Hello, world!', 0xa ;string to be printed
+    ;len equ $ - msg             ;length of the string
 
 section .bss           ;Uninitialized data
     num resb 9
@@ -39,37 +39,38 @@ section	.text
 	
 main:
     ;prompt
-    mov	rax, 1      ;system call number (sys_write)
-    mov	rdi, 1      ;file descriptor (stdout)
-    mov	rsi, userPrompt     ;message to write
-    mov	rdx, lenUserPrompt  ;message length
-    syscall
+    ;mov	rax, 1      ;system call number (sys_write)
+    ;mov	rdi, 1      ;file descriptor (stdout)
+    ;mov	rsi, userPrompt     ;message to write
+    ;mov	rdx, lenUserPrompt  ;message length
+    ;syscall
     
-    ;Read and store the user input
-    mov rax, 0      ;system call number (sys_read)
-    mov rdi, 2      ;file descriptor
-    mov rsi, num  
-    mov rdx, 9      ;5 bytes (numeric, 1 for sign) of that information
-    syscall
+    ;;Read and store the user input
+    ;mov rax, 0      ;system call number (sys_read)
+    ;mov rdi, 2      ;file descriptor
+    ;mov rsi, num  
+    ;mov rdx, 9      ;5 bytes (numeric, 1 for sign) of that information
+    ;syscall
    
-    ;mov qword[num], 62
+    ;;mov qword[num], 62
    
-    ;Output the number entered
+    ;;Output the number entered
     mov rax, 1      ;system call number (sys_write)
     mov	rdi, 1      ;file descriptor (stdout)
-    mov rsi, num
+    mov rsi, num    ;address of thing to print
     mov rdx, 5      ;5 bytes (numeric, 1 for sign)
     syscall
     
-    ;Output the message
-    mov	rax, 1      ;system call number (sys_write)
-    mov	rdi, 1      ;file descriptor (stdout)
-    mov	rsi, msg    ;message to write
-    mov	rdx, len    ;message length
-    syscall
+    ;;Output the message
+    ;mov	rax, 1      ;system call number (sys_write)
+    ;mov	rdi, 1      ;file descriptor (stdout)
+    ;mov	rsi, msg    ;message to write
+    ;mov	rdx, len    ;message length
+    ;syscall
     
-    mov	rax, 60     ;system call number (sys_exit)
-    mov	rdi, 42     ;system call number return
+    ; simple exit
+    mov	rax, qword 60     ;system call number (sys_exit)
+    mov	rdi, qword 42     ;system call number return
     syscall
 
 

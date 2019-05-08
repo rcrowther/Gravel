@@ -429,7 +429,8 @@ ETypeToCode = {'rel': 1, 'exec': 2, 'dyn': 3, 'core': 4}
 # outpath: can be str/file/stream
 # bits: bit width as str, '64'/'32' 
 # sections: can be None
-# code: function taking a builder to append code
+# code: function taking a builder to append code. The function must 
+#     take a bytearray.
 def mkElf(outpath, bits, etype, sections, code, verbose):
     b = bytearray()
     
