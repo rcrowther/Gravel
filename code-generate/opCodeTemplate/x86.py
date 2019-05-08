@@ -16,13 +16,14 @@ registerEnumerate = [
 "rsp",
 ]
 
-# opcode [str], description 
-# So far, proving very hard human compilation
+
+# So far, proving very hard human compilation 
 # Try using NASM? Cross check?
-# opCode, width, map reference
+# opCode -> (opcodeTemplate, width of 1st param, width of 2nd param...)
 # 	81 		0 					L 	ADD 	r/m16/32/64 	imm16/32
 Opcodes = {
 # Storage
+#! think used references accidentally, not literals?
 1 : ('8b1c25{}', 4), #"mov'  {}'ebx', {}'lit"
 2 : ('8b0425{}', 4), #"mov'  {}'eax', {}'lit"
 #3 : ('488b0425{}', 4), #"mov'  {}'rax', {}'lit"
@@ -82,37 +83,21 @@ Opcodes = {
 103 : ('{}', 4), # println str, addr
 }
 
+# opCode -> (opcodeTemplate, width of 1st param, width of 2nd param...)
 
+OpcodeSnippets = {
+ # if0, cmp, block.size, block
+1 : lambda args: '483b0425{}75{}{}'.format(arg[0].ljust(8, '0'), len(arg[1]), arg[1]),
+}
 
 def builderToBytes(b):
     c = ''.join(b)
     c = bytearray.fromhex(c)
     return c #c.encode()
 
-# Place string representations of bytes on a builder.
-# Dedcimal numbers are turned to hex, then padded to a width specified 
-# in the template.
-# When complete, the builder needs joining and changing to bytes.
-# c = ''.join(b)
-# c.encode()
-#
-# b: array used as a builder. 
-# code: for template
-# args: args for the template. A decimal number, or if the arg code 
-#     is '?', a string of hex codes.
-#! using strings is inefficient? and prone to error (big numbers? 
-#! negatives? floats?). However, it lets me use string templates,
-#! which is tidy on top. No byte array templater. 
-def build(b, code, args):
-    #! test
-    #? build is an iterable
-    #! code
-    mapName = '\'x86\''
-    try:
-        opcodeData = Opcodes[code]
-    except KeyError:
-        print("OpCode not in given map. code: {} map: {}".format(code, mapName))
-        sys.exit()
+
+def buildSimpleOpcode(b, code, args):
+    opcodeData = Opcodes[code]
         
     # test the count
     parameterCount = len(opcodeData) - 1
@@ -137,3 +122,36 @@ def build(b, code, args):
     # print (opcodeTemplate)
     formattedOpcode = opcodeTemplate.format(*args)
     b.append(''.join(formattedOpcode))
+
+def buildSnippetOpcode(b, code, args):
+    formattedOpcode = OpcodeSnippets[code](args)
+    b.append(''.join(formattedOpcode))
+    
+        
+# Place string representations of bytes on a builder.
+# Dedcimal numbers are turned to hex, then padded to a width specified 
+# in the template.
+# When complete, the builder needs joining and changing to bytes.
+# c = ''.join(b)
+# c.encode()
+#
+# b: array used as a builder. 
+# code: for template
+# args: args for the template. A decimal number, or if the arg code 
+#     is '?', a string of hex codes.
+#! using strings is inefficient? and prone to error (big numbers? 
+#! negatives? floats?). However, it lets me use string templates,
+#! which is tidy on top. No byte array templater. 
+def build(b, code, args):
+    #! test
+    #? build is an iterable
+    #! code
+    mapName = '\'x86\''
+    try:
+        buildSimpleOpcode(b, code, args)
+    except KeyError:
+        try:
+            buildSnippetOpcode(b, code, args)
+        except KeyError:
+            print("OpCode not in given map. code: {} map: {}".format(code, mapName))
+            sys.exit()
