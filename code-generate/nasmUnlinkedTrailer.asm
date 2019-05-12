@@ -44,10 +44,10 @@ section	.rodata
 ;section .bss           ;Uninitialized data
 ;    num resb 9
         
-;section	.text
+global _start	
 
-global main	
-main:
+section	.text
+_start:
     ;prompt
     ;mov	rax, 1      ;system call number (sys_write)
     ;mov	rdi, 1      ;file descriptor (stdout)

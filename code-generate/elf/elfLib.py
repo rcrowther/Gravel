@@ -60,6 +60,7 @@ class ElfData:
         self.eHeader = PosValue()
         self.pHeaders = []
         self.sHeaders = []
+        self.shStrTab = {}
 
     def addProgramHeader(self, programHeaderOffset):
         pv = PosValue()
@@ -85,6 +86,8 @@ class ElfData:
         b = b + str(self.eHeader)
         b += ', pHeaders:'
         b = b + str(self.pHeaders)
+        b += ', shStrTable:'
+        b = b + str(self.shStrTab)
         b += ', sHeaders:'
         b = b + str(self.sHeaders)
         b = b + ')'
@@ -331,6 +334,7 @@ def elfHeader64(b, pvData, fileType=2, machineType=62):
     b.extend(bytearray(2))
 
 #! Unused, but close to usable
+# ProgramHeader(phType = 1)
 class ProgramHeader:
 
     attrNames = [
@@ -364,9 +368,9 @@ class ProgramHeader:
         width = getattr(attr, attrNameWidth)
         b.extend(int(v).to_bytes(width, byteorder='little'))
             
-    def build(self, b, data, width):
-        programHeaderOffset = len(b)
-        pv = data.addProgramHeader(programHeaderOffset) 
+    def build(self, b, pv, width):
+        #programHeaderOffset = len(b)
+        #pv = data.addProgramHeader(programHeaderOffset) 
 
         attrNameWidth = 'width' + width
 
@@ -522,7 +526,37 @@ class ELFField:
         return self.__repr__()
                 
                 
+# .symtab 
+# .strtab
+# Name     Type         Addr             Off      Size     ES Flags  Lk Inf Al
+# .rodata  PROGBITS     0000000000000680 00000680 00000011  0 A      0   0  4
 
+
+SectionType = {
+"SHT_PROGBITS" : 0x1, 
+"SHT_STRTAB" : 0x3,
+}
+
+# Need to
+# - Write a string table under the program headers
+# - Write the section header table at end
+# -- .text, rodata, .shstrtab
+# - Adjust offsets and other data
+# - ElfHead
+# -- Entry point address:               0x400080
+# -- Start of section headers:          168 (bytes into file)
+# -- Number of section headers entries: 4
+# -- Section header string table index: 3
+# (presumimg section headers are 64 bytes...)
+ 
+# name, flags, align
+#roSh = SectionHeader('.rodata', SectionType["SHT_PROGBITS"], 'AX', 4)
+# roSh.build(b, data, '64')
+# strTab = SectionHeader('.shstrtab', SectionType["SHT_STRTAB"], 'A', 1)
+# strTab.build(b, data, '64')
+
+#! not ready to go, but getting there...
+# Need data on NASM files for positioning etc.
 class SectionHeader:
 
     attrNames = [
@@ -540,24 +574,26 @@ class SectionHeader:
      
     # numerical values can be a number or a string. If a string, in 
     # deciaml.
-    def __init__(self, name, tpe, offset, sectionSize):   
+    def __init__(self, name, tpe, offset, sectionSize, align):   
         self.sh_name = ELFField(name, 4, 4)  
         self.sh_type = ELFField(tpe, 4, 4)  
-        self.sh_flags = ELFField(0, 4, 8)  
+        self.sh_flags = ELFField(11, 4, 8)  
         self.sh_addr = ELFField(0, 4, 8)  
         self.sh_offset = ELFField(offset, 4, 8)   
         self.sh_size = ELFField(sectionSize, 4, 8)   
         self.sh_link = ELFField(0, 4, 4)   
         self.sh_info = ELFField(0, 4, 4)   
-        self.sh_addralign = ELFField(0, 4, 8)   
+        self.sh_addralign = ELFField(align, 4, 8)   
         self.sh_entsize = ELFField(0, 4, 8)  
 
 
     def build(self, b, data, width):
+        #! wrong, it gets a PV
         sectionHeaderOffset = len(b)
         pv = data.addSectionHeader(sectionHeaderOffset) 
 
         attrNameWidth = 'width' + width
+        #! may need to roll out loop for data writing
         for attrName in self.attrNames:
             attr = getattr(self, attrName)
             v = attr.value
@@ -575,8 +611,19 @@ class SectionHeader:
     def __str__(self):
         return self.__repr__()
 
-    
-    
+#! need to keep track of offsetds?
+def stringTableBuild(b, data, strings):
+    # so we record offsets
+    base = len(b)
+    # null byte
+    b.append(0)
+    for string in strings:
+        #b.extend(int(v).to_bytes(width, byteorder='little'))
+        data.shStrTab[string] = len(b) - base
+        b.extend(string.encode('ascii'))
+        #null byte
+        b.append(0)
+
     
 ETypeToCode = {'rel': 1, 'exec': 2, 'dyn': 3, 'core': 4}
 
@@ -602,12 +649,18 @@ def mkElf(outpath, bits, etype, sections, code, verbose):
     programHeaderOffset = len(b)
     pv = elfData.addProgramHeader(programHeaderOffset) 
     # Needs this now
-    if (bits == '32'):
-        programHeader32(b, pv)
-    else:
-        programHeader64(b, pv)
+    #if (bits == '32'):
+    #    programHeader32(b, pv)
+    #else:
+    #    programHeader64(b, pv)
+    #! Seems ok?
+    ph = ProgramHeader(phType = 1)  
+    ph.build(b, pv, bits)
     
-    
+    # Add the stringtable
+    #! this is a collection of section headers, or should be...
+    stringTableBuild(b, elfData, ['.shstrtab', '.text', '.rodata'])
+
     # Program header addresses
     # These may not be as basic as this,
     # which loads the whole file from start.
@@ -619,6 +672,7 @@ def mkElf(outpath, bits, etype, sections, code, verbose):
         pheaders0Pos['PAddr'], 
         BASE_ADDRESS64
         )
+    
     
     # Last ELF header data - Entry point
     # know this because all headers in place

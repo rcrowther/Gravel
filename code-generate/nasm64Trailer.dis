@@ -25,52 +25,81 @@
     25                                      
     26                                      ;ret
     27                                  
-    28                                  section	.data
+    28                                  ;section	.data
     29                                      ;userPrompt db 'Please enter a number: ' ;Ask the user to enter a number
     30                                      ;lenUserPrompt equ $-userPrompt    ;length of the message
     31                                      ;msg db 'Hello, world!', 0xa ;string to be printed
     32                                      ;len equ $ - msg             ;length of the string
     33                                  
-    34                                  section .bss           ;Uninitialized data
-    35                                      ;num resb 9
-    36                                          
-    37                                  section	.text
-    38                                      global main
-    39                                  	
-    40                                  main:
-    41                                      ;prompt
-    42                                      ;mov	rax, 1      ;system call number (sys_write)
-    43                                      ;mov	rdi, 1      ;file descriptor (stdout)
-    44                                      ;mov	rsi, userPrompt     ;message to write
-    45                                      ;mov	rdx, lenUserPrompt  ;message length
-    46                                      ;syscall
-    47                                      
-    48                                      ;;Read and store the user input
-    49                                      ;mov rax, 0      ;system call number (sys_read)
-    50                                      ;mov rdi, 2      ;file descriptor
-    51                                      ;mov rsi, num  
-    52                                      ;mov rdx, 9      ;5 bytes (numeric, 1 for sign) of that information
-    53                                      ;syscall
-    54                                     
-    55                                      ;;mov qword[num], 62
-    56                                     
-    57                                      ;;Output the number entered
-    58                                      ;mov rax, 1      ;system call number (sys_write)
-    59                                      ;mov	rdi, 1      ;file descriptor (stdout)
-    60                                      ;mov rsi, num
-    61                                      ;mov rdx, 5      ;5 bytes (numeric, 1 for sign)
-    62                                      ;syscall
-    63                                      
-    64                                      ;;Output the message
-    65                                      ;mov	rax, 1      ;system call number (sys_write)
-    66                                      ;mov	rdi, 1      ;file descriptor (stdout)
-    67                                      ;mov	rsi, msg    ;message to write
-    68                                      ;mov	rdx, len    ;message length
-    69                                      ;syscall
-    70                                      
-    71                                      ; simple exit
-    72 00000000 B83C000000                  mov	rax, qword 60     ;system call number (sys_exit)
-    73 00000005 BF2A000000                  mov	rdi, qword 42     ;system call number return
-    74 0000000A 0F05                        syscall
-    75                                  
-    76                                  
+    34                                  ;! need rodata in ELF
+    35                                  section	.rodata
+    36 00000000 2D                          asciiMinus db 45
+    37                                      ;asciiPlus db 43
+    38                                      ;asciiLF db 10
+    39                                      ; ASCII 0, 1, 2.... 
+    40                                      ;asciiNumerics db 48, 49, 50, 51, 52, 53, 54, 55, 56, 57
+    41                                      ;! Also hex...
+    42                                      ; 0123456789ABCDEF
+    43                                      
+    44                                  ;section .bss           ;Uninitialized data
+    45                                  ;    num resb 9
+    46                                          
+    47                                  ;section	.text
+    48                                  
+    49                                  global main	
+    50                                  main:
+    51                                      ;prompt
+    52                                      ;mov	rax, 1      ;system call number (sys_write)
+    53                                      ;mov	rdi, 1      ;file descriptor (stdout)
+    54                                      ;mov	rsi, userPrompt     ;message to write
+    55                                      ;mov	rdx, lenUserPrompt  ;message length
+    56                                      ;syscall
+    57                                      
+    58                                      ;;Read and store the user input
+    59                                      ;mov rax, 0      ;system call number (sys_read)
+    60                                      ;mov rdi, 2      ;file descriptor
+    61                                      ;mov rsi, num  
+    62                                      ;mov rdx, 9      ;5 bytes (numeric, 1 for sign) of that information
+    63                                      ;syscall
+    64                                     
+    65                                      ;;mov qword[num], 62
+    66                                     
+    67                                      ;;Output the number entered
+    68                                      ; ! use stack and reverse, or use some memory?
+    69                                      ; jump if not negative
+    70                                      ;cmp 0, rax
+    71                                      ;jge loop
+    72                                      ; for the printout, negate rax
+    73                                      ;neg rax
+    74                                      ; Print "-"
+    75                                      ;push rax
+    76                                      ;mov rax, 1      ;system call number (sys_write)
+    77                                      ;mov	rdi, 1      ;file descriptor (stdout)
+    78                                      ;mov rsi, asciiMinus   ;print '-'
+    79                                      ;mov rdx, 1     ;5 bytes (numeric, 1 for sign)
+    80                                      ;syscall
+    81                                      ;pop rax
+    82                                  
+    83                                      ;push rax
+    84                                      ;push 62
+    85                                      ;mov rax, 1      ;system call number (sys_write)
+    86                                      ;mov	rdi, 1      ;file descriptor (stdout)
+    87                                      ;mov rsi, asciiNumerics + 4   ;address of thing to print
+    88                                      ;mov rdx, 1     ;5 bytes (numeric, 1 for sign)
+    89                                      ;syscall
+    90                                      ;pop rax
+    91                                      ;pop rax
+    92                                      
+    93                                      ;;Output the message
+    94                                      ;mov	rax, 1      ;system call number (sys_write)
+    95                                      ;mov	rdi, 1      ;file descriptor (stdout)
+    96                                      ;mov	rsi, msg    ;message to write
+    97                                      ;mov	rdx, len    ;message length
+    98                                      ;syscall
+    99                                      
+   100                                      ; simple exit
+   101 00000001 B83C000000                  mov	rax, qword 60     ;system call number (sys_exit)
+   102 00000006 BF2A000000                  mov	rdi, qword 42     ;system call number return
+   103 0000000B 0F05                        syscall
+   104                                  
+   105                                  
