@@ -1,0 +1,16 @@
+# python3
+import elfLib
+b = []
+data = elfLib.ElfData()
+# sh = elfLib.SectionHeader('rodata', 9, 0, 52)
+sh = elfLib.SectionHeader(0xff, 0xfff, 0xfff, 0xfffff)
+sh
+sh.build(b, data, '64')
+b
+
+b = []
+data = elfLib.ElfData()
+ph = elfLib.ProgramHeader(1)
+ph
+ph.build(b, data, '64')
+b

@@ -37,6 +37,7 @@ def toAddress64(offset):
 
 
 class PosValue:
+    # Why do these gather hashes?
     def __init__(self):
         self.pos = {}
         self.value = {}          
@@ -62,13 +63,25 @@ class ElfData:
 
     def addProgramHeader(self, programHeaderOffset):
         pv = PosValue()
+        #? isnt this...
+        #? Unused, I think
+        #pv.pos = 'Off'
+        #pv.value = programHeaderOffset
         pv.pos['Off'] = programHeaderOffset
         self.pHeaders.append(pv)
         return pv
-         
+
+    def addSectionHeader(self, sectionHeaderOffset):
+        pv = PosValue()
+        #pv.pos = 'Off'
+        #pv.value = programHeaderOffset
+        pv.pos['Off'] = sectionHeaderOffset
+        self.sHeaders.append(pv)
+        return pv
+                 
     def __repr__(self):
         b = 'ElfData('
-        b += 'eHeader:'
+        b += 'elfHeader:'
         b = b + str(self.eHeader)
         b += ', pHeaders:'
         b = b + str(self.pHeaders)
@@ -317,6 +330,72 @@ def elfHeader64(b, pvData, fileType=2, machineType=62):
     pvData.pos['SHstrndx'] = len(b)
     b.extend(bytearray(2))
 
+#! Unused, but close to usable
+class ProgramHeader:
+
+    attrNames = [
+    "p_type",
+    "p_flags64",
+    "p_offset",
+    "p_vaddr",
+    "p_paddr",
+    "p_filesz",
+    "p_memsz",
+    "p_flags32",
+    "p_align",
+    ]
+	
+    # numerical values can be a number or a string. If a string, in 
+    # deciaml.
+    def __init__(self, phType = 1):   
+        self.p_type = ELFField(phType, 4, 4)  
+        self.p_flags64 = ELFField(int(5), 0, 4)  
+        self.p_offset = ELFField(0, 4, 8)  
+        self.p_vaddr = ELFField(0, 4, 8)  
+        self.p_paddr = ELFField(0, 4, 8)   
+        self.p_filesz = ELFField(0, 4, 8)   
+        self.p_memsz = ELFField(0, 4, 8)   
+        self.p_flags32 = ELFField(0, 4, 0)   
+        self.p_align = ELFField(int('0x1000', 16), 4, 8)  
+
+    def buildField(self, b, attrName, attrNameWidth):
+        attr = getattr(self, attrName)
+        v = attr.value
+        width = getattr(attr, attrNameWidth)
+        b.extend(int(v).to_bytes(width, byteorder='little'))
+            
+    def build(self, b, data, width):
+        programHeaderOffset = len(b)
+        pv = data.addProgramHeader(programHeaderOffset) 
+
+        attrNameWidth = 'width' + width
+
+        #NB no loop because need to gather offsets
+        # ...which is easy by length
+        self.buildField(b, "p_type", attrNameWidth)
+        self.buildField(b, "p_flags64", attrNameWidth)
+        self.buildField(b, "p_offset", attrNameWidth)
+        pv.pos['VAddr'] = len(b) 
+        self.buildField(b, "p_vaddr", attrNameWidth)
+        pv.pos['PAddr'] = len(b) 
+        self.buildField(b, "p_paddr", attrNameWidth)
+        pv.pos['Filesz'] = len(b) 
+        self.buildField(b, "p_filesz", attrNameWidth)
+        pv.pos['Memsz'] = len(b) 
+        self.buildField(b, "p_memsz", attrNameWidth)
+        self.buildField(b, "p_flags32", attrNameWidth)
+        self.buildField(b, "p_align", attrNameWidth)
+                
+    def __repr__(self):
+        b = 'ProgramHeader('
+        for attrName in self.attrNames:
+            b += '{}:{}, '.format(attrName, getattr(self, attrName).value)
+        b = b + ')'
+        return b
+        
+    def __str__(self):
+        return self.__repr__()
+        
 def programHeader32(b):
     # program headers
     # 32bit = 32 bits long
@@ -421,8 +500,83 @@ def programHeader64(b, data, phType = 1):
     # is significant?
     b.extend(int('0x1000', 16).to_bytes(8, byteorder='little'))
 
+class ELFField:
+    def __init__(self, value, width32, width64):
+        self.value = value 
+        self.width32 = width32
+        self.width64 = width64
+
+    def __repr__(self):
+        b = 'ELFField('
+        b += 'value:'
+        b = b + str(self.value)
+        b += ', width32:'
+        b = b + str(self.width32)
+        b += ', width64:'
+        b = b + str(self.width64)
+        b = b + ')'
+        return b
+
+        
+    def __str__(self):
+        return self.__repr__()
+                
+                
+
+class SectionHeader:
+
+    attrNames = [
+     "sh_name",
+     "sh_type",
+     "sh_flags",
+     "sh_addr",
+     "sh_offset",
+     "sh_size",
+     "sh_link",
+     "sh_info",
+     "sh_addralign",
+     "sh_entsize"
+     ]
+     
+    # numerical values can be a number or a string. If a string, in 
+    # deciaml.
+    def __init__(self, name, tpe, offset, sectionSize):   
+        self.sh_name = ELFField(name, 4, 4)  
+        self.sh_type = ELFField(tpe, 4, 4)  
+        self.sh_flags = ELFField(0, 4, 8)  
+        self.sh_addr = ELFField(0, 4, 8)  
+        self.sh_offset = ELFField(offset, 4, 8)   
+        self.sh_size = ELFField(sectionSize, 4, 8)   
+        self.sh_link = ELFField(0, 4, 4)   
+        self.sh_info = ELFField(0, 4, 4)   
+        self.sh_addralign = ELFField(0, 4, 8)   
+        self.sh_entsize = ELFField(0, 4, 8)  
 
 
+    def build(self, b, data, width):
+        sectionHeaderOffset = len(b)
+        pv = data.addSectionHeader(sectionHeaderOffset) 
+
+        attrNameWidth = 'width' + width
+        for attrName in self.attrNames:
+            attr = getattr(self, attrName)
+            v = attr.value
+            width = getattr(attr, attrNameWidth)
+            #print(str(v))
+            b.extend(int(v).to_bytes(width, byteorder='little'))
+        
+    def __repr__(self):
+        b = 'SectionHeader('
+        for attrName in self.attrNames:
+            b += '{}:{}, '.format(attrName, getattr(self, attrName).value)
+        b = b + ')'
+        return b
+        
+    def __str__(self):
+        return self.__repr__()
+
+    
+    
     
 ETypeToCode = {'rel': 1, 'exec': 2, 'dyn': 3, 'core': 4}
 
@@ -459,13 +613,18 @@ def mkElf(outpath, bits, etype, sections, code, verbose):
     # which loads the whole file from start.
     #programHeaderAddress = toAddress64(programHeaderOffset)
     pheaders0Pos = pv.pos
-    programHeaderInsertAddresses64(b, pheaders0Pos['VAddr'], pheaders0Pos['PAddr'], BASE_ADDRESS64)
+    programHeaderInsertAddresses64(
+        b, 
+        pheaders0Pos['VAddr'], 
+        pheaders0Pos['PAddr'], 
+        BASE_ADDRESS64
+        )
     
     # Last ELF header data - Entry point
     # know this because all headers in place
     numberInsert8(b, elfData.eHeader.pos['Entry'], toAddress64(len(b)))
     
-    # Put in a simple program
+    # Put in program code
     if (code):
         code(b)
       
@@ -476,7 +635,12 @@ def mkElf(outpath, bits, etype, sections, code, verbose):
     # Program headers need to see this
     # Basic, loading everything using filesize.
     pheaders0Pos = elfData.pHeaders[0].pos
-    programHeaderInsertSizes64(b, pheaders0Pos['Filesz'], pheaders0Pos['Memsz'], fileSize)
+    programHeaderInsertSizes64(
+        b, 
+        pheaders0Pos['Filesz'], 
+        pheaders0Pos['Memsz'], 
+        fileSize
+        )
     
     if (verbose):
         #print('data:')

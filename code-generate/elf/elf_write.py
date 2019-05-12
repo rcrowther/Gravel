@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 
+# Commandline invokation of ElfLib
+
 # debian ''elfutils' contains eu-readelf, and eu-elflint, among others.
 # Tiny ELF discussion on linking and tables,
 # http://www.muppetlabs.com/~breadbox/software/tiny/somewhat.html

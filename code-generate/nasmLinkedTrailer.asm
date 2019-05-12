@@ -31,6 +31,16 @@ section	.data
     ;msg db 'Hello, world!', 0xa ;string to be printed
     ;len equ $ - msg             ;length of the string
 
+;! need rodata in ELF
+section	.rodata
+    asciiMinus db 45
+    asciiPlus db 43
+    asciiLF db 10
+    ; ASCII 0, 1, 2.... 
+    asciiNumerics db 48, 49, 50, 51, 52, 53, 54, 55, 56, 57
+    ;! Also hex...
+    ; 0123456789ABCDEF
+    
 section .bss           ;Uninitialized data
     num resb 9
         
@@ -55,11 +65,30 @@ main:
     ;;mov qword[num], 62
    
     ;;Output the number entered
+    ; ! use stack and reverse, or use some memory?
+    ; jump if not negative
+    ;cmp 0, rax
+    ;jge loop
+    ; for the printout, negate rax
+    neg rax
+    ; Print "-"
+    push rax
     mov rax, 1      ;system call number (sys_write)
     mov	rdi, 1      ;file descriptor (stdout)
-    mov rsi, num    ;address of thing to print
-    mov rdx, 5      ;5 bytes (numeric, 1 for sign)
+    mov rsi, asciiMinus   ;print '-'
+    mov rdx, 1     ;5 bytes (numeric, 1 for sign)
     syscall
+    pop rax
+
+    ;push rax
+    ;push 62
+    ;mov rax, 1      ;system call number (sys_write)
+    ;mov	rdi, 1      ;file descriptor (stdout)
+    ;mov rsi, asciiNumerics + 4   ;address of thing to print
+    ;mov rdx, 1     ;5 bytes (numeric, 1 for sign)
+    ;syscall
+    ;pop rax
+    ;pop rax
     
     ;;Output the message
     ;mov	rax, 1      ;system call number (sys_write)
