@@ -1,2 +1,0 @@
-nasm -f elf64 -F stabs hw.asm
-gcc -o hw hw.o

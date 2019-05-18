@@ -29,6 +29,14 @@ SECTION .text
 main:
     push rbp ; Push stack
     
+    push rdi
+    push rsi
+    mov rdi, fmtStr
+	mov	rsi, msg
+    call printf
+    pop rdi
+    pop rsi
+    
     pop rbp ; Push stack
     mov rax, 60
     mov rdi, 42

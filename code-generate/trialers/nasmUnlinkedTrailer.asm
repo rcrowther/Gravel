@@ -33,21 +33,21 @@ DEFAULT REL
 
 ;! need rodata in ELF
 section	.rodata
-    asciiMinus db 45
+    ;asciiMinus db 45
     ;asciiPlus db 43
     ;asciiLF db 10
     ; ASCII 0, 1, 2.... 
-    ;asciiNumerics db 48, 49, 50, 51, 52, 53, 54, 55, 56, 57
+    asciiNumerics db 48, 49, 50, 51, 52, 53, 54, 55, 56, 57
     ;! Also hex...
     ; 0123456789ABCDEF
     
 ;section .bss           ;Uninitialized data
 ;    num resb 9
         
-;section	.text
+global _start	
 
-global main	
-main:
+section	.text
+_start:
     ;prompt
     ;mov	rax, 1      ;system call number (sys_write)
     ;mov	rdi, 1      ;file descriptor (stdout)
@@ -74,7 +74,7 @@ main:
     ; Print "-"
     ;push rax
     ;mov rax, 1      ;system call number (sys_write)
-    ;mov rdi, 1      ;file descriptor (stdout)
+    ;mov	rdi, 1      ;file descriptor (stdout)
     ;mov rsi, asciiMinus   ;print '-'
     ;mov rdx, 1     ;5 bytes (numeric, 1 for sign)
     ;syscall
@@ -83,7 +83,7 @@ main:
     ;push rax
     ;push 62
     ;mov rax, 1      ;system call number (sys_write)
-    ;mov rdi, 1      ;file descriptor (stdout)
+    ;mov	rdi, 1      ;file descriptor (stdout)
     ;mov rsi, asciiNumerics + 4   ;address of thing to print
     ;mov rdx, 1     ;5 bytes (numeric, 1 for sign)
     ;syscall
@@ -98,6 +98,8 @@ main:
     ;syscall
     
     ; simple exit
-    bmov	rax, qword 60     ;system call number (sys_exit)
+    mov	rax, qword 60     ;system call number (sys_exit)
     mov	rdi, qword 42     ;system call number return
     syscall
+
+

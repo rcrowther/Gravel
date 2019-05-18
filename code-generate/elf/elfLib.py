@@ -538,7 +538,7 @@ SectionType = {
 }
 
 # Need to
-# - Write a string table under the program headers
+#X - Write a string table under the program headers
 # - Write the section header table at end
 # -- .text, rodata, .shstrtab
 # - Adjust offsets and other data
@@ -656,10 +656,6 @@ def mkElf(outpath, bits, etype, sections, code, verbose):
     #! Seems ok?
     ph = ProgramHeader(phType = 1)  
     ph.build(b, pv, bits)
-    
-    # Add the stringtable
-    #! this is a collection of section headers, or should be...
-    stringTableBuild(b, elfData, ['.shstrtab', '.text', '.rodata'])
 
     # Program header addresses
     # These may not be as basic as this,
@@ -682,6 +678,13 @@ def mkElf(outpath, bits, etype, sections, code, verbose):
     if (code):
         code(b)
       
+    # rodata here?
+    
+    # Add the stringtable
+    #! this is a collection of section headers, or should be...
+    #! only do if necessary (currently unused!)
+    stringTableBuild(b, elfData, ['.shstrtab', '.text', '.rodata'])
+    
     ## Finish with last inserts into program header
     fileSize = len(b)
     elfData.eHeader.value['FileSize'] = fileSize

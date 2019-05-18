@@ -44,10 +44,10 @@ section	.rodata
 ;section .bss           ;Uninitialized data
 ;    num resb 9
         
-global _start	
+;section	.text
 
-section	.text
-_start:
+global main	
+main:
     ;prompt
     ;mov	rax, 1      ;system call number (sys_write)
     ;mov	rdi, 1      ;file descriptor (stdout)
@@ -74,7 +74,7 @@ _start:
     ; Print "-"
     ;push rax
     ;mov rax, 1      ;system call number (sys_write)
-    ;mov	rdi, 1      ;file descriptor (stdout)
+    ;mov rdi, 1      ;file descriptor (stdout)
     ;mov rsi, asciiMinus   ;print '-'
     ;mov rdx, 1     ;5 bytes (numeric, 1 for sign)
     ;syscall
@@ -83,7 +83,7 @@ _start:
     ;push rax
     ;push 62
     ;mov rax, 1      ;system call number (sys_write)
-    ;mov	rdi, 1      ;file descriptor (stdout)
+    ;mov rdi, 1      ;file descriptor (stdout)
     ;mov rsi, asciiNumerics + 4   ;address of thing to print
     ;mov rdx, 1     ;5 bytes (numeric, 1 for sign)
     ;syscall
@@ -98,8 +98,6 @@ _start:
     ;syscall
     
     ; simple exit
-    mov	rax, qword 60     ;system call number (sys_exit)
+    bmov	rax, qword 60     ;system call number (sys_exit)
     mov	rdi, qword 42     ;system call number return
     syscall
-
-
