@@ -43,12 +43,7 @@ main:
     """.format(data, bss, rodata, code)
 
 
-def frame64(headers, sectionData, code):
-    headers = "\n".join(headers)
-    data = "\n".join(sectionData["data"])
-    bss = "\n".join(sectionData["bss"])
-    rodata = "\n".join(sectionData["rodata"])
-    return """
+Frame64 = """
 BITS 64
 ; DEFAULT REL
     
@@ -79,4 +74,4 @@ main:
     mov rax, 60
     mov rdi, 42
     syscall
-    """.format(headers, data, bss, rodata, code)
+    """

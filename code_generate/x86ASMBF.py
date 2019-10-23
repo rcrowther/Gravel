@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
-import code_generate.CodeBuilder
+import CodeBuilder
+from assembly.nasmFrames import Frame64
 
 cParemeterRegisters = [
 "rdi", "rsi", "rdx", "rcx", "r8", "r9"
@@ -63,43 +64,39 @@ ASM = {
 "whileNotZero" : whileNotZero,
 }
 
-def resolveBuilders(externalB, sectionB, declarationB):
-    externalB.append("\n")
-    externalB.append("data:")
-    externalB.append("\n".join(sectionB["data"]))
-    externalB.append("rodata:")
-    externalB.append("\n".join(sectionB["rodata"]))
-    externalB.append("bss:")
-    externalB.append("\n    ".join(sectionB["bss"]))
-    externalB.append("\n")
-    externalB.append("text:")
-    externalB.append("\n    ".join(declarationB))
-    return "\n".join(externalB)
+# def resolveBuilders(externalB, sectionB, declarationB):
+    # externalB.append("data:")
+    # externalB.append("\n".join(sectionB["data"]))
+    # externalB.append("rodata:")
+    # externalB.append("\n".join(sectionB["rodata"]))
+    # externalB.append("bss:")
+    # externalB.append("\n    ".join(sectionB["bss"]))
+    # externalB.append("text:")
+    # externalB.append("\n    ".join(declarationB))
+    # return "\n".join(externalB)
     
 #######
 # Test #
 ######
-def test():
-    externalB = [
-        ]
+def test(b):
+    #externalB = [
+    #declarationB = [""]
 
-    declarationB = [""]
+    #sectionB ={"data": [""], "bss": [""], "rodata": [""]}
 
-    sectionB ={"data": [""], "bss": [""], "rodata": [""]}
+    #ASM["Array"](declarationB, sectionB, 64, "paving")
+    ASM["Array"](b.declarations, b.sections, 64, "paving")
 
-    ASM["Array"](declarationB, sectionB, 64, "paving")
-
-    arrayInc(declarationB, 'paving', 3)
-    arrayInc(declarationB, 'paving', 3)
-    arrayInc(declarationB, 'paving', 3)
-    arrayWrite(declarationB, 'paving', 3)
-    ASM["free"](declarationB, "paving")
-
-    o = resolveBuilders(externalB, sectionB, declarationB)
-    return o
+    arrayInc(b.declarations, 'paving', 3)
+    arrayInc(b.declarations, 'paving', 3)
+    arrayInc(b.declarations, 'paving', 3)
+    arrayWrite(b.declarations, 'paving', 3)
+    ASM["free"](b.declarations, "paving")
     
 def main():
-    print(test())
+    b = CodeBuilder.Builder()
+    test(b)
+    print(b.frame(Frame64))
     
 if __name__== "__main__":
     main()
