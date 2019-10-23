@@ -1,0 +1,33 @@
+# Raising issues....
+#? number size?
+#? Where is te array?
+# - static
+# - stack
+# - heap
+#? incremented on directly, register, stack, heap
+#? out/in how?
+# #include <stdio.h> 
+#? I/O to terminal or files?
+# binary I/O
+# , fgets, scanf, printf, fgetc, fputc, fread, fwrite etc..
+#? what look like in gravel?
+
+
+
+# > inc
+# < dec
+# + advance
+# - retreat
+# . charout
+# , charin
+# [ while not 0...
+# ]
+
+# a = Array()
+# ptr = a.point
+# ptr.addr.inc
+# ptr.addr.dec
+# IO.StdIn.write(ptr) / print ptr
+# IO.StdIn.read(ptr)
+# while ptr:
+#   ...

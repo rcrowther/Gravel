@@ -3,10 +3,10 @@
 #def frame64(code, bss, data, rodata):
 #    return "BITS 64\nDEFAULT REL\n\nSECTION .data\n{}\n\nSECTION .bss{}\n\nSECTION .rodata{}\nSECTION .text\n\nglobal main\nmain:\n{}\nmov    rax, 60\nmov   rdi, 42\nsyscall".format(data, bss, rodata, code)
 
-def frame64(code, bss, data, rodata):
+def frame64test(code, bss, data, rodata):
     return """
 BITS 64
-DEFAULT REL
+; DEFAULT REL
     
 extern printf
     
@@ -36,8 +36,47 @@ main:
     ;??? Why only working with the bp push pop wrap?
     push rbp ; Push stack
     {}
-    pop rbp ; Push stack
+    pop rbp ; Pop stack
     mov rax, 60
     mov rdi, 42
     syscall
     """.format(data, bss, rodata, code)
+
+
+def frame64(headers, sectionData, code):
+    headers = "\n".join(headers)
+    data = "\n".join(sectionData["data"])
+    bss = "\n".join(sectionData["bss"])
+    rodata = "\n".join(sectionData["rodata"])
+    return """
+BITS 64
+; DEFAULT REL
+    
+; malloc/free
+; import <stdio.h>
+; stdOut, printf, etc.
+; import <stdio.h>
+extern printf
+extern malloc
+extern free
+{}
+    
+SECTION .data
+    {}
+SECTION .bss
+    {}
+SECTION .rodata
+    {}
+
+SECTION .text
+    
+    global main
+main:
+    ;??? Why only working with the bp push pop wrap?
+    push rbp ; Push stack
+    {}
+    pop rbp ; Pop stack
+    mov rax, 60
+    mov rdi, 42
+    syscall
+    """.format(headers, data, bss, rodata, code)

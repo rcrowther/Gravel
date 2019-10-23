@@ -7,15 +7,17 @@ implementation.
 ~ But it should abstract as far as possible
 : to remove hinderences
 
-'Never be abstract enough' means that DEC INC should be offered? Though
+'Never be abstract enough' means that DEC/INC should be offered? Though
 can they be detected?
-'...abstract as far as possible' means that DEC INC should be offered
+'...abstract as far as possible' means that DEC/INC should be offered
 
 == Preanalysis
 Is some preanalysis acceptable?
 e.g.
 x + 1 is an increment?
 passing simple numbers can be done by params?
+
+On the whole, no.
 
 == Code sequences
 Need some way to represent these, nad template variable in.
@@ -38,8 +40,9 @@ Do we bother about sources and destinations? The variants on ''add',
 for example?
 Do we deal with registers?
 At what level do we deal with variables? They can be stacked or in 
-memory, recall, and even in heap. And may be direct or referenced.
+memory, and even in heap. And may be direct or referenced.
 
+Make them all pointed, unless annotated?
 
 == Refs
 
