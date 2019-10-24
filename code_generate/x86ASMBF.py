@@ -7,6 +7,20 @@ cParemeterRegisters = [
     "rdi", "rsi", "rdx", "rcx", "r8", "r9"
     ]
 
+## Printers
+def arrayWrite(b, name, idx):
+    b.declarations.append(cParameter(0, idxAcess(name, idx), False))
+    b.declarations.append("call putchar")
+    
+def stdoutNewLine(b): 
+    b.declarations.append(cParameter(0, '10', False))
+    b.declarations.append("call putchar")
+    
+def println( isAddress):
+    b.declarations.append(cParameter(0, '10', False))
+    b.declarations.append(cParameter(1, '10', False))    
+    b.declarations.append("call printf")
+        
 def cParameter(idx, v, vIsAddress):
     if (idx < 6):
         if (vIsAddress):
@@ -16,16 +30,18 @@ def cParameter(idx, v, vIsAddress):
         return "push [{}]".format(v)
     return "push {}".format(v)
 
-def cReturn(dst):
+def cReturn(dst, targetIsAddress):
     #! address only if a label?
-    return "mov [{}], rax".format(dst)
+    if (targetIsAddress):
+        return "mov [{}], rax".format(dst)
+    return "mov {}, rax".format(dst)
     
 def array(b, sizeInBytes, name):
     #b.sections['bss'].append("{}: resq 1".format(name))
     b.sections['data'].append("{}: dq 3".format(name))
     b.declarations.append(cParameter(0, sizeInBytes, False))
     b.declarations.append("call malloc")
-    b.declarations.append(cReturn(name))
+    b.declarations.append(cReturn(name, True))
 
 def free(b, name):
     b.declarations.append(cParameter(0, name, True))
@@ -37,14 +53,6 @@ def arrayInc(b, name, idx):
 def arrayDec(b, name, idx):
     b.declarations.append('dec [{}+8*{}]'.format(name, idx))
 
-def arrayWrite(b, name, idx):
-    b.declarations.append(cParameter(0, idxAcess(name, idx), False))
-    b.declarations.append("call putchar")
-    
-def stdoutNewLine(b): 
-    b.declarations.append(cParameter(0, '10', False))
-    b.declarations.append("call putchar")
-    
 def idxAcess(name, idx):
     return "[{}+8*{}]".format(name, idx)
     
@@ -97,6 +105,16 @@ def test(b):
     arrayWrite(b, 'paving', 3)
     stdoutNewLine(b)
     ASM["free"](b, "paving")
+
+def test2(b):
+    ASM["Array"](b, 64, "paving")
+    arrayInc(b, 'paving', 3)
+    arrayInc(b, 'paving', 3)
+    arrayInc(b, 'paving', 3)
+    arrayWrite(b, 'paving', 3)
+    stdoutNewLine(b)
+    ASM["free"](b, "paving")
+    whileNotZero(b, countValue, body)
     
 def main():
     b = CodeBuilder.Builder()

@@ -11,7 +11,8 @@ from assembly.nasmFrames import Frame64
 def build(code):
     phaseData = assembly.BuildTools.PhaseData()
     phaseData.destroyGeneratedAsm=False
-    phaseData.srcs.append(assembly.BuildTools.VirtualFileCode(code))
+    phaseData.srcs.append(assembly.BuildTools.VirtualFileSource("buildDir/codeFile0.asm"))
+    #phaseData.srcs.append(assembly.BuildTools.VirtualFileCode(code))
     #phaseData.firstPhase='mchn'
     #phaseData.lastPhase='link'
     assembly.BuildTools.runPipe(phaseData)
