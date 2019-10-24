@@ -1,37 +1,88 @@
 #!/usr/bin/env python3
 
+import argparse
+
 import CodeBuilder 
 import assembly.BuildTools
-import opCodeTemplate.x86ASMBF
+import x86ASMBF
 from assembly.nasmFrames import Frame64
 
 #! Not building this correctly?
 #! try something smaller.
 #def build(headers, sectionData, code):
 def build(code):
-    fileBaseStr = "test"
-    buildPath = "buildDir"
-    # deleteAssemblyFile = False
+
+    phaseData = assembly.BuildTools.PhaseData()
+    phaseData.srcNames.append("eternity/test.asm")
+    phaseData.code=code
+    #phaseData.firstPhase='mchn'
+    #phaseData.lastPhase='link'
+    assembly.BuildTools.runPipe(phaseData)
+
+"""
+MAIN
+"""
+
+# if __name__ == "__main__":
     
-    assembly.BuildTools.fullChain(
-        code, 
-        buildPath, fileBaseStr, 
-        deleteAssemblyFile=False, 
-        deleteObjectFile=True,
-        run=True,
-        verbose=True
-        )
+    # parser = argparse.ArgumentParser(description="compiler for intermediate code")
+
+    # parser.add_argument(
+        # '-d',
+        # '--build-dir',
+        # type=str,
+        # default = "buildDir",
+        # help="folder to build in (need not exist)",
+        # )
+        
+    # parser.add_argument(
+        # "-f",
+        # "--first-phase", 
+        # help="first action of compile chain",
+        # choices=['src', 'link', 'run'],
+        # default='src'
+        # )
+
+    # parser.add_argument(
+        # "-l",
+        # "--last-phase", 
+        # help="last action of compile chain",
+        # choices=['src', 'mchn', 'link', 'run'],
+        # default='run'
+        # )
+
+    # parser.add_argument(
+        # "-a",
+        # "--destroy-asm", 
+        # help="remove asm files",
+        # action="store_true"
+        # )
+        
+    # parser.add_argument(
+        # "-o",
+        # "--destroy-objects", 
+        # help="remove object files",
+        # action="store_true"
+        # )
+        
+    # parser.add_argument(
+        # "-v",
+        # "--verbose", 
+        # help="talk about what is being done",
+        # action="store_true"
+        # )
+
+    # parser.add_argument(
+        # 'SOURCES',
+        # type=argparse.FileType('r'),
+        # help="input file sources",
+        # )  
+              
+    # args = parser.parse_args()
 
 
-b = []
-code = CodeBuilder.Empty
-#b = opCodeTemplate.x86ASMBF.test()
-
-#program(b)
-#code = '\n'.join(b)
-# if verbose:
-#print(str(code))
-#fileBaseStr = "frameASMTest"
-#assemble.frameAssemble(headers, sectionData, code, fileBaseStr, False)
-#build(headers=[], sectionData={"data":"", "bss":"", "rodata": ""}, code=code)
-build(code.framedCode(Frame64))
+    #print(args)
+#! asm only rebuild
+b = CodeBuilder.Builder()
+x86ASMBF.test(b)
+build(b.frame(Frame64))
