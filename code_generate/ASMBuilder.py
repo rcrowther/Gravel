@@ -7,14 +7,11 @@ import assembly.BuildTools
 import x86ASMBF
 from assembly.nasmFrames import Frame64
 
-#! Not building this correctly?
-#! try something smaller.
-#def build(headers, sectionData, code):
+#! better builders
 def build(code):
-
     phaseData = assembly.BuildTools.PhaseData()
-    phaseData.srcNames.append("eternity/test.asm")
-    phaseData.code=code
+    phaseData.destroyGeneratedAsm=False
+    phaseData.srcs.append(assembly.BuildTools.VirtualFileCode(code))
     #phaseData.firstPhase='mchn'
     #phaseData.lastPhase='link'
     assembly.BuildTools.runPipe(phaseData)
