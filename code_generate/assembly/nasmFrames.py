@@ -77,6 +77,6 @@ main:
     {}
     pop rbp ; Pop stack
     mov rax, 60
-    mov rdi, 42
+    mov rdi, 0
     syscall
     """

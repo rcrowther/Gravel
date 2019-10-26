@@ -20,6 +20,7 @@ class Builder():
            )      
         
     def concat(self, b):
+        b.append("headers:")
         b.extend(self.headers)
         b.append("data:")
         b.extend(self.sections["data"])
@@ -27,7 +28,7 @@ class Builder():
         b.extend(self.sections["rodata"])
         b.append("bss:")
         b.extend(self.sections["bss"])
-        b.append("text:")
+        b.append("declarations:")
         b.extend(self.declarations)
         return b
     
@@ -35,7 +36,7 @@ class Builder():
     def __str__(self):
         b = []
         self.concat(b)
-        return "\n".join(b) 
+        return "Builder({})".format(", ".join(b)) 
 
 Empty = Builder()
 

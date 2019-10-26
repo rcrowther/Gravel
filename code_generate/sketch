@@ -1,5 +1,0 @@
-val mit: int8
-val mig: int16
-val mut: int32
-val mag: int64
-val meg: int128
