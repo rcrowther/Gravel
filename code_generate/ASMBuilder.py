@@ -6,24 +6,46 @@ import CodeBuilder
 import assembly.BuildTools
 import x86ASMBF
 from assembly.nasmFrames import Frame64
+import assembly.File
 
-#! better builders
-def build(code):
+
+def pDataTest():
     phaseData = assembly.BuildTools.PhaseData()
     phaseData.destroyGeneratedAsm=False
+    return phaseData
+    
+def autoASM(phaseData):
+    phaseData.firstPhase='mchn'
+    # All ''asm' files in the buildDir
+    l = assembly.File.List(phaseData.buildPath)
+    for fp in l.filterExtensionFP('asm'):
+        phaseData.srcs.append(assembly.BuildTools.VirtualFileSource(fp))
+    #print(str(phaseData))
+    assembly.BuildTools.runPipe(phaseData)
+    
+def linkOnly(phaseData):
+    phaseData.firstPhase='link'
+    # All ''o' files in the buildDir
+    # assembler searches builddir automatically.
+    assembly.BuildTools.runPipe(phaseData)
+    
+#! better builders
+def fromVirtualCode(phaseData, code):
     #phaseData.srcs.append(assembly.BuildTools.VirtualFileSource("buildDir/codeFile0.asm"))
     phaseData.srcs.append(assembly.BuildTools.VirtualFileCode(code))
     #phaseData.firstPhase='mchn'
     #phaseData.lastPhase='link'
     assembly.BuildTools.runPipe(phaseData)
 
+
+    
 """
 MAIN
 """
 
-# if __name__ == "__main__":
+if __name__ == "__main__":
     
-    # parser = argparse.ArgumentParser(description="compiler for intermediate code")
+    parser = argparse.ArgumentParser(description="compiler for intermediate code")
 
     # parser.add_argument(
         # '-d',
@@ -49,26 +71,41 @@ MAIN
         # default='run'
         # )
 
-    # parser.add_argument(
-        # "-a",
-        # "--destroy-asm", 
-        # help="remove asm files",
-        # action="store_true"
-        # )
+    parser.add_argument(
+        "-a",
+        "--auto-asm", 
+        help="search for asm files in the build directory, then compile. Overrides other options.",
+        action="store_true"
+        )
+                
+    parser.add_argument(
+        "-x",
+        "--destroy-asm", 
+        help="remove generated asm files (from code, not disk)",
+        action="store_true"
+        )
+
+
+    parser.add_argument(
+        "-l",
+        "--link-only", 
+        help="Link object files in the build directory into an executable. Overrides other options.",
+        action="store_true"
+        )
+
+    parser.add_argument(
+        "-X",
+        "--destroy-objects", 
+        help="remove object files",
+        action="store_true"
+        )
         
-    # parser.add_argument(
-        # "-o",
-        # "--destroy-objects", 
-        # help="remove object files",
-        # action="store_true"
-        # )
-        
-    # parser.add_argument(
-        # "-v",
-        # "--verbose", 
-        # help="talk about what is being done",
-        # action="store_true"
-        # )
+    parser.add_argument(
+        "-v",
+        "--verbose", 
+        help="talk about what is being done",
+        action="store_true"
+        )
 
     # parser.add_argument(
         # 'SOURCES',
@@ -76,11 +113,24 @@ MAIN
         # help="input file sources",
         # )  
               
-    # args = parser.parse_args()
+    args = parser.parse_args()
 
+    print(args)
 
-    #print(args)
-#! asm only rebuild
-b = CodeBuilder.Builder()
-x86ASMBF.testPrint(b)
-build(b.frame(Frame64))
+    pData = pDataTest()
+    if (args.destroy_asm):
+        pData.destroyGeneratedAsm = True
+    if (args.destroy_objects):
+        pData.destroyObjects = True
+
+        
+    if (args.link_only == True):
+        linkOnly(pData)
+    elif (args.auto_asm == True):
+        autoASM(pData)
+    else:  
+        b = CodeBuilder.Builder()
+        #x86ASMBF.testStruct(b)
+        #x86ASMBF.testStruct(b)
+        x86ASMBF.testPrint(b)
+        fromVirtualCode(pData, b.frame(Frame64))

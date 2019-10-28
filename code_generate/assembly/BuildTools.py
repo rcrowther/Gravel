@@ -37,7 +37,7 @@ class PhaseData():
         self.__firstPhase = "src"
         self.__lastPhase = "run"
         self.destroyGeneratedAsm = False
-        self.destroyObjects = True
+        self.destroyObjects = False
         self.verbose = True
         self.overwriteObjects = True
         self.asmsToMachine = []
@@ -63,21 +63,43 @@ class PhaseData():
         self.__lastPhase=value
 
     def __str__(self):
-        return "PhaseData(srcs:{}, buildPath:'{}', overwriteObjects:{}, executablePath:{})".format(
-            self.srcs, self.buildPath, self.overwriteObjects, self.executablePath
+        return "PhaseData(srcs:{}, buildPath:'{}', overwriteObjects:{}, executablePath:{}, destroyGeneratedAsm:{}, destroyObjects:{})".format(
+            self.srcs, self.buildPath, self.overwriteObjects, self.executablePath,
+            self.destroyGeneratedAsm, self.destroyObjects
             )
 
 class VirtualFile:
-    def __init__(self, path, code):
-        self.asmPath = path
-        self.code = code
+    def __init__(self, asmPath, code):
         # only the filename, not the path
         self.baseName = ""
-        self.objPath = ""
-        
+        # Full path to an asm object
+        self._asmPath = asmPath 
+        if (asmPath):
+            self._setBaseName(asmPath)
+        self.code = code
+        # Full? path to an object file
+        #self.objPath = ""
+
+    def _setBaseName(self, asmPath):
+        name = os.path.basename(asmPath)
+        idx = name.rfind(".")
+        bn = name[:idx]
+        self.baseName = bn  
+                
+    @property    
+    def asmPath(self):
+        return self._asmPath
+    @asmPath.setter
+    def asmPath(self, path):
+        self._setBaseName(path)
+        self._asmPath=path
+
+    def objPath(self, dirPath):
+        return os.path.join(dirPath, self.baseName + ".o")
+
     def __repr__(self):
-        return "VirtualFile(path:{}, code:{}, baseName:{}, objPath:{})".format(
-            self.asmPath, bool(self.code), self.baseName, self.objPath
+        return "VirtualFile(asmPath:{}, hasCode:{}, baseName:{})".format(
+            self.asmPath, bool(self.code), self.baseName
             )
 
 
@@ -87,10 +109,10 @@ def VirtualFileCode(code):
 def VirtualFileSource(asmPath):
     return VirtualFile(asmPath, "")
     
-def newSrcFileName(basePath):
-    newSrcFileName.VFileNumerator += 1
-    return os.path.join(basePath, "codeFile{}.asm".format(newSrcFileName.VFileNumerator))
-newSrcFileName.VFileNumerator = -1
+def newSourceFilePath(basePath):
+    newSourceFilePath.VFileNumerator += 1
+    return os.path.join(basePath, "codeFile{}.asm".format(newSourceFilePath.VFileNumerator))
+newSourceFilePath.VFileNumerator = -1
     
 def baseName(srcPath):
     name = os.path.basename(srcPath)
@@ -113,7 +135,7 @@ def createAF(d):
     for s in d.srcs:
         # resolve virtual files into disk files
         if (s.code):
-            s.asmPath = newSrcFileName(d.buildPath) 
+            s.asmPath = newSourceFilePath(d.buildPath) 
             with open(s.asmPath, "w") as f:
                 f.write(s.code)
         # derive basenames for future tracing of file effects,
@@ -125,10 +147,8 @@ def createObject(d):
     if (d.verbose):
         print(phaseTitle('object')) 
     for s in d.srcs:
-        # generate filename
-        p = os.path.join(d.buildPath, s.baseName + ".o")
-        s.objName = p
-        # add to createlist
+        # on condition, add to createlist
+        p = s.objPath(d.buildPath)
         if (d.overwriteObjects or not(os.path.isFile(p))):
             d.asmsToMachine.append(s.asmPath)
 
@@ -139,12 +159,13 @@ def createObject(d):
     if (d.verbose):
         print("compiler line:\n    {}".format(" ".join(compilerArgs)))
     subprocessRun(compilerArgs, "Assembler returned non-zero!")
+    print(str(d))
     if (d.destroyGeneratedAsm):
         for s in d.srcs:
             if (s.code):
                 os.remove(s.asmPath)
-        if (d.verbose):
-            print("temporary assembly file removed")
+        if (d.verbose and len(d.srcs) > 0):
+            print("temporary assembly file(s) removed")
 
 def filesList(dirPath):
     (_, _, names) = next(os.walk(dirPath))
@@ -160,7 +181,7 @@ def pathExtension(path):
 def extensionFilter(paths, extension):
     return [path for path in paths if (pathExtension(path) == extension)]
     
-def linkObjects(d):    
+def linkObjects(d):
     if (d.verbose):
         print(phaseTitle('link')) 
     linkerArgs = "gcc -Wall -no-pie ".split()
@@ -172,9 +193,12 @@ def linkObjects(d):
     # This is ''every .o in the build dir', not derived from past path
     # collections.
     allObjects = extensionFilter(filesList(d.buildPath), 'o')
+    if (len(allObjects) <= 0):
+        print('[warning] No object files found to link in "{}":\n    aborting'.format(d.buildPath))
+        sys.exit()
     d.objectPaths = allObjects
     linkerArgs.extend(['-o', d.executablePath])
-    linkerArgs.extend(d.objectPaths)
+    linkerArgs.extend(allObjects)
     if (d.verbose):
         print("linker line:\n    {}".format(" ".join(linkerArgs)))    
     subprocessRun(linkerArgs, "Link and generate (GCC) returned non-zero!")

@@ -40,8 +40,12 @@ def cReturn(dst, targetIsAddress):
     if (targetIsAddress):
         return "mov [{}], rax".format(dst)
     return "mov {}, rax".format(dst)
-    
+
+def cReturnToStack():
+    return "push rax"
+        
 ## Printers
+#! What about returns
 def headerIO(b):
     print(str(b ))
     b.headers.append("extern printf")
@@ -104,23 +108,59 @@ def staticVar(b, name, v):
 
 def staticVarStr(b, name, v):
     b.sections['data'].append('{}: db "{}"'.format(name, v))
-    
+
+def staticVal(b, name, v):
+    b.sections['rodata'].append('{}: dq "{}"'.format(name, v))
+        
 def comment(b, msg):
     b.declarations.append("; {}".format(msg))
-    
-###
 
-def array(b, sizeInBytes, name):
+# def autoComment(b, ins):
+    # for idx,iStr in enumerate(ins):
+        # comment(b, "comm1" + str(idx))
+        # comment(b, iStr)
+
+###
+# Malloc
+#
+def alloc(b, sizeInBytes, name):
     #b.sections['bss'].append("{}: resq 1".format(name))
     b.sections['data'].append("{}: dq 3".format(name))
     b.declarations.append(cParameter(0, sizeInBytes, False))
     b.declarations.append("call malloc")
     b.declarations.append(cReturn(name, True))
 
+def allocThenStack(b, sizeInBytes):
+    b.declarations.append(cParameter(0, sizeInBytes, False))
+    b.declarations.append("call malloc")
+    b.declarations.append(cReturnToStack())
+    
 def free(b, name):
     b.declarations.append(cParameter(0, name, True))
     b.declarations.append("call free")
 
+def allocAddrSpace(b, addrCount, name):
+    alloc(b, addrCount*8, name)
+
+def allocAddrSpaceThenStack(b, addrCount):
+    allocThenStack(b, addrCount*8)    
+##
+# Struct
+#
+def clutch(b, addrCount):
+    allocAddrSpaceThenStack(b, addrCount)
+        
+#! top of stack
+#! need to visit again?
+def clt_set(b, idx, dataAddr):
+    b.declarations.append('mov qword [rsp+8*{}], {}'.format(idx, dataAddr))
+
+def clt_get(b, idx, dst):
+    b.declarations.append('mov {}, qword [rsp+8*{}]'.format(dst, idx))
+
+##
+#  Array
+#
 def arrayInc(b, name, idx):
     b.declarations.append('inc qword [{}+8*{}]'.format(name, idx))
     
@@ -134,6 +174,9 @@ def arrayRead(b, name, idx):
     b.declarations.append("call getchar")
     b.declarations.append(cReturn(idxAcess(name, idx)))
 
+##
+# loop
+#
 def whileNotZero(b, countValue, body):
     loopName = "loop1"
     b.declarations.append("mov rcx, {}".format(countValue))
@@ -143,7 +186,7 @@ def whileNotZero(b, countValue, body):
 
 
 ASM = {
-"Array" : array,
+"alloc" : alloc,
 "free" : free,
 # int data[100];
 #int *array = malloc(10 * sizeof(int));
@@ -195,6 +238,30 @@ def testArray(b):
     arrayWrite(b, 'paving', 3)
     stdoutNewLine(b)
     ASM["free"](b, "paving")
+   
+# def testComment(b):
+    #! cant work, currently
+    #autoComment(b, [ 
+    #    staticVarStr(b, 'StrToPrint', 'ninechary')
+    #    ])
+
+def testStruct(b):
+    headerIO(b)    
+    clutch(b, 3)        
+    #! top of stack
+    clt_set(b, 0, 333)
+    clt_set(b, 1, 101)
+    clt_set(b, 2, 48)
+    clt_get(b, 0, "rax")
+    intToStr(b, 'rax', 'mch_str_buf', False)
+    println(b, 'mch_str_buf')
+    # clt_get(b, 1, "rax")
+    # intToStr(b, 'rax', 'mch_str_buf', False)
+    # println(b, 'mch_str_buf')
+    # clt_get(b, 2, "rax")
+    # intToStr(b, 'rax', 'mch_str_buf', False)
+    # println(b, 'mch_str_buf')
+
         
 def testLoop(b):
     whileNotZero(b, countValue, body)
