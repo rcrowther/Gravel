@@ -56,7 +56,14 @@ def headerIO(b):
     b.sections['rodata'].append('io_fmt_float: db "%g", 0')
     b.sections['rodata'].append('io_fmt_addr: db "%p", 0')
     b.sections['rodata'].append('io_fmt_println: db "%s", 10, 0')
+    b.sections['rodata'].append('io_fmt_nl: db "", 10, 0')
     b.sections['data'].append("mch_str_buf: dq 2048")
+    # reg print
+    b.sections['rodata'].append('io_fmt_reg: db 10, "= GenReg", 10, "rax: %d", 10, "rbx: %d", 10, "rcx: %d", 10, "rdx: %d", 10, 0')
+    b.sections['rodata'].append('io_fmt_reg_stack: db 10, "= StackReg", 10, "rsp: %d", 10, "rbp: %d", 10, "diff: %d", 10, 0')
+    b.sections['rodata'].append('io_fmt_reg_str: db 10, "= StringReg", 10, "rsi: %d", 10, "rdi: %d", 10, 0')
+    b.sections['rodata'].append('io_fmt_reg_64: db 10, "= ExtReg", 10, "r8: %d", 10, "r9: %d", 10, "r10: %d", 10, 0')
+
 
 # def arrayWrite(b, name, idx):
     # b.declarations.append(cParameter(0, idxAcess(name, idx), False))
@@ -97,6 +104,60 @@ def println(b, addr):
     b.declarations.append(cParameter(1, addr, False))    
     b.declarations.append("call printf")
 
+#def printStr(b, s):
+    
+def printNL(b):
+    b.declarations.append(cParameter(0, "io_fmt_nl", False))
+    b.declarations.append("call printf")
+    
+def printReg(b):
+    b.declarations.append("mov r10, rax")
+    b.declarations.append("mov r11, rbx")
+    b.declarations.append("mov r12, rcx")
+    b.declarations.append("mov r13, rdx")
+    b.declarations.append(cParameter(0, "io_fmt_reg", False))
+    b.declarations.append(cParameter(1, "r10", False))    
+    b.declarations.append(cParameter(2, "r11", False))
+    b.declarations.append(cParameter(3, "r12", False))
+    b.declarations.append(cParameter(4, "r13", False))
+    #if (reg != 'rsi'):
+    #    b.declarations.append(cParameter(1, reg, False))    
+    b.declarations.append("call printf")    
+
+def printRegStack(b):
+    # calc diff    
+    b.declarations.append("mov rax, rsp")
+    b.declarations.append("sub rax, rbp")
+    b.declarations.append("mov r13, rax")
+    # print
+    b.declarations.append("mov r10, rsp")
+    b.declarations.append("mov r11, rbp")
+    b.declarations.append(cParameter(0, "io_fmt_reg_stack", False))
+    b.declarations.append(cParameter(1, "r10", False))    
+    b.declarations.append(cParameter(2, "r11", False))
+    b.declarations.append(cParameter(3, "r13", False))
+    b.declarations.append("call printf")  
+
+ 
+def printRegStr(b):
+    b.declarations.append("mov r10, rsi")
+    b.declarations.append("mov r11, rdi")
+    b.declarations.append(cParameter(0, "io_fmt_reg_str", False))
+    b.declarations.append(cParameter(1, "r10", False))    
+    b.declarations.append(cParameter(2, "r11", False))   
+    b.declarations.append("call printf")  
+
+def printReg64(b):
+    #! something wrong with pushing
+    b.declarations.append("push r8")
+    b.declarations.append("push r9")
+    b.declarations.append("push r10")
+    b.declarations.append(cParameter(0, "io_fmt_reg_64", False))
+    b.declarations.append(cParameter(1, "rsp", True))    
+    b.declarations.append(cParameter(2, "rsp+8*1", True))     
+    b.declarations.append(cParameter(3, "rsp+8*2", True))     
+    b.declarations.append("call printf")  
+    
 ####
 # Utility
 #
@@ -115,6 +176,9 @@ def staticVal(b, name, v):
 def comment(b, msg):
     b.declarations.append("; {}".format(msg))
 
+def mark(b):
+    b.declarations.append("; *")
+    
 # def autoComment(b, ins):
     # for idx,iStr in enumerate(ins):
         # comment(b, "comm1" + str(idx))
@@ -229,6 +293,16 @@ def testPrint(b):
     addrToStr(b, 'IntToPrint', 'mch_str_buf')
     println(b, 'mch_str_buf')
 
+def testPrintDebug(b):
+    headerIO(b)
+    printRegStack(b)
+    printRegStr(b)
+    printReg(b)
+    printNL(b)
+    b.declarations.append('mov rdx, 78787')
+    printReg(b)
+    printReg64(b)
+        
 def testArray(b):
     headerIO(b)
     ASM["Array"](b, 64, "paving")
@@ -247,7 +321,12 @@ def testArray(b):
 
 def testStruct(b):
     headerIO(b)    
-    clutch(b, 3)        
+    clutch(b, 3)
+    printRegStack(b)
+    printReg(b)
+    printNL(b)
+    printReg(b)        
+    printNL(b)
     #! top of stack
     clt_set(b, 0, 333)
     clt_set(b, 1, 101)
@@ -261,7 +340,6 @@ def testStruct(b):
     # clt_get(b, 2, "rax")
     # intToStr(b, 'rax', 'mch_str_buf', False)
     # println(b, 'mch_str_buf')
-
         
 def testLoop(b):
     whileNotZero(b, countValue, body)

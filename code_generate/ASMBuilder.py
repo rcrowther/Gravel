@@ -130,7 +130,8 @@ if __name__ == "__main__":
         autoASM(pData)
     else:  
         b = CodeBuilder.Builder()
+        #x86ASMBF.testPrint(b)
+        x86ASMBF.testPrintDebug(b)
         #x86ASMBF.testStruct(b)
         #x86ASMBF.testStruct(b)
-        x86ASMBF.testPrint(b)
         fromVirtualCode(pData, b.frame(Frame64))

@@ -5,6 +5,8 @@ import collections
 import sys
 import os
 
+
+
 #! add filehandling
 #! sort out errors
 def subprocessRun(args, errorMsg):
@@ -77,8 +79,6 @@ class VirtualFile:
         if (asmPath):
             self._setBaseName(asmPath)
         self.code = code
-        # Full? path to an object file
-        #self.objPath = ""
 
     def _setBaseName(self, asmPath):
         name = os.path.basename(asmPath)
@@ -167,6 +167,7 @@ def createObject(d):
         if (d.verbose and len(d.srcs) > 0):
             print("temporary assembly file(s) removed")
 
+#! use utility from File
 def filesList(dirPath):
     (_, _, names) = next(os.walk(dirPath))
     return [os.path.join(dirPath, name) for name in names ]
