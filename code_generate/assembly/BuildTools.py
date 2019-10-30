@@ -159,7 +159,7 @@ def createObject(d):
     if (d.verbose):
         print("compiler line:\n    {}".format(" ".join(compilerArgs)))
     subprocessRun(compilerArgs, "Assembler returned non-zero!")
-    print(str(d))
+    #print(str(d))
     if (d.destroyGeneratedAsm):
         for s in d.srcs:
             if (s.code):

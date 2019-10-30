@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import sys
 
 import CodeBuilder
 from assembly.nasmFrames import Frame64
@@ -51,18 +52,27 @@ def headerIO(b):
     b.headers.append("extern printf")
     b.headers.append("extern snprintf")
     b.sections['rodata'].append('io_fmt_str8: db "%s", 0')
+    b.sections['rodata'].append('io_fmt_str8_NL: db "%s", 10, 0')
     #b.headers.rodata.append('io_fmt_utf8: db "%s"', 10, 0)
     b.sections['rodata'].append('io_fmt_int: db "%d", 0')
+    b.sections['rodata'].append('io_fmt_uint: db "%llu", 0')
     b.sections['rodata'].append('io_fmt_float: db "%g", 0')
     b.sections['rodata'].append('io_fmt_addr: db "%p", 0')
     b.sections['rodata'].append('io_fmt_println: db "%s", 10, 0')
     b.sections['rodata'].append('io_fmt_nl: db "", 10, 0')
     b.sections['data'].append("mch_str_buf: dq 2048")
     # reg print
-    b.sections['rodata'].append('io_fmt_reg: db 10, "= GenReg", 10, "rax: %d", 10, "rbx: %d", 10, "rcx: %d", 10, "rdx: %d", 10, 0')
-    b.sections['rodata'].append('io_fmt_reg_stack: db 10, "= StackReg", 10, "rsp: %d", 10, "rbp: %d", 10, "diff: %d", 10, 0')
-    b.sections['rodata'].append('io_fmt_reg_str: db 10, "= StringReg", 10, "rsi: %d", 10, "rdi: %d", 10, 0')
-    b.sections['rodata'].append('io_fmt_reg_64: db 10, "= ExtReg", 10, "r8: %d", 10, "r9: %d", 10, "r10: %d", 10, 0')
+    b.sections['rodata'].append('io_fmt_reg_rax: db 10, "= Reg rax: %lld", 10, 0')
+    b.sections['rodata'].append('io_fmt_reg_rdx: db 10, "= Reg rdx: %lld", 10, 0')
+    b.sections['rodata'].append('io_fmt_reg_rsp: db 10, "= Reg rsp: %llu", 10, 0')
+    b.sections['rodata'].append('io_fmt_reg_rbp: db 10, "= Reg rbp: %llu", 10, 0')
+    b.sections['rodata'].append('io_fmt_reg_r9: db 10, "= Reg r9: %lld", 10, 0')
+
+    b.sections['rodata'].append('io_fmt_reg: db 10, "= GenReg", 10, "rax: %lld", 10, "rbx: %lld", 10, "rcx: %lld", 10, "rdx: %lld", 10, 0')
+    b.sections['rodata'].append('io_fmt_reg_stack: db 10, "= StackReg", 10, "rsp: %llu", 10, "rbp: %llu", 10, 0')
+    b.sections['rodata'].append('io_fmt_reg_str: db 10, "= StringReg", 10, "rsi: %lld", 10, "rdi: %lld", 10, 0')
+    b.sections['rodata'].append('io_fmt_reg_64_1: db 10, "= ExtReg1", 10, "r8: %lld", 10, "r9: %lld", 10, "r10: %lld", 10, "r11: %lld", 10, 0')
+    b.sections['rodata'].append('io_fmt_reg_64_2: db 10, "= ExtReg2", 10, "r12: %lld", 10, "r13: %lld", 10, "r14: %lld", 10, "r15: %lld", 10, 0')
 
 
 # def arrayWrite(b, name, idx):
@@ -78,6 +88,13 @@ def intToStr(b, src, dst, visitSrc):
     b.declarations.append("call snprintf")
     #b.declarations.append(cReturn(dst, True))
 
+def uintToStr(b, src, dst, visitSrc):
+    b.declarations.append(cParameter(0, dst, False))    
+    b.declarations.append(cParameter(1, 2048, False))    
+    b.declarations.append(cParameter(2, "io_fmt_uint", False))
+    b.declarations.append(cParameter(3, src, visitSrc))
+    b.declarations.append("call snprintf")
+    
 def floatToStr(b, src, dst, visitSrc):
     b.declarations.append(cParameter(0, dst, False))    
     b.declarations.append(cParameter(1, 2048, False))    
@@ -104,59 +121,135 @@ def println(b, addr):
     b.declarations.append(cParameter(1, addr, False))    
     b.declarations.append("call printf")
 
-#def printStr(b, s):
-    
+#! need fresh varnames
+def printStr(b, msg):
+    b.sections['rodata'].append('testStr: db "{}", 0'.format(msg))
+    b.declarations.append(cParameter(0, "io_fmt_str8", False))
+    b.declarations.append(cParameter(1, "testStr", False))    
+    b.declarations.append("call printf")
+
+def printlnStr(b, msg):
+    b.sections['rodata'].append('testStr2: db "{}", 0'.format(msg))
+    b.declarations.append(cParameter(0, "io_fmt_str8_NL", False))
+    b.declarations.append(cParameter(1, "testStr2", False))    
+    b.declarations.append("call printf")
+        
 def printNL(b):
     b.declarations.append(cParameter(0, "io_fmt_nl", False))
     b.declarations.append("call printf")
-    
-def printReg(b):
-    b.declarations.append("mov r10, rax")
-    b.declarations.append("mov r11, rbx")
-    b.declarations.append("mov r12, rcx")
-    b.declarations.append("mov r13, rdx")
+
+#     "rdi", "rsi", "rdx", "rcx", "r8", "r9"
+PrintableRegisters = ['rax', 'rdx', 'rsp', 'rbp', 'r9']
+def printReg(b, reg):
+    if(reg not in PrintableRegisters):
+        print("[Error] given register name not printable: {}\n    allowed registers {}".format(reg, PrintableRegisters))
+        sys.exit()
+    b.declarations.append("sub rsp, 32")
+    b.declarations.append("mov [rbp-8*1], rsi")
+    b.declarations.append("mov [rbp-8*2], rdi")
+    b.declarations.append("mov [rbp-8*3], {}".format(reg))
+    if (reg == 'rsp'):
+        b.declarations.append("add qword [rbp-8*3], 32")
+    b.declarations.append(cParameter(0, "io_fmt_reg_{}".format(reg), False))
+    b.declarations.append(cParameter(1, "rbp-8*3", True))     
+    b.declarations.append("call printf")
+    b.declarations.append("mov rsi, [rbp-8*1]")
+    b.declarations.append("mov rdi, [rbp-8*2]")        
+    b.declarations.append("mov {}, [rbp-8*3]".format(reg))
+    if (reg != 'rsp'):
+        b.declarations.append("add rsp, 32")
+
+def printRegGen(b):
+    b.declarations.append("sub rsp, 64")
+    b.declarations.append("mov [rbp-8*1], rdi")
+    b.declarations.append("mov [rbp-8*2], rsi")
+    b.declarations.append("mov [rbp-8*3], rdx")
+    b.declarations.append("mov [rbp-8*4], r8")
+    b.declarations.append("mov [rbp-8*5], rax")
+    b.declarations.append("mov [rbp-8*6], rbx")
+    b.declarations.append("mov [rbp-8*7], rcx")
     b.declarations.append(cParameter(0, "io_fmt_reg", False))
-    b.declarations.append(cParameter(1, "r10", False))    
-    b.declarations.append(cParameter(2, "r11", False))
-    b.declarations.append(cParameter(3, "r12", False))
-    b.declarations.append(cParameter(4, "r13", False))
-    #if (reg != 'rsi'):
-    #    b.declarations.append(cParameter(1, reg, False))    
-    b.declarations.append("call printf")    
-
-def printRegStack(b):
-    # calc diff    
-    b.declarations.append("mov rax, rsp")
-    b.declarations.append("sub rax, rbp")
-    b.declarations.append("mov r13, rax")
-    # print
-    b.declarations.append("mov r10, rsp")
-    b.declarations.append("mov r11, rbp")
-    b.declarations.append(cParameter(0, "io_fmt_reg_stack", False))
-    b.declarations.append(cParameter(1, "r10", False))    
-    b.declarations.append(cParameter(2, "r11", False))
-    b.declarations.append(cParameter(3, "r13", False))
+    b.declarations.append(cParameter(1, "rbp-8*5", True))     
+    b.declarations.append(cParameter(2,  "rbp-8*6", True))     
+    b.declarations.append(cParameter(3,  "rbp-8*7", True))     
+    b.declarations.append(cParameter(4,  "rbp-8*3", True))    
     b.declarations.append("call printf")  
-
+    b.declarations.append("mov rdi, [rbp-8*1]")
+    b.declarations.append("mov rsi, [rbp-8*2]")
+    b.declarations.append("mov rdx, [rbp-8*3]")
+    b.declarations.append("mov r8, [rbp-8*4]")
+    b.declarations.append("mov rax, [rbp-8*5]")
+    b.declarations.append("mov rbx, [rbp-8*6]")
+    b.declarations.append("mov rcx, [rbp-8*7]")
+    b.declarations.append("add rsp, 64")
+    
+def printRegStack(b):
+    b.declarations.append("sub rsp, 32")
+    b.declarations.append("mov [rbp-8*1], rsi")
+    b.declarations.append("mov [rbp-8*2], rdi")
+    b.declarations.append("mov [rbp-8*3], rdx")
+    b.declarations.append("mov [rbp-8*4], rsp")
+    b.declarations.append("add qword [rbp-8*4], 32")
+    b.declarations.append(cParameter(0, "io_fmt_reg_stack", False))
+    b.declarations.append(cParameter(1, "rbp-8*4", True))     
+    b.declarations.append(cParameter(2,  "rbp", False)) 
+    b.declarations.append("call printf")
+    b.declarations.append("mov rsi, [rbp-8*1]")
+    b.declarations.append("mov rdi, [rbp-8*2]") 
+    b.declarations.append("mov rdx, [rbp-8*3]")
+    b.declarations.append("add rsp, 32")
  
 def printRegStr(b):
-    b.declarations.append("mov r10, rsi")
-    b.declarations.append("mov r11, rdi")
+    b.declarations.append("sub rsp, 32")
+    b.declarations.append("mov [rbp-8*1], rsi")
+    b.declarations.append("mov [rbp-8*2], rdi")
+    b.declarations.append("mov [rbp-8*3], rdx")
     b.declarations.append(cParameter(0, "io_fmt_reg_str", False))
-    b.declarations.append(cParameter(1, "r10", False))    
-    b.declarations.append(cParameter(2, "r11", False))   
+    b.declarations.append(cParameter(1, "rbp-8*1", True))     
+    b.declarations.append(cParameter(2,  "rbp-8*2", True)) 
     b.declarations.append("call printf")  
+    b.declarations.append("mov rsi, [rbp-8*1]")
+    b.declarations.append("mov rdi, [rbp-8*2]")
+    b.declarations.append("mov rdx, [rbp-8*3]")
+    b.declarations.append("add rsp, 16")
+    
+def printRegExt1(b):
+    # Can clobber Gen registers
+    b.declarations.append("sub rsp, 64")
+    b.declarations.append("mov [rbp-8*1], r8")
+    b.declarations.append("mov [rbp-8*2], r9")
+    b.declarations.append("mov [rbp-8*3], r10")
+    b.declarations.append("mov [rbp-8*4], r11")
+    b.declarations.append(cParameter(0, "io_fmt_reg_64_1", False))
+    b.declarations.append(cParameter(1, "rbp-8*1", True))     
+    b.declarations.append(cParameter(2,  "rbp-8*2", True))     
+    b.declarations.append(cParameter(3,  "rbp-8*3", True))     
+    b.declarations.append(cParameter(4,  "rbp-8*4", True))         
+    b.declarations.append("call printf")
+    b.declarations.append("mov r8, [rbp-8*1]")
+    b.declarations.append("mov r9, [rbp-8*2]")
+    b.declarations.append("mov r10, [rbp-8*3]")
+    b.declarations.append("mov r11, [rbp-8*4]")
+    b.declarations.append("add rsp, 64")
 
-def printReg64(b):
-    #! something wrong with pushing
-    b.declarations.append("push r8")
-    b.declarations.append("push r9")
-    b.declarations.append("push r10")
-    b.declarations.append(cParameter(0, "io_fmt_reg_64", False))
-    b.declarations.append(cParameter(1, "rsp", True))    
-    b.declarations.append(cParameter(2, "rsp+8*1", True))     
-    b.declarations.append(cParameter(3, "rsp+8*2", True))     
-    b.declarations.append("call printf")  
+def printRegExt2(b):
+    # Can clobber Gen registers
+    b.declarations.append("sub rsp, 64")
+    b.declarations.append("mov [rbp-8*1], r12")
+    b.declarations.append("mov [rbp-8*2], r13")
+    b.declarations.append("mov [rbp-8*3], r14")
+    b.declarations.append("mov [rbp-8*4], r15")
+    b.declarations.append(cParameter(0, "io_fmt_reg_64_2", False))
+    b.declarations.append(cParameter(1, "rbp-8*1", True))     
+    b.declarations.append(cParameter(2,  "rbp-8*2", True))     
+    b.declarations.append(cParameter(3,  "rbp-8*3", True))     
+    b.declarations.append(cParameter(4,  "rbp-8*4", True))         
+    b.declarations.append("call printf")
+    b.declarations.append("mov r12, [rbp-8*1]")
+    b.declarations.append("mov r13, [rbp-8*2]")
+    b.declarations.append("mov r14, [rbp-8*3]")
+    b.declarations.append("mov r15, [rbp-8*4]")
+    b.declarations.append("add rsp, 64")
     
 ####
 # Utility
@@ -295,13 +388,17 @@ def testPrint(b):
 
 def testPrintDebug(b):
     headerIO(b)
+    printReg(b, 'rbp')
+    printReg(b, 'rsp')
+    printReg(b, 'rsp')
+    b.declarations.append('mov rax, 363')
+    printReg(b, 'rax')
     printRegStack(b)
+    b.declarations.append('mov rcx, 757')
+    printRegGen(b)
     printRegStr(b)
-    printReg(b)
-    printNL(b)
-    b.declarations.append('mov rdx, 78787')
-    printReg(b)
-    printReg64(b)
+    printStr(b, "done")
+    printlnStr(b, "doner")
         
 def testArray(b):
     headerIO(b)
@@ -325,7 +422,7 @@ def testStruct(b):
     printRegStack(b)
     printReg(b)
     printNL(b)
-    printReg(b)        
+    printReg(b)
     printNL(b)
     #! top of stack
     clt_set(b, 0, 333)

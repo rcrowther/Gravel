@@ -74,7 +74,9 @@ SECTION .text
 main:
     ;??? Why only working with the bp push pop wrap?
     push rbp ; Push stack
+    mov rbp, rsp ; Level the base pointer
     {}
+    mov rsp, rbp ; Level the stack pointer
     pop rbp ; Pop stack
     mov rax, 60
     mov rdi, 0
