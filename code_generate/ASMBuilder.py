@@ -131,7 +131,9 @@ if __name__ == "__main__":
     else:  
         b = CodeBuilder.Builder()
         #x86ASMBF.testPrint(b)
-        x86ASMBF.testPrintDebug(b)
-        #x86ASMBF.testStruct(b)
+        #x86ASMBF.testPrintDebug(b)
+        #x86ASMBF.testStackAlloc()
+        x86ASMBF.testStaticAlloc(b)
+        print('go')
         #x86ASMBF.testStruct(b)
         fromVirtualCode(pData, b.frame(Frame64))

@@ -2,12 +2,15 @@
 // -S compile only
 // intel intel syntax (not att)
 #include <stdio.h>
+#include <string.h>
 
 int foobar()
 {
-    long xx = 432;
-    printf("%ld\n", xx);
-    return xx;
+    //long xx = 432;
+
+    char testStr[] = "cool as tangerine";
+    //printf("%ld\n", xx);
+    //return xx;
 }
 
 int main()

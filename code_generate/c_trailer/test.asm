@@ -1,10 +1,6 @@
 	.file	"test.c"
 	.intel_syntax noprefix
 	.text
-	.section	.rodata
-.LC0:
-	.string	"%ld\n"
-	.text
 	.globl	foobar
 	.type	foobar, @function
 foobar:
@@ -15,14 +11,21 @@ foobar:
 	.cfi_offset 6, -16
 	mov	rbp, rsp
 	.cfi_def_cfa_register 6
-	sub	rsp, 16
-	mov	QWORD PTR -8[rbp], 432
-	mov	rax, QWORD PTR -8[rbp]
-	mov	rsi, rax
-	lea	rdi, .LC0[rip]
-	mov	eax, 0
-	call	printf@PLT
-	mov	rax, QWORD PTR -8[rbp]
+	sub	rsp, 32
+	mov	rax, QWORD PTR fs:40
+	mov	QWORD PTR -8[rbp], rax
+	xor	eax, eax
+	movabs	rax, 2338319423421509475
+	movabs	rdx, 7956015996579242356
+	mov	QWORD PTR -32[rbp], rax
+	mov	QWORD PTR -24[rbp], rdx
+	mov	WORD PTR -16[rbp], 101
+	nop
+	mov	rcx, QWORD PTR -8[rbp]
+	xor	rcx, QWORD PTR fs:40
+	je	.L2
+	call	__stack_chk_fail@PLT
+.L2:
 	leave
 	.cfi_def_cfa 7, 8
 	ret
