@@ -11,15 +11,19 @@ foobar:
 	.cfi_offset 6, -16
 	mov	rbp, rsp
 	.cfi_def_cfa_register 6
-	sub	rsp, 32
+	sub	rsp, 48
 	mov	rax, QWORD PTR fs:40
 	mov	QWORD PTR -8[rbp], rax
 	xor	eax, eax
 	movabs	rax, 2338319423421509475
 	movabs	rdx, 7956015996579242356
+	mov	QWORD PTR -48[rbp], rax
+	mov	QWORD PTR -40[rbp], rdx
+	movabs	rax, 6998721842770881637
 	mov	QWORD PTR -32[rbp], rax
-	mov	QWORD PTR -24[rbp], rdx
-	mov	WORD PTR -16[rbp], 101
+	mov	DWORD PTR -24[rbp], 1868767347
+	mov	WORD PTR -20[rbp], 25963
+	mov	BYTE PTR -18[rbp], 0
 	nop
 	mov	rcx, QWORD PTR -8[rbp]
 	xor	rcx, QWORD PTR fs:40

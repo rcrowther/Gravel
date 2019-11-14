@@ -8,7 +8,7 @@ int foobar()
 {
     //long xx = 432;
 
-    char testStr[] = "cool as tangerine";
+    char testStr[] = "cool as tangerine, hot as coke";
     //printf("%ld\n", xx);
     //return xx;
 }

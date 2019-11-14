@@ -19,6 +19,10 @@ class Builder():
             "\n    ".join(self.declarations)
            )      
         
+    def appendSection(self, sectionBuilder):
+        self.declarations.extend(sectionBuilder.initDeclarations)
+        self.declarations.extend(sectionBuilder.declarations)
+        
     def concat(self, b):
         b.append("headers:")
         b.extend(self.headers)

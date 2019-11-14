@@ -5,6 +5,27 @@ import math
 import CodeBuilder
 from assembly.nasmFrames import Frame64
 
+class ByteSpace:
+    bit8 = 1
+    bit16 = 2
+    bit32 = 4
+    bit64 = 8
+    bit128 = 16
+    
+byteSpace = ByteSpace()
+
+#https://stackoverflow.com/questions/12063840/what-are-the-sizes-of-tword-oword-and-yword-operands
+#BYTE, WORD, DWORD, QWORD, TWORD, OWORD, YWORD or ZWORD
+class SpaceAnnotation:
+    bit8 = "BYTE"
+    bit16 = "WORD"
+    bit32 = "DWORD"
+    bit64 = "QWORD"
+    bit128 = "OWORD"
+    
+spaceAnnotation = SpaceAnnotation()
+
+    
 cParemeterRegisters = [
     "rdi", "rsi", "rdx", "rcx", "r8", "r9"
     ]
@@ -15,8 +36,83 @@ cParemeterFloatRegisters = [
 cReturn = ["rax", "rdx"]
 
 ####
+# Build helpers
+#
+class SectionBuilder():
+    def __init__(self):
+        self.initDeclarations = []
+        self.declarations = []
+
+
+class StrInit():
+    # Helper to create an initialised string.
+    # Works by breaking the string into chunks. These chunks (
+    # essentially bit-width numbers) can be declared as 
+    # ''mov' commands to an appropriate space.
+    # The size the space needs to be is returned by byteSize().
+    
+    def __init__(self, s, chunkSize):
+        # helper to form initialised strings for assembly
+        # @chunksize is usually byteSpace.bit64 
+        self.chunkSize = chunkSize
+        self.chunkString = self._strChunk(s)
+        
+    def _strChunk(self, s):
+        # chunk a string into a given bytesize
+        # @return is an array of chunks, with the last padded with zeros
+        # to the chunksize
+        
+        # convert this python str
+        #sBytes = toBytes(s)         
+        sBytes = s         
+        # chunk...
+        l = len(sBytes)
+        k, m = divmod(l, self.chunkSize)
+        # chunk what is chunkable by chunkSize
+        ret = [sBytes[(i * self.chunkSize):((i * self.chunkSize) + self.chunkSize)] for i in range(k)]
+        # pad the last chunk
+        #last = bytearray(sBytes[l - m:])
+        #last.extend(bytearray(self.chunkSize - len(last)) )
+        last = sBytes[l - m:]
+        ext = '\0' * (self.chunkSize - m)
+        last += ext
+        ret.append(last)
+        return ret
+    
+    def byteSize(self):
+        # length of chunked string in bytes
+        # Will be a multiple of chunkSize
+        return len(self.chunkString) * self.chunkSize
+    
+    def initDecs(self, b, basePtr, startOffset):
+        # Append a string of instructions to initialise a string
+        # @s the string
+        # @basePtr a register containing a pointer to some allocated space
+        # @startOffset offset from basePointer to start from 
+        print(self)
+        topPtr = startOffset
+        for chunk in self.chunkString:
+            # s = ''.join( for b in chunk)
+            #strOut = ''.join(str(c) for c in chunk)
+            #strOut = str(chunk)
+            #strOut = '"{}"'.format(chunk.decode("ascii"))
+            strOut = chunk.__repr__()[1:-1]
+            #b.declarations.append('"{}"'.format(strOut))
+            b.declarations.append('mov qword [{}+{}], "{}"'.format(basePtr, topPtr, strOut))
+            topPtr += self.chunkSize
+            
+    def __repr__(self):
+        return "StrInit(chunkSize:{}, chunkString:{})".format(
+            self.chunkSize, self.chunkString
+            )          
+            
+            
+####
 # func helpers
 #
+def toBytes(s):
+    return bytes( s, 'ascii')
+
 def cParameter(idx, v, visitV):
     if (idx < 6):
         if (visitV):
@@ -135,6 +231,11 @@ def printStr(b, msg):
     b.declarations.append(cParameter(1, "testStr", False))    
     b.declarations.append("call printf")
 
+def printStrPtr(b, ptrCode):
+    b.declarations.append(cParameter(0, "io_fmt_str8", False))
+    b.declarations.append(cParameter(1, ptrCode, False))    
+    b.declarations.append("call printf")
+    
 def printlnStr(b, msg):
     b.sections['rodata'].append('testStr2: db "{}", 0'.format(msg))
     b.declarations.append(cParameter(0, "io_fmt_str8_NL", False))
@@ -202,31 +303,41 @@ def printRegExt2(b):
     b.declarations.append(cParameter(4, "r15", False))         
     b.declarations.append("call printf")
 
+
+###
+# Comment
+#
+def comment(b, msg):
+    b.declarations.append("; {}".format(msg))
+
+def mark(b):
+    b.declarations.append("; *")
+    
+# def autoComment(b, ins):
+    # for idx,iStr in enumerate(ins):
+        # comment(b, "comm1" + str(idx))
+        # comment(b, iStr)
+
     
 ####
-# Utility
+# Common
 #
-
-#def staticImm(b, name, v):
-#    b.sections['rodata'].append('{}: dq {}'.format(name, v))
-
-def parkNum(b, name, v):
+def commonNum(b, name, v):
     b.sections['data'].append("{}: dq {}".format(name, v))
 
-#def staticImmStr(b, name, v):
-#    b.sections['rodata'].append('{}: db "{}"'.format(name, v)) 
-
-def parkStr(b, name, v):
+def commonStr(b, name, v):
     b.sections['data'].append('{}: db "{}"'.format(name, v))
         
-def staticBuffer(b, name):
+def commonBuffer(b, name):
     b.sections['data'].append("{}: dq 2048")
 
 
-       
-
-
+    
+####
+# Stack
+#
 class StackAlloc():
+    # Can be used per call
     def __init__(self):
         self.topPtr = 0
         self.nameOffset = {}
@@ -237,11 +348,12 @@ class StackAlloc():
         self.nameOffset[name] = math.floor(self.topPtr/8)
 
     def initData(self, name, v):
-        self.topPtr += 8
-        self.nameOffset[name] = math.floor(self.topPtr/8)
+        self.declareData(name)
         self.declarations.append("mov [bpr+{}*8], {}".format(self.nameOffset[name], v))
         
+    #! replace with strInit()
     def _strChunk(self, s, chunkSize):
+        #
         l = len(s)
         k, m = divmod(l, chunkSize)
         #return (a[i * k + min(i, m):(i + 1) * k + min(i + 1, m)] for i in range(chunkSize))
@@ -253,6 +365,7 @@ class StackAlloc():
         ret.append(last)
         return ret
         
+    #! replace with strInit()
     def declareStr(self, name, s):
         # set a pointer to next val
         self.initData(name, self.topPtr+8)
@@ -268,7 +381,7 @@ class StackAlloc():
         return "[bpr+{}*8]".format(self.nameOffset[name])
 
     def build(self, b):
-        alignedSpace = math.ceil(topPtr/16) * 16 
+        alignedSpace = math.ceil(self.topPtr/16) * 16 
         b.declarations.append("sub rsp, {}".format(alignedSpace))
         b.declarations.extend(self.declarations)
 
@@ -277,17 +390,91 @@ class StackAlloc():
             self.topPtr, self.nameOffset
             )
     
-def comment(b, msg):
-    b.declarations.append("; {}".format(msg))
+class HeapData():
+    # Alloc(), then use utility functions to get manipulation code.
+    # use build() in final code, before data is manipulated, to write 
+    # declarations. 
+    def __init__(self, addrReg):
+        self.size = 0           
+        self.addrReg = addrReg
+        self.namedOffset = {}
 
-def mark(b):
-    b.declarations.append("; *")
-    
-# def autoComment(b, ins):
-    # for idx,iStr in enumerate(ins):
-        # comment(b, "comm1" + str(idx))
-        # comment(b, iStr)
+    def alloc(self, name, sz):
+        self.namedOffset[name] = self.size 
+        self.size += sz
+        
+    def initStr(self, b, name, s):
+        # make helper
+        si = StrInit(s, byteSpace.bit64)
 
+        # Alloc space
+        self.alloc(name, si.byteSize())
+         
+        # add init declarations
+        #! this is writing out wrong
+        si.initDecs(b, self.addrReg, self.namedOffset[name])
+
+    def set(self, b, name, v):
+        b.declarations.append("mov qword [{}+{}*8], {}".format(self.addrReg, self.namedOffset[name], v))
+        
+    def get(self, b, name, to):
+        b.declarations.append("mov {}, [{}+{}*8]".format(to, self.addrReg, self.namedOffset[name]))
+
+    def build(self, sb):
+        # set the malloc
+        sb.initDeclarations.append(cParameter(0, self.size, False))
+        sb.initDeclarations.append("call malloc")
+        sb.initDeclarations.append(cReturn(self.addrReg, False))
+        
+    def free(self, b):
+        b.declarations.append(cParameter(0, self.addrReg, False))
+        b.declarations.append("call free")
+            
+    def __repr__(self):
+        return "HeapData(size:{}, addrReg:{}, namedOffset:{})".format(
+            self.size, self.addrReg, self.namedOffset
+            )
+
+
+# No, what you need to do is add the declarations as they arrive?
+# or stack them in a frame? Needsas the frames....
+#! do something about string encoding                    
+# class HeapAlloc():
+    # # Can be used per call
+    # # uses a pool?
+    # def __init__(self):
+        # # Malloc for vars
+        # # 8 addresses
+        # self.varSpace = self.namespaceAllocData(64, 64, 'r11')
+        # self.declarations = []
+        
+    # def alloc(b, sizeInBytes, reg):
+        # b.declarations.append(cParameter(0, self.varSpace, False))
+        # b.declarations.append("call malloc")
+        # b.declarations.append(cReturn("r11", True))
+                
+    # def declareData(self, name, size, v):
+        # self.varSpace.data(name, size)
+        # #self.namedVarOffset[name] = math.floor(self.varTopPtr/8)    
+
+    # def initData(self, name, v):
+        # self.declareData(name)
+        # self.declarations.append("mov [bpr+{}*8], {}".format(self.namedVarOffset[name], v))
+
+    # def build(self, b):
+        # #  set the now-sized malloc
+        # alignedSpace = math.ceil(self.size/16) * 16 
+        # b.declarations.append(cParameter(0, alignedSpace, False))
+        # b.declarations.append("call malloc")
+        # b.declarations.append(cReturn(self.varSpace.addrReg, True))
+        # # add the declarations
+        
+
+    # def __repr__(self):
+        # return "HeapAlloc(varSpace:{}, declarations:{})".format(
+            # self.varSpace, self.declarations,
+            # )
+            
 ###
 # Malloc
 #
@@ -312,6 +499,13 @@ def allocAddrSpace(b, addrCount, name):
 
 def allocAddrSpaceThenStack(b, addrCount):
     allocThenStack(b, addrCount*8)    
+
+####
+# Heap
+#
+
+
+
 ##
 # Struct
 #
@@ -426,20 +620,42 @@ def testStackAlloc():
     
 def testStaticAlloc(b):
     headerIO(b)
-    parkNum(b, "parkNum1", 1212)
-    parkStr(b, "parkStr1", "insane drift")
-    b.declarations.append("mov rax, [parkNum1]")
+    commonNum(b, "commonNum1", 1212)
+    commonStr(b, "commonStr1", "insane drift")
+    b.declarations.append("mov rax, [commonNum1]")
     printReg(b, 'rax')
     printNL(b)
 
 def testStackString(b):
     pass
         
-def testHeapString(n):
-    pass
-    
+def testHeapData(b):
+    headerIO(b)
+    a = HeapData('r11')
+    # a.alloc('stonk', byteSpace.bit64)
+    # a.alloc('blimey', byteSpace.bit64)
+    #a.build(b)
+    # a.set(b, 'stonk', '44')
+    # a.set(b, 'blimey', '777')
+    # print(a)
+    # a.get(b, 'stonk', 'rax')
+    # a.get(b, 'blimey', 'rbx')
+    # printRegGen(b)
+    ##printReg(b, 'rax')
+
+def testHeapStr(b):
+    headerIO(b)
+    a = HeapData('r11')    
+    sb = SectionBuilder()
+    a.initStr(sb, "testStr", "wikkyfoobar")
+    print(a)
+    a.build(sb)
+    b.appendSection(sb)
+    printStrPtr(b, "r11+{}".format(a.namedOffset["testStr"]))
+    printNL(b)
+
 def testWhile(b):
-     pass   
+    pass   
      
 def testArray(b):
     headerIO(b)

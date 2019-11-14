@@ -133,7 +133,10 @@ if __name__ == "__main__":
         #x86ASMBF.testPrint(b)
         #x86ASMBF.testPrintDebug(b)
         #x86ASMBF.testStackAlloc()
-        x86ASMBF.testStaticAlloc(b)
+        #x86ASMBF.testStaticAlloc(b)
+        #x86ASMBF.testHeapData(b)
+        x86ASMBF.testHeapStr(b)
+        
         print('go')
         #x86ASMBF.testStruct(b)
         fromVirtualCode(pData, b.frame(Frame64))
