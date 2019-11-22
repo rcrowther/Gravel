@@ -135,6 +135,7 @@ if __name__ == "__main__":
         #x86ASMBF.testStackAlloc()
         #x86ASMBF.testStaticAlloc(b)
         #x86ASMBF.testHeapData(b)
+        #x86ASMBF.testHeapAlloc(b)
         x86ASMBF.testHeapStr(b)
         
         print('go')

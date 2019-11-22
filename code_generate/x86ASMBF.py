@@ -25,7 +25,8 @@ class SpaceAnnotation:
     
 spaceAnnotation = SpaceAnnotation()
 
-    
+#   %ebp, %ebx, %edi and %esi must be preserved   
+# clobbers r10, r11 and any parameter registers 
 cParemeterRegisters = [
     "rdi", "rsi", "rdx", "rcx", "r8", "r9"
     ]
@@ -35,8 +36,17 @@ cParemeterFloatRegisters = [
     
 cReturn = ["rax", "rdx"]
 
-
-
+class GType:
+    int8 = 0
+    int16 = 1
+    int32 = 2
+    int64 = 3
+    float32 = 8
+    float64 = 9
+    stringASCII = 12
+    array = 20
+    struct = 21 
+    
 ####
 # Build helpers
 #
@@ -51,6 +61,7 @@ class StrInit():
         # helper to form initialised strings for assembly
         # @chunksize is usually byteSpace.bit64 
         self.chunkSize = chunkSize
+        # lengyth, in bytes
         self.len = 0
         self.chunkString = self._strChunk(s)
 
@@ -107,7 +118,7 @@ class StrInit():
             topPtr += self.chunkSize
             
         # stamp in the null terminator
-        b.append('mov byte [{}+{}], 0'.format(basePtr, self.len))        
+        b.append('mov byte [{}+{}], 0'.format(basePtr, startOffset + (self.len*8)))        
         return b
         
     def __repr__(self):
@@ -158,6 +169,15 @@ def cReturnToStack():
 def visit(v):
     return "[{}]".format(v)
 
+##
+def frameOpen(b):
+    b.append("push rbp ; frame open")
+    b.append("mov rbp, rsp")
+    
+def frameClose(b):
+    b.append("mov rsp, rbp")
+    b.append("pop rbp ; frame close")
+    
 ## Printers
 #! What about returns
 def headerIO(b):
@@ -167,7 +187,7 @@ def headerIO(b):
     b.sections['rodata'].append('io_fmt_str8: db "%s", 0')
     b.sections['rodata'].append('io_fmt_str8_NL: db "%s", 10, 0')
     #b.headers.rodata.append('io_fmt_utf8: db "%s"', 10, 0)
-    b.sections['rodata'].append('io_fmt_int: db "%d", 0')
+    b.sections['rodata'].append('io_fmt_int: db "%lld", 0')
     b.sections['rodata'].append('io_fmt_uint: db "%llu", 0')
     b.sections['rodata'].append('io_fmt_float: db "%g", 0')
     b.sections['rodata'].append('io_fmt_addr: db "%p", 0')
@@ -237,6 +257,17 @@ def println(b, addr):
     b.declarations.append(cParameter(1, addr, False))    
     b.declarations.append("call printf")
 
+def intPrint(b, reg, visit):
+    b.append(cParameter(0, "io_fmt_int", False))
+    b.append(cParameter(1, reg, visit))    
+    b.append("call printf")
+
+# def varIntPrint(b, baseReg, offset):
+    # b.append(cParameter(0, "io_fmt_int", False))
+    # b.append(cParameter(1, "[{}+{}]".format(baseReg, offset), False))
+    # #b.append(cParameterOffset(1, offset))
+    # b.append("call printf")
+            
 #! need fresh varnames
 def printStr(b, msg):
     b.sections['rodata'].append('testStr: db "{}", 0'.format(msg))
@@ -408,22 +439,30 @@ class StackAlloc():
 class HeapData():
     # Allocate and set data on the heap.
     # Use alloc() or init...() funcs, 
-    # Use initBuild() to build initcode (place before data manipulation) 
+    # Use buildOpen() to build initcode (place before data manipulation) 
     # Utility functions will build access code.
     # declarations. 
-    def __init__(self, addrReg):
+    def __init__(self, addrReg, byteWidth):
+        # in bits
         self.size = 0           
         self.addrReg = addrReg
+        self.byteWidth = byteWidth
         self.namedOffset = {}
         self.initDecls = []
         
     def alloc(self, name, sz):
+        # @sz in bytes
         self.namedOffset[name] = self.size 
-        self.size += sz
+        self.size += (sz*self.byteWidth)
+
+    def initData(self, name, sz, d):
+        # @sz in bytes
+        self.alloc(name, sz)
+        self.initDecls.append('mov qword [{}+{}], {}'.format(self.addrReg, self.namedOffset[name], d))
         
     def initStr(self, name, s):
         # make helper
-        si = StrInit(s, byteSpace.bit64)
+        si = StrInit(s, self.byteWidth)
 
         # Alloc space
         self.alloc(name, si.alignedSize())
@@ -433,12 +472,23 @@ class HeapData():
         self.initDecls.extend( si.initDecls(self.addrReg, self.namedOffset[name]))
         
     def set(self, b, name, v):
-        b.append( "mov qword [{}+{}*8], {}".format(self.addrReg, self.namedOffset[name], v))
+        b.append( "mov qword [{}+{}*{}], {}".format(self.addrReg, self.namedOffset[name], self.byteWidth, v))
         
     def get(self, b, name, to):
         b.append( "mov {}, [{}+{}*8]".format(to, self.addrReg, self.namedOffset[name]))
 
-    def initBuild(self, b):
+    def intPrint(self, b, name):
+        b.append(cParameter(0, "io_fmt_int", False))
+        b.append(cParameter(1, "[{}+{}]".format(self.addrReg, self.namedOffset[name]), False))
+        b.append("call printf")
+
+    def strPrint(self, b, name):
+        b.append(cParameter(0, "io_fmt_str8", False))
+        b.append(cParameter(1, self.addrReg, False))
+        b.append(cParameterOffset(1,  self.namedOffset[name]))     
+        b.append("call printf")
+                    
+    def buildOpen(self, b):
         # set the malloc
         b.append(cParameter(0, self.size, False))
         b.append("call malloc")
@@ -446,13 +496,16 @@ class HeapData():
         # add the inits
         b.extend(self.initDecls)
         
-    def free(self, b):
+    def buildClose(self, b):
+        self._free(b)
+
+    def _free(self, b):
         b.append(cParameter(0, self.addrReg, False))
         b.append("call free")
             
     def __repr__(self):
-        return "HeapData(size:{}, addrReg:{}, namedOffset:{}, self.initDecls:{})".format(
-            self.size, self.addrReg, self.namedOffset, self.initDecls
+        return "HeapData(byteWidth:{}, size:{}, addrReg:{}, namedOffset:{}, self.initDecls:{})".format(
+            self.byteWidth, self.size, self.addrReg, self.namedOffset, self.initDecls
             )
 
 
@@ -460,57 +513,20 @@ class SectionBuilder():
     def __init__(self, heapData):
         self.initDecls = []
         self.decls = []
-        self.heapData = heapData
+        self.heap = heapData
 
     def build(self, b):
-        if (self.heapData):
-            self.heapData.initBuild(self.initDecls) 
+        if (self.heap):
+            self.heap.buildOpen(self.initDecls) 
         b.extend(self.initDecls)
+        if (self.heap):
+            self.heap.buildClose(self.decls)         
         b.extend(self.decls)
-        
-
-# No, what you need to do is add the declarations as they arrive?
-# or stack them in a frame? Needsas the frames....
-#! do something about string encoding                    
-# class HeapAlloc():
-    # # Can be used per call
-    # # uses a pool?
-    # def __init__(self):
-        # # Malloc for vars
-        # # 8 addresses
-        # self.varSpace = self.namespaceAllocData(64, 64, 'r11')
-        # self.declarations = []
-        
-    # def alloc(b, sizeInBytes, reg):
-        # b.declarations.append(cParameter(0, self.varSpace, False))
-        # b.declarations.append("call malloc")
-        # b.declarations.append(cReturn("r11", True))
-                
-    # def declareData(self, name, size, v):
-        # self.varSpace.data(name, size)
-        # #self.namedVarOffset[name] = math.floor(self.varTopPtr/8)    
-
-    # def initData(self, name, v):
-        # self.declareData(name)
-        # self.declarations.append("mov [bpr+{}*8], {}".format(self.namedVarOffset[name], v))
-
-    # def build(self, b):
-        # #  set the now-sized malloc
-        # alignedSpace = math.ceil(self.size/16) * 16 
-        # b.declarations.append(cParameter(0, alignedSpace, False))
-        # b.declarations.append("call malloc")
-        # b.declarations.append(cReturn(self.varSpace.addrReg, True))
-        # # add the declarations
-        
-
-    # def __repr__(self):
-        # return "HeapAlloc(varSpace:{}, declarations:{})".format(
-            # self.varSpace, self.declarations,
-            # )
             
 ###
 # Malloc
 #
+#!
 def alloc(b, sizeInBytes, name):
     #b.sections['bss'].append("{}: resq 1".format(name))
     b.sections['data'].append("{}: dq 3".format(name))
@@ -653,7 +669,7 @@ def testStackString(b):
         
 def testHeapData(b):
     headerIO(b)
-    a = HeapData('r11')
+    a = HeapData('r12',  byteSpace.bit64)
     # a.alloc('stonk', byteSpace.bit64)
     # a.alloc('blimey', byteSpace.bit64)
     #a.build(b)
@@ -665,18 +681,38 @@ def testHeapData(b):
     # printRegGen(b)
     ##printReg(b, 'rax')
 
+def testHeapAlloc(b):
+    headerIO(b)
+    sb = SectionBuilder(HeapData('r12',  byteSpace.bit64))
+    sb.heap.initData("testData1", byteSpace.bit8, '66')
+    sb.heap.initData("testData2", byteSpace.bit8, '77')
+    sb.heap.initData("testData3", byteSpace.bit8, '99')
+    print(sb.heap)
+    #intPrint(sb.decls, sb.heap.addrReg, True)
+    sb.heap.intPrint(sb.decls, 'testData1')
+    sb.heap.intPrint(sb.decls, 'testData2')
+    sb.heap.intPrint(sb.decls, 'testData3')
+    printNL(sb.decls)
+    #sb.heap.free(sb.decls)
+    sb.build(b.declarations)
+
 def testHeapStr(b):
     headerIO(b)
-    sb = SectionBuilder(HeapData('r11') )
-    h = sb.heapData 
-    h.initStr("testStr", "wikkyfoobartle")
-    h.initStr("testStr2", "ghalumpheve")
-    print(h)
-    #printStrPtr(sb.decls, "r11+{}".format(h.namedOffset["testStr"]))
-    printStrPtr(sb.decls, "r11", h.namedOffset["testStr2"])
+    sb = SectionBuilder(HeapData('r12',  byteSpace.bit64) )
+    #! why cut-off on first one?
+    sb.heap.initStr("testStr1", "wikkyfoobartle")
+    sb.heap.initStr("testStr2", "ghalumphev")
+    sb.heap.initStr("testStr3", "petalpeddlaring")
+    sb.heap.initStr("testStr4", "gonk")
+    print(sb.heap)
+    sb.heap.strPrint(sb.decls, "testStr1")
     printNL(sb.decls)
-    #! free not working
-    h.free(sb.decls)
+    sb.heap.strPrint(sb.decls, "testStr2")
+    printNL(sb.decls)
+    sb.heap.strPrint(sb.decls, "testStr3")
+    printNL(sb.decls)
+    sb.heap.strPrint(sb.decls, "testStr4")
+    printNL(sb.decls)
     sb.build(b.declarations)
 
     
