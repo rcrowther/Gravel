@@ -10,6 +10,9 @@ class Builder():
         self.sections = {"data":[], "bss":[], "rodata":[]}
         self.declarations = []
 
+    def extend(self, declList):
+        self.declarations.extend(declList)
+        
     def frame(self, frame):
         return frame.format(
             "\n".join(self.headers),
@@ -31,7 +34,6 @@ class Builder():
         b.append("declarations:")
         b.extend(self.declarations)
         return b
-    
 
     def __str__(self):
         b = []

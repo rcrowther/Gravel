@@ -6,11 +6,13 @@
 
 int foobar()
 {
-    //long xx = 432;
-
-    char testStr[] = "cool as tangerine, hot as coke";
-    //printf("%ld\n", xx);
-    //return xx;
+    long xx = 7;
+    long x = 3;
+    //char testStr[] = "cool as tangerine, hot as coke";
+    while (xx-- > 33) {
+    printf("%ld\n", xx);
+    };
+    return 0;
 }
 
 int main()

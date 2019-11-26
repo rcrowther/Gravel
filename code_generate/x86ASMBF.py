@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import sys
 import math
+import collections
 
 import CodeBuilder
 from assembly.nasmFrames import Frame64
@@ -47,9 +48,17 @@ class GType:
     array = 20
     struct = 21 
     
+
 ####
 # Build helpers
 #
+LabelAcc = 0
+
+def newLabel():
+    global LabelAcc
+    LabelAcc += 1
+    return "L" + str(LabelAcc)
+    
 class StrInit():
     # Helper to create an initialised string.
     # Works by breaking the string into chunks. These chunks
@@ -59,16 +68,16 @@ class StrInit():
     
     def __init__(self, s, chunkSize):
         # helper to form initialised strings for assembly
-        # @chunksize is usually byteSpace.bit64 
+        # @chunksize is usually byteSpace.bit64 = 8
         self.chunkSize = chunkSize
-        # lengyth, in bytes
+        # length, in bytes
         self.len = 0
         self.chunkString = self._strChunk(s)
 
     def _strChunk(self, s):
         # chunk a string into a given bytesize
-        # @return is an array of chunks, with the last padded with zeros
-        # to the chunksize
+        # @return is an array of chunks of chunksize, with the last
+        # chunk possibly short
         
         # convert this python str
         #s if it blows,, it blows        
@@ -95,7 +104,8 @@ class StrInit():
         return self.len
 
     def alignedSize(self):
-        # Returns a round number of chunksizes which will contain the string
+        # @return a number of bytes rounded up to chunksize which will 
+        # contain the string
         return (len(self.chunkString)) * self.chunkSize
     
     def initDecls(self, basePtr, startOffset):
@@ -118,7 +128,7 @@ class StrInit():
             topPtr += self.chunkSize
             
         # stamp in the null terminator
-        b.append('mov byte [{}+{}], 0'.format(basePtr, startOffset + (self.len*8)))        
+        b.append('mov byte [{}+{}], 0'.format(basePtr, startOffset + (self.len)))        
         return b
         
     def __repr__(self):
@@ -144,7 +154,9 @@ def cParameter(idx, v, visitV):
 
 def cParameterOffset(idx, v):
     return "add {}, {}".format(cParemeterRegisters[idx], v)
-    
+
+def cParameterOffsetNeg(idx, offset):
+    return "sub {}, {}".format(cParemeterRegisters[idx], offset)    
 
 # e.g. xmmo
 def cParameterFloat(idx, v, visitV):
@@ -203,6 +215,8 @@ def headerIO(b):
     b.sections['rodata'].append('io_fmt_reg_rbp: db 10, "= Reg rbp: %llu", 10, 0')
     b.sections['rodata'].append('io_fmt_reg_r9: db 10, "= Reg r9: %lld", 10, 0')
     b.sections['rodata'].append('io_fmt_reg_r10: db 10, "= Reg r10: %lld", 10, 0')
+    b.sections['rodata'].append('io_fmt_reg_r12: db 10, "= Reg r12: %lld", 10, 0')
+    b.sections['rodata'].append('io_fmt_reg_r14: db 10, "= Reg r14: %lld", 10, 0')
 
     b.sections['rodata'].append('io_fmt_reg_gen: db 10, "= GenReg", 10, "rax: %lld", 10, "rbx: %lld", 10, "rcx: %lld", 10, "rdx: %lld", 10, 0')
     b.sections['rodata'].append('io_fmt_reg_stack: db 10, "= StackReg", 10, "rsp: %llu", 10, "rbp: %llu", 10, 0')
@@ -286,22 +300,29 @@ def printlnStr(b, msg):
     b.declarations.append(cParameter(0, "io_fmt_str8_NL", False))
     b.declarations.append(cParameter(1, "testStr2", False))    
     b.declarations.append("call printf")
-        
+
+def printlnCommonStr(msgLabel):
+    b = []
+    b.append(cParameter(0, "io_fmt_str8_NL", False))
+    b.append(cParameter(1, msgLabel, False))    
+    b.append("call printf")
+    return b
+    
 def printNL(b):
     b.append(cParameter(0, "io_fmt_nl", False))
     b.append("call printf")
 
 #     "rdi", "rsi", "rdx", "rcx", "r8", "r9"
-PrintableRegisters = ['rax', 'rbx', 'rcx', 'rdx', 'rsp', 'rbp', 'r9' 'r10',]
+PrintableRegisters = ['rax', 'rbx', 'rcx', 'rdx', 'rsp', 'rbp', 'r9' 'r10', 'r12', 'r14']
 def printReg(b, reg):
     # cant do rdi, rsi?
     # Clobbers rdi, rsi
     if(reg not in PrintableRegisters):
         print("[Error] given register name not printable: {}\n    allowed registers {}".format(reg, PrintableRegisters))
         sys.exit()
-    b.declarations.append(cParameter(0, "io_fmt_reg_{}".format(reg), False))
-    b.declarations.append(cParameter(1, reg, False))
-    b.declarations.append("call printf")
+    b.append(cParameter(0, "io_fmt_reg_{}".format(reg), False))
+    b.append(cParameter(1, reg, False))
+    b.append("call printf")
 
 def printRegGen(b):
     # Clobbers rdi, rsi, rdx, rcx, r8
@@ -370,8 +391,11 @@ def mark(b):
 def commonNum(b, name, v):
     b.sections['data'].append("{}: dq {}".format(name, v))
 
-def commonStr(b, name, v):
-    b.sections['data'].append('{}: db "{}"'.format(name, v))
+def commonStr(b, name, msg, newLine):
+    nl = ''
+    if newLine:
+        nl = '10,' 
+    b.sections['data'].append('{}: db "{}", {} 0'.format(name, msg, nl))
         
 def commonBuffer(b, name):
     b.sections['data'].append("{}: dq 2048")
@@ -381,58 +405,65 @@ def commonBuffer(b, name):
 ####
 # Stack
 #
-class StackAlloc():
-    # Can be used per call
+class StackData():
+    # Allocate and set data on the stack.
+    # Only for use on an empty frame, and if you use it, don't do 
+    # anything outside it.
     def __init__(self):
+        # topPtr moves by bits
+        # grows in size. These are offsets, to be removed from rbp
         self.topPtr = 0
-        self.nameOffset = {}
-        self.declarations = []
+        # an anchor register. Preset to 'bpr'
+        self.addrReg = 'rbp'
+        # used for aligning. Preset to 8
+        self.byteWidth = byteSpace.bit64
+        self.namedOffset = {}
+        self.decls = []
                 
-    def declareData(self, name):
-        self.topPtr += 8
-        self.nameOffset[name] = math.floor(self.topPtr/8)
-
-    def initData(self, name, v):
-        self.declareData(name)
-        self.declarations.append("mov [bpr+{}*8], {}".format(self.nameOffset[name], v))
+    def declData(self, name, sz):
+        # @sz in bytes
+        #self.topPtr += 8
+        #self.namedOffset[name] = math.floor(self.topPtr/8)
+        self.topPtr += sz
+        self.namedOffset[name] = self.topPtr
         
-    #! replace with strInit()
-    def _strChunk(self, s, chunkSize):
-        #
-        l = len(s)
-        k, m = divmod(l, chunkSize)
-        #return (a[i * k + min(i, m):(i + 1) * k + min(i + 1, m)] for i in range(chunkSize))
-        ret = [s[(i * chunkSize):(i * chunkSize + chunkSize)] for i in range(k)]
-        last = s[l - m:]
-        #lastIdx = len(ret)-1
-        while (len(last) < chunkSize):
-           last += '\0'
-        ret.append(last)
-        return ret
+    def initData(self, name, sz, initValue):
+        self.declData(name, sz)
+        self.decls.append("mov qword [{}-{}], {}".format(self.addrReg, self.namedOffset[name], initValue))
         
-    #! replace with strInit()
-    def declareStr(self, name, s):
-        # set a pointer to next val
-        self.initData(name, self.topPtr+8)
-        # add string after
-        # chop up and move in,
-        ss = self._strChunk(s, 8)
-        #ptr = self.topPtr
-        for chunk in ss:
-            self.topPtr += 8
-            self.declarations.append("mov [bpr+{}], {}".format(self.topPtr, chunk))
+    def initStr(self, name, initStr):
+        # make helper
+        si = StrInit(initStr, self.byteWidth)
 
+        # Alloc space
+        self.declData(name, si.alignedSize())
+         
+        # add init declarations
+        #??? what about minus signs?
+        self.decls.extend( si.initDecls(self.addrReg, -self.namedOffset[name]))
+        
     def visit(self, name):
-        return "[bpr+{}*8]".format(self.nameOffset[name])
+        return "[bpr-{}*8]".format(self.namedOffset[name])
 
-    def build(self, b):
-        alignedSpace = math.ceil(self.topPtr/16) * 16 
-        b.declarations.append("sub rsp, {}".format(alignedSpace))
-        b.declarations.extend(self.declarations)
+    def intPrint(self, b, name):
+        b.append(cParameter(0, "io_fmt_int", False))
+        b.append(cParameter(1, "[{}-{}]".format(self.addrReg, self.namedOffset[name]), False))
+        b.append("call printf")
+
+    def strPrint(self, b, name):
+        b.append(cParameter(0, "io_fmt_str8", False))
+        b.append(cParameter(1, self.addrReg, False))
+        b.append(cParameterOffsetNeg(1, self.namedOffset[name]))     
+        b.append("call printf")
+         
+    def buildOpen(self, b):
+        alignedSpace = math.ceil(self.topPtr/16) * 16
+        b.append("sub rsp, {} ; alloc aligned space".format(alignedSpace))
+        b.extend(self.decls)
 
     def __repr__(self):
-        return "StackAlloc(topPtr:{}, nameOffset:{})".format(
-            self.topPtr, self.nameOffset
+        return "StackData(topPtr:{}, namedOffset:{}, decls:{})".format(
+            self.topPtr, self.namedOffset, self.decls
             )
     
     
@@ -442,34 +473,40 @@ class HeapData():
     # Use buildOpen() to build initcode (place before data manipulation) 
     # Utility functions will build access code.
     # declarations. 
-    def __init__(self, addrReg, byteWidth):
+    def __init__(self):
         # in bits
         self.size = 0           
-        self.addrReg = addrReg
-        self.byteWidth = byteWidth
+        # an anchor register. Preset to 'r12'
+        self.addrReg = 'r12'
+        # used for aligning. Preset to 8
+        self.byteWidth = byteSpace.bit64
         self.namedOffset = {}
-        self.initDecls = []
+        self.decls = []
         
-    def alloc(self, name, sz):
+    def declData(self, name, sz):
         # @sz in bytes
         self.namedOffset[name] = self.size 
         self.size += (sz*self.byteWidth)
 
-    def initData(self, name, sz, d):
+    def initData(self, name, sz, initValue):
         # @sz in bytes
-        self.alloc(name, sz)
-        self.initDecls.append('mov qword [{}+{}], {}'.format(self.addrReg, self.namedOffset[name], d))
+        self.declData(name, sz)
+        self.decls.append('mov qword [{}+{}], {}'.format(self.addrReg, self.namedOffset[name], initValue))
         
-    def initStr(self, name, s):
+    def initStr(self, name, initStr):
         # make helper
-        si = StrInit(s, self.byteWidth)
+        si = StrInit(initStr, self.byteWidth)
 
         # Alloc space
-        self.alloc(name, si.alignedSize())
+        self.declData(name, si.alignedSize())
          
         # add init declarations
-        #! this is writing out wrong
-        self.initDecls.extend( si.initDecls(self.addrReg, self.namedOffset[name]))
+        self.decls.extend( si.initDecls(self.addrReg, self.namedOffset[name]))
+        
+    def declArray(self, b, name, elemSz, sz):
+        # elemSz size of elements in bytes
+        # @sz mun of elements in array
+        self.declData(name, elemSz*sz)
         
     def set(self, b, name, v):
         b.append( "mov qword [{}+{}*{}], {}".format(self.addrReg, self.namedOffset[name], self.byteWidth, v))
@@ -494,8 +531,8 @@ class HeapData():
         b.append("call malloc")
         b.append(cReturn(self.addrReg, False))
         # add the inits
-        b.extend(self.initDecls)
-        
+        b.extend(self.decls)
+    
     def buildClose(self, b):
         self._free(b)
 
@@ -504,25 +541,44 @@ class HeapData():
         b.append("call free")
             
     def __repr__(self):
-        return "HeapData(byteWidth:{}, size:{}, addrReg:{}, namedOffset:{}, self.initDecls:{})".format(
-            self.byteWidth, self.size, self.addrReg, self.namedOffset, self.initDecls
+        return "HeapData(byteWidth:{}, size:{}, addrReg:{}, namedOffset:{}, decls:{})".format(
+            self.byteWidth, self.size, self.addrReg, self.namedOffset, self.decls
             )
 
 
 class SectionBuilder():
-    def __init__(self, heapData):
+    def __init__(self, heapData, stackData):
         self.initDecls = []
         self.decls = []
         self.heap = heapData
+        self.stack = stackData
 
-    def build(self, b):
+    def append(self, v):
+        self.decls.append(v)
+
+    def extend(self, v):
+        self.decls.extend(v)  
+              
+    # def build(self, b):
+        # if (self.heap):
+            # self.heap.buildOpen(self.decls) 
+        # if (self.stack):
+            # self.stack.buildOpen(self.decls) 
+        # b.extend(self.initDecls)
+        # if (self.heap):
+            # self.heap.buildClose(self.decls)         
+        # b.extend(self.decls)
+
+    def build(self):
+        b = []
         if (self.heap):
-            self.heap.buildOpen(self.initDecls) 
-        b.extend(self.initDecls)
-        if (self.heap):
-            self.heap.buildClose(self.decls)         
+            self.heap.buildOpen(b) 
+        if (self.stack):
+            self.stack.buildOpen(b) 
         b.extend(self.decls)
-            
+        if (self.heap):
+            self.heap.buildClose(b)         
+        return b            
 ###
 # Malloc
 #
@@ -585,15 +641,121 @@ def arrayRead(b, name, idx):
     b.declarations.append("call getchar")
     b.declarations.append(cReturn(idxAcess(name, idx)))
 
+###
+# if
+# 
+#? upside down
+#? works for looks
+JumpOps = {
+    'gt':  "jle",     
+    'lt':  "jns",
+    'lte': "jg",
+    'gte': "js",
+    'eq':  "jne", 
+    'neq': "je",      
+    }
+
+
+    
+IfStack = []
+    
+def ifOpen(b, value, cmped, typ):
+    # if value (op) cmped
+    # @value can be literal or a visited address (32bit?)
+    # @cmped can be literal or a visited address (32bit?)
+    # @typ 'gt', 'gte' etc
+    jLabel = newLabel()
+    IfStack.append(jLabel)
+    #! why use register? guarentee 64bit?
+    b.append("mov r14, {}".format(value))
+    b.append("cmp r14, {}".format(cmped))
+    op = JumpOps[typ]
+    b.append("{} .{}".format(op, jLabel)) 
+            
+def ifClose(b):
+    jLabel = IfStack.pop()
+    b.append(".{}".format(jLabel))
+ 
+        
 ##
 # loop
 #
-def whileNotZero(b, countValue, body):
-    loopName = "loop1"
-    b.declarations.append("mov rcx, {}".format(countValue))
-    b.declarations.append("{}:".format(loopName))
-    body(b)
-    b.declarations.append("dec rcx\ncmp rcx, 0\njg {}".format(loopName))
+LoopOps = {
+    'gt':  "jg",     
+    'lt':  "js",
+    'lte': "jle",
+    'gte': "jns",
+    'eq':  "je", 
+    'neq': "jne",      
+    }
+    
+LoopStack = []
+CountLoopData = collections.namedtuple('CountLoopData', 'initLabel, jLabel, reg')
+
+def countLoopOpen(b, count, reg):
+    d = CountLoopData(newLabel(), newLabel(), reg)
+    LoopStack.append( d )
+    b.append("mov {}, {}".format(reg, count))
+    b.append("jmp .{}".format(d.initLabel))
+    b.append(".{}".format(d.jLabel))
+
+def countLoopClose(b):
+    d = LoopStack.pop()
+    b.append("dec {}".format(d.reg))
+    b.append(".{}".format(d.initLabel))
+    b.append("cmp {}, 0".format(d.reg))
+    b.append("jnle .{}".format(d.jLabel)) 
+
+def countLoop0Open(b, count, reg):
+    d = CountLoopData(newLabel(), newLabel(), reg)
+    LoopStack.append( d )
+    b.append("mov {}, {}".format(reg, count))
+    b.append("jmp .{}".format(d.initLabel))
+    b.append(".{}".format(d.jLabel))
+
+def countLoop0Close(b):
+    d = LoopStack.pop()
+    b.append(".{}".format(d.initLabel))
+    b.append("dec {}".format(d.reg))
+    b.append("cmp {}, 0".format(d.reg))
+    b.append("jnl .{}".format(d.jLabel)) 
+
+#! backwards range?
+#! with zero?
+def rangeLoopOpen(b, start, end, reg):
+    d = RangeLoopData(end, newLabel(), newLabel(), reg)
+    LoopStack.append( d )
+    b.append("mov {}, {}".format(reg, start))
+    b.append("jmp .{}".format(d.initLabel))
+    b.append(".{}".format(d.jLabel))
+
+def rangeLoop0Close(b):
+    d = LoopStack.pop()
+    b.append(".{}".format(d.initLabel))
+    b.append("dec {}".format(d.reg))
+    b.append("cmp {}, {}".format(d.reg, d.end))
+    b.append("jnl .{}".format(d.jLabel)) 
+    
+WhileData = collections.namedtuple('WhileData', 'typ, cmped, initLabel, jLabel, reg')
+            
+def whileOpen(b, count,  typ, cmped, reg):
+    # while count (op) cmped {}
+    # @value can be literal or a visited address (32bit?)
+    # @cmped can be literal or a visited address (32bit?)
+    # @typ 'gt', 'gte' etc
+    d = WhileData(typ, cmped, newLabel(), newLabel(), reg)
+    LoopStack.append( d )
+    b.append("mov {}, {}".format(reg, count))
+    b.append("jmp .{}".format(d.initLabel))
+    b.append(".{}".format(d.jLabel))
+            
+def whileClose(b):
+    d = LoopStack.pop()
+    b.append(".{}".format(d.initLabel))
+    #! why use register? guarentee 64bit?
+    b.append("cmp {}, {}".format(d.reg, d.cmped))
+    b.append("{} .{}".format(LoopOps[d.typ], d.jLabel)) 
+
 
 
 ASM = {
@@ -607,7 +769,6 @@ ASM = {
 "Array.dec" : arrayDec,
 #"write" : arrayWrite, 
 "read" : arrayRead,
-"whileNotZero" : whileNotZero,
 }
 
 
@@ -643,9 +804,28 @@ def testPrintDebug(b):
     printRegGen(b)
     printRegStr(b)
 
-def testStackAlloc():
-    a = StackAlloc()
-    a.declareData("testVar1")
+        
+def testStaticAlloc(b):
+    headerIO(b)
+    commonNum(b, "commonNum1", 1212)
+    commonStr(b, "commonStr1", "insane drift")
+    b.declarations.append("mov rax, [commonNum1]")
+    printReg(b, 'rax')
+    printNL(b)
+
+def testStaticArray(b):
+    headerIO(b)
+    ASM["Array"](b, 64, "paving")
+    arrayInc(b, 'paving', 3)
+    arrayInc(b, 'paving', 3)
+    arrayInc(b, 'paving', 3)
+    arrayWrite(b, 'paving', 3)
+    stdoutNewLine(b)
+    ASM["free"](b, "paving")
+        
+def testStackData():
+    a = StackData()
+    a.declData("testVar1")
     print(a.visit("testVar1"))
     a.initData("initVar", 674)
     print(a.visit("initVar"))
@@ -655,21 +835,43 @@ def testStackAlloc():
     print(a.visit("after"))
     print(str(a))
     print("\n".join(a.declarations))
-    
-def testStaticAlloc(b):
+
+def testStackInt(b):
     headerIO(b)
-    commonNum(b, "commonNum1", 1212)
-    commonStr(b, "commonStr1", "insane drift")
-    b.declarations.append("mov rax, [commonNum1]")
-    printReg(b, 'rax')
-    printNL(b)
+    sb = SectionBuilder(None, StackData())
+    sb.stack.initData("testData1", byteSpace.bit64, '66')
+    sb.stack.initData("testData2", byteSpace.bit64, '77')
+    sb.stack.initData("testData3", byteSpace.bit64, '99')
+    print(sb.stack)
+    sb.stack.intPrint(sb.decls, 'testData1')
+    sb.stack.intPrint(sb.decls, 'testData2')
+    sb.stack.intPrint(sb.decls, 'testData3')
+    printNL(sb.decls)
+    b.extend(sb.build())
+
 
 def testStackString(b):
-    pass
+    headerIO(b)
+    sb = SectionBuilder(None, StackData())
+    sb.stack.initStr("testStr1", "wikkyfoobartle")
+    sb.stack.initStr("testStr2", "ghalumphev")
+    sb.stack.initStr("testStr3", "petalpeddlaring")
+    sb.stack.initStr("testStr4", "gonk")
+    print(sb.stack)
+    sb.stack.strPrint(sb.decls, "testStr1")
+    printNL(sb.decls)
+    sb.stack.strPrint(sb.decls, "testStr2")
+    printNL(sb.decls)
+    sb.stack.strPrint(sb.decls, "testStr3")
+    printNL(sb.decls)
+    sb.stack.strPrint(sb.decls, "testStr4")
+    printNL(sb.decls)
+    b.extend(sb.build())
+
         
 def testHeapData(b):
     headerIO(b)
-    a = HeapData('r12',  byteSpace.bit64)
+    a = HeapData()
     # a.alloc('stonk', byteSpace.bit64)
     # a.alloc('blimey', byteSpace.bit64)
     #a.build(b)
@@ -681,24 +883,22 @@ def testHeapData(b):
     # printRegGen(b)
     ##printReg(b, 'rax')
 
-def testHeapAlloc(b):
+def testHeapInt(b):
     headerIO(b)
-    sb = SectionBuilder(HeapData('r12',  byteSpace.bit64))
+    sb = SectionBuilder(HeapData(), None)
     sb.heap.initData("testData1", byteSpace.bit8, '66')
     sb.heap.initData("testData2", byteSpace.bit8, '77')
     sb.heap.initData("testData3", byteSpace.bit8, '99')
     print(sb.heap)
-    #intPrint(sb.decls, sb.heap.addrReg, True)
     sb.heap.intPrint(sb.decls, 'testData1')
     sb.heap.intPrint(sb.decls, 'testData2')
     sb.heap.intPrint(sb.decls, 'testData3')
     printNL(sb.decls)
-    #sb.heap.free(sb.decls)
-    sb.build(b.declarations)
+    b.extend(sb.build())
 
 def testHeapStr(b):
     headerIO(b)
-    sb = SectionBuilder(HeapData('r12',  byteSpace.bit64) )
+    sb = SectionBuilder(HeapData(), None)
     #! why cut-off on first one?
     sb.heap.initStr("testStr1", "wikkyfoobartle")
     sb.heap.initStr("testStr2", "ghalumphev")
@@ -713,22 +913,54 @@ def testHeapStr(b):
     printNL(sb.decls)
     sb.heap.strPrint(sb.decls, "testStr4")
     printNL(sb.decls)
-    sb.build(b.declarations)
+    b.extend(sb.build())
 
+def testHeapArray(b):
+    headerIO(b)
+    sb = SectionBuilder(HeapData(), None)
+    sb.heap.declArray(sb.decls, 'testArray1', byteSpace.bit64, 12)
+    sb.heap.intArrayPrint(sb.decls, "testArray1")
+    printNL(sb.decls)    
+    b.extend(sb.build())
+
+
+
+        
+def testIf(b):
+    headerIO(b)
+    commonStr(b, "ind",  "if code runs", True)
+    commonStr(b, "done", "done", False)
+    sb = SectionBuilder(HeapData(), None)
+    sb.heap.initData("testData1", byteSpace.bit64, '66')
+    sb.heap.initData("testData2", byteSpace.bit64, '-7')
+    ifOpen(sb.decls, '-7', '0', 'gt')
+    #ifOpen(sb.decls, '4499', '0', 'gt')
+    sb.extend( printlnCommonStr("ind") )
+    ifClose(sb.decls)
+    sb.extend( printlnCommonStr("done") )
+    b.extend(sb.build())
+    
+def testCountLoop(b):
+    headerIO(b)
+    sb = SectionBuilder(None, None)
+    countLoop0Open(sb.decls, '7', 'r14')
+    printReg(sb.decls, 'r14')
+    countLoop0Close(sb.decls)
+    printNL(sb.decls)    
+    b.extend(sb.build())
     
 def testWhile(b):
-    pass   
-     
-def testArray(b):
     headerIO(b)
-    ASM["Array"](b, 64, "paving")
-    arrayInc(b, 'paving', 3)
-    arrayInc(b, 'paving', 3)
-    arrayInc(b, 'paving', 3)
-    arrayWrite(b, 'paving', 3)
-    stdoutNewLine(b)
-    ASM["free"](b, "paving")
-   
+    sb = SectionBuilder(None, None)
+    #def whileOpen(b, count, typ, cmped, reg):
+    whileOpen(sb.decls, '8', 'gt', 4, 'r14')
+    sb.append( "dec r14" )
+    printReg(sb.decls, 'r14')
+    whileClose(sb.decls)
+    printNL(sb.decls)    
+    b.extend(sb.build())
+
+       
 # def testComment(b):
     #! cant work, currently
     #autoComment(b, [ 

@@ -1,6 +1,10 @@
 	.file	"test.c"
 	.intel_syntax noprefix
 	.text
+	.section	.rodata
+.LC0:
+	.string	"%ld\n"
+	.text
 	.globl	foobar
 	.type	foobar, @function
 foobar:
@@ -11,25 +15,23 @@ foobar:
 	.cfi_offset 6, -16
 	mov	rbp, rsp
 	.cfi_def_cfa_register 6
-	sub	rsp, 48
-	mov	rax, QWORD PTR fs:40
-	mov	QWORD PTR -8[rbp], rax
-	xor	eax, eax
-	movabs	rax, 2338319423421509475
-	movabs	rdx, 7956015996579242356
-	mov	QWORD PTR -48[rbp], rax
-	mov	QWORD PTR -40[rbp], rdx
-	movabs	rax, 6998721842770881637
-	mov	QWORD PTR -32[rbp], rax
-	mov	DWORD PTR -24[rbp], 1868767347
-	mov	WORD PTR -20[rbp], 25963
-	mov	BYTE PTR -18[rbp], 0
-	nop
-	mov	rcx, QWORD PTR -8[rbp]
-	xor	rcx, QWORD PTR fs:40
-	je	.L2
-	call	__stack_chk_fail@PLT
+	sub	rsp, 16
+	mov	QWORD PTR -16[rbp], 7
+	mov	QWORD PTR -8[rbp], 3
+	jmp	.L2
+.L3:
+	mov	rax, QWORD PTR -16[rbp]
+	mov	rsi, rax
+	lea	rdi, .LC0[rip]
+	mov	eax, 0
+	call	printf@PLT
 .L2:
+	mov	rax, QWORD PTR -16[rbp]
+	lea	rdx, -1[rax]
+	mov	QWORD PTR -16[rbp], rdx
+	cmp	rax, 33
+	jg	.L3
+	mov	eax, 0
 	leave
 	.cfi_def_cfa 7, 8
 	ret
