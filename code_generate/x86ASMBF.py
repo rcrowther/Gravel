@@ -107,7 +107,12 @@ class StrInit():
         # @return a number of bytes rounded up to chunksize which will 
         # contain the string
         return (len(self.chunkString)) * self.chunkSize
-    
+
+    def alignedSize16(self):
+        # @return a number of bytes rounded up to chunksize which will 
+        # contain the string
+        return (((self.len >> 4) + 1) << 4)
+            
     def initDecls(self, basePtr, startOffset):
         # Append a string of instructions to initialise a string
         # @s the string
@@ -192,6 +197,7 @@ def frameClose(b):
     
 ## Printers
 #! What about returns
+    
 def headerIO(b):
     print(str(b ))
     b.headers.append("extern printf")
@@ -289,17 +295,29 @@ def printStr(b, msg):
     b.declarations.append(cParameter(1, "testStr", False))    
     b.declarations.append("call printf")
 
+def printlnStr(msg):
+    si = StrInit(msg, byteSpace.bit64)
+    sz = si.alignedSize16()
+    b = [] 
+    b.append("add rsp, {}".format(sz))
+    b.extend( si.initDecls('rsp', 0))
+    b.append(cParameter(0, "io_fmt_str8_NL", False))
+    b.append(cParameter(1, 'rsp', False))    
+    b.append("call printf")
+    b.append("sub rsp, {}".format(sz))
+    return b
+    
 def printStrPtr(b, ptrReg, offset):
     b.append(cParameter(0, "io_fmt_str8", False))
     b.append(cParameter(1, ptrReg, False))
     b.append(cParameterOffset(1, offset))     
     b.append("call printf")
     
-def printlnStr(b, msg):
-    b.sections['rodata'].append('testStr2: db "{}", 0'.format(msg))
-    b.declarations.append(cParameter(0, "io_fmt_str8_NL", False))
-    b.declarations.append(cParameter(1, "testStr2", False))    
-    b.declarations.append("call printf")
+# def printlnStr(b, msg):
+    # b.sections['rodata'].append('testStr2: db "{}", 0'.format(msg))
+    # b.declarations.append(cParameter(0, "io_fmt_str8_NL", False))
+    # b.declarations.append(cParameter(1, "testStr2", False))    
+    # b.declarations.append("call printf")
 
 def printlnCommonStr(msgLabel):
     b = []
@@ -314,60 +332,80 @@ def printNL(b):
 
 #     "rdi", "rsi", "rdx", "rcx", "r8", "r9"
 PrintableRegisters = ['rax', 'rbx', 'rcx', 'rdx', 'rsp', 'rbp', 'r9' 'r10', 'r12', 'r14']
-def printReg(b, reg):
+# def printReg(b, reg):
+    # # cant do rdi, rsi?
+    # # Clobbers rdi, rsi
+    # if(reg not in PrintableRegisters):
+        # print("[Error] given register name not printable: {}\n    allowed registers {}".format(reg, PrintableRegisters))
+        # sys.exit()
+    # b.append(cParameter(0, "io_fmt_reg_{}".format(reg), False))
+    # b.append(cParameter(1, reg, False))
+    # b.append("call printf")
+
+def printReg(reg):
     # cant do rdi, rsi?
     # Clobbers rdi, rsi
     if(reg not in PrintableRegisters):
         print("[Error] given register name not printable: {}\n    allowed registers {}".format(reg, PrintableRegisters))
         sys.exit()
-    b.append(cParameter(0, "io_fmt_reg_{}".format(reg), False))
-    b.append(cParameter(1, reg, False))
-    b.append("call printf")
-
-def printRegGen(b):
+    return [
+        cParameter(0, "io_fmt_reg_{}".format(reg), False),
+        cParameter(1, reg, False),
+        "call printf",
+        ]
+        
+def printRegGen():
     # Clobbers rdi, rsi, rdx, rcx, r8
     # set rdx before params clobber it
-    b.declarations.append(cParameter(4,  "rdx", False))    
-    b.declarations.append(cParameter(0, "io_fmt_reg_gen", False))
-    b.declarations.append(cParameter(1, "rax", False))     
-    b.declarations.append(cParameter(2,  "rbx", False))     
-    b.declarations.append(cParameter(3,  "rcx", False))     
-    b.declarations.append("call printf")  
-
-    
-def printRegStack(b):
+    return [
+        cParameter(4,  "rdx", False),
+        cParameter(0, "io_fmt_reg_gen", False),
+        cParameter(1, "rax", False),     
+        cParameter(2,  "rbx", False),     
+        cParameter(3,  "rcx", False),   
+        "call printf",
+        ]
+        
+def printRegStack():
     # Clobbers rdi, rsi, rdx
-    b.declarations.append(cParameter(0, "io_fmt_reg_stack", False))
-    b.declarations.append(cParameter(1, "rbp", False))     
-    b.declarations.append(cParameter(2,  "rsp", False)) 
-    b.declarations.append("call printf")
- 
-def printRegStr(b):
+    return [
+        cParameter(0, "io_fmt_reg_stack", False),
+        cParameter(1, "rbp", False),     
+        cParameter(2,  "rsp", False), 
+        "call printf",
+        ]
+       
+def printRegStr():
     # Clobbers rdi, rdx
-    b.declarations.append(cParameter(0, "io_fmt_reg_str", False))
-    # param 1 is rsi :)
-    b.declarations.append(cParameter(2,  "rdi", False)) 
-    b.declarations.append("call printf")  
-
-    
-def printRegExt1(b):
+    return [
+        cParameter(0, "io_fmt_reg_str", False),
+        # param 1 is rsi :)
+        cParameter(2,  "rdi", False), 
+        "call printf",
+        ]
+       
+def printRegExt1():
     # Clobbers rdi, rsi, rdx, rcx, r8
-    b.declarations.append(cParameter(0, "io_fmt_reg_64_1", False))
-    b.declarations.append(cParameter(1, "r8", False))     
-    b.declarations.append(cParameter(2, "r9", False))     
-    b.declarations.append(cParameter(3, "r10", False))     
-    b.declarations.append(cParameter(4, "r11", False))         
-    b.declarations.append("call printf")
+    return [
+        cParameter(0, "io_fmt_reg_64_1", False),
+        cParameter(1, "r8", False),     
+        cParameter(2, "r9", False),     
+        cParameter(3, "r10", False),     
+        cParameter(4, "r11", False),         
+        "call printf",
+        ]
 
-
-def printRegExt2(b):
+def printRegExt2():
     # Clobbers rdi, rsi, rdx, rcx, r8
-    b.declarations.append(cParameter(0, "io_fmt_reg_64_2", False))
-    b.declarations.append(cParameter(1, "r12", False))     
-    b.declarations.append(cParameter(2, "r13", False))     
-    b.declarations.append(cParameter(3, "r14", False))     
-    b.declarations.append(cParameter(4, "r15", False))         
-    b.declarations.append("call printf")
+    return [
+        cParameter(0, "io_fmt_reg_64_2", False),
+        cParameter(1, "r12", False),     
+        cParameter(2, "r13", False),     
+        cParameter(3, "r14", False),     
+        cParameter(4, "r15", False),         
+        "call printf",
+        ]
+       
 
 
 ###
@@ -654,11 +692,8 @@ JumpOps = {
     'eq':  "jne", 
     'neq': "je",      
     }
-
-
     
-IfStack = []
-    
+IfStack = []    
 def ifOpen(b, value, cmped, typ):
     # if value (op) cmped
     # @value can be literal or a visited address (32bit?)
@@ -722,39 +757,47 @@ def countLoop0Close(b):
 
 #! backwards range?
 #! with zero?
-def rangeLoopOpen(b, start, end, reg):
-    d = RangeLoopData(end, newLabel(), newLabel(), reg)
+RangeLoopData = collections.namedtuple('RangeLoopData', 'until, inc, initLabel, jLabel, reg')
+
+def rangeLoopOpen(b, start, until, reg):
+    d = RangeLoopData(until, (start < until), newLabel(), newLabel(), reg)
     LoopStack.append( d )
     b.append("mov {}, {}".format(reg, start))
     b.append("jmp .{}".format(d.initLabel))
     b.append(".{}".format(d.jLabel))
 
-def rangeLoop0Close(b):
+def rangeLoopClose(b):
     d = LoopStack.pop()
+    incdec  = 'dec'
+    if d.inc:
+        incdec = 'inc'
+    b.append("{} {}".format(incdec, d.reg))
     b.append(".{}".format(d.initLabel))
-    b.append("dec {}".format(d.reg))
-    b.append("cmp {}, {}".format(d.reg, d.end))
-    b.append("jnl .{}".format(d.jLabel)) 
+    b.append("cmp {}, {}".format(d.reg, d.until))
+    cmpOp = 'jnle'
+    if d.inc:
+       cmpOp = 'jnge'   
+    b.append("{} .{}".format(cmpOp, d.jLabel)) 
     
-WhileData = collections.namedtuple('WhileData', 'typ, cmped, initLabel, jLabel, reg')
+# WhileData = collections.namedtuple('WhileData', 'typ, cmped, initLabel, jLabel, reg')
             
-def whileOpen(b, count,  typ, cmped, reg):
-    # while count (op) cmped {}
-    # @value can be literal or a visited address (32bit?)
-    # @cmped can be literal or a visited address (32bit?)
-    # @typ 'gt', 'gte' etc
-    d = WhileData(typ, cmped, newLabel(), newLabel(), reg)
-    LoopStack.append( d )
-    b.append("mov {}, {}".format(reg, count))
-    b.append("jmp .{}".format(d.initLabel))
-    b.append(".{}".format(d.jLabel))
+# def whileOpen(b, count,  typ, cmped, reg):
+    # # while count (op) cmped {}
+    # # @value can be literal or a visited address (32bit?)
+    # # @cmped can be literal or a visited address (32bit?)
+    # # @typ 'gt', 'gte' etc
+    # d = WhileData(typ, cmped, newLabel(), newLabel(), reg)
+    # LoopStack.append( d )
+    # b.append("mov {}, {}".format(reg, count))
+    # b.append("jmp .{}".format(d.initLabel))
+    # b.append(".{}".format(d.jLabel))
             
-def whileClose(b):
-    d = LoopStack.pop()
-    b.append(".{}".format(d.initLabel))
-    #! why use register? guarentee 64bit?
-    b.append("cmp {}, {}".format(d.reg, d.cmped))
-    b.append("{} .{}".format(LoopOps[d.typ], d.jLabel)) 
+# def whileClose(b):
+    # d = LoopStack.pop()
+    # b.append(".{}".format(d.initLabel))
+    # #! why use register? guarentee 64bit?
+    # b.append("cmp {}, {}".format(d.reg, d.cmped))
+    # b.append("{} .{}".format(LoopOps[d.typ], d.jLabel)) 
 
 
 
@@ -790,19 +833,30 @@ def testPrint(b):
     addrToStr(b, 'IntToPrint', 'mch_str_buf')
     println(b, 'mch_str_buf')
     printStr(b, "done")
-    printlnStr(b, "doner")
+    #printlnStr(b, "doner")
+
+def testPrintReg(b):
+    headerIO(b)  
+    #b.extend(printReg('rbp'))
+    #b.extend(printReg('rsp'))
+    #b.extend(printReg('rsp'))
+    b.append("mov rax, 77")  
+    b.extend(printReg('rax'))
     
-def testPrintDebug(b):
+def testPrintStr(b):
     headerIO(b)
-    printReg(b, 'rbp')
-    printReg(b, 'rsp')
-    printReg(b, 'rsp')
-    b.declarations.append('mov rax, 363')
-    printReg(b, 'rax')
-    printRegStr(b)
-    b.declarations.append('mov rcx, 757')
-    printRegGen(b)
-    printRegStr(b)
+    r = printlnStr("Maybe*those words*should*go*uunspoken")
+    b.extend(r)
+    
+def testPrintRegGroups(b):
+    headerIO(b)
+    b.append('mov rax, 363')
+    b.append('mov rcx, 757')
+    b.extend(printRegGen())
+    b.extend(printRegStack())
+    b.extend(printRegStr())
+    b.extend(printRegExt1())
+    b.extend(printRegExt2())
 
         
 def testStaticAlloc(b):
@@ -810,7 +864,8 @@ def testStaticAlloc(b):
     commonNum(b, "commonNum1", 1212)
     commonStr(b, "commonStr1", "insane drift")
     b.declarations.append("mov rax, [commonNum1]")
-    printReg(b, 'rax')
+    #printReg(b, 'rax')
+    b.extend(printReg('rax'))
     printNL(b)
 
 def testStaticArray(b):
@@ -944,21 +999,38 @@ def testCountLoop(b):
     headerIO(b)
     sb = SectionBuilder(None, None)
     countLoop0Open(sb.decls, '7', 'r14')
-    printReg(sb.decls, 'r14')
+    #printReg(sb.decls, 'r14')
+    sb.extend(printReg('r14'))
     countLoop0Close(sb.decls)
     printNL(sb.decls)    
     b.extend(sb.build())
-    
-def testWhile(b):
+
+def testRangeLoop(b):
     headerIO(b)
     sb = SectionBuilder(None, None)
-    #def whileOpen(b, count, typ, cmped, reg):
-    whileOpen(sb.decls, '8', 'gt', 4, 'r14')
-    sb.append( "dec r14" )
-    printReg(sb.decls, 'r14')
-    whileClose(sb.decls)
+    rangeLoopOpen(sb.decls, '7', '4', 'r14')
+    #printReg(sb.decls, 'r14')
+    sb.extend(printReg('r14'))
+    rangeLoopClose(sb.decls)
+    rangeLoopOpen(sb.decls, '4', '7', 'r14')
+    #printReg(sb.decls, 'r14')
+    sb.extend(printReg('r14'))
+    rangeLoopClose(sb.decls)
     printNL(sb.decls)    
     b.extend(sb.build())
+
+
+    
+# def testWhile(b):
+    # headerIO(b)
+    # sb = SectionBuilder(None, None)
+    # #def whileOpen(b, count, typ, cmped, reg):
+    # whileOpen(sb.decls, '8', 'gt', 4, 'r14')
+    # sb.append( "dec r14" )
+    # printReg(sb.decls, 'r14')
+    # whileClose(sb.decls)
+    # printNL(sb.decls)    
+    # b.extend(sb.build())
 
        
 # def testComment(b):

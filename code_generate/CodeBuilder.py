@@ -10,6 +10,9 @@ class Builder():
         self.sections = {"data":[], "bss":[], "rodata":[]}
         self.declarations = []
 
+    def append(self, declList):
+        self.declarations.append(declList)
+        
     def extend(self, declList):
         self.declarations.extend(declList)
         

@@ -131,6 +131,9 @@ if __name__ == "__main__":
     else:  
         b = CodeBuilder.Builder()
         #x86ASMBF.testPrint(b)
+        #x86ASMBF.testPrintReg(b)
+        x86ASMBF.testPrintRegGroups(b)
+        #x86ASMBF.testPrintStr(b)
         #x86ASMBF.testPrintDebug(b)
         #x86ASMBF.testStaticAlloc(b)
         #x86ASMBF.testStackInt(b)
@@ -139,7 +142,7 @@ if __name__ == "__main__":
         #x86ASMBF.testHeapInt(b)
         #x86ASMBF.testHeapStr(b)
         #x86ASMBF.testIf(b)
-        x86ASMBF.testWhile(b)
+        #x86ASMBF.testRangeLoop(b)
         
         print('go')
         #x86ASMBF.testStruct(b)

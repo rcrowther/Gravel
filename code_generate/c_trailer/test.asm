@@ -3,7 +3,7 @@
 	.text
 	.section	.rodata
 .LC0:
-	.string	"%ld\n"
+	.string	"%s"
 	.text
 	.globl	foobar
 	.type	foobar, @function
@@ -16,22 +16,22 @@ foobar:
 	mov	rbp, rsp
 	.cfi_def_cfa_register 6
 	sub	rsp, 16
-	mov	QWORD PTR -16[rbp], 7
-	mov	QWORD PTR -8[rbp], 3
-	jmp	.L2
-.L3:
-	mov	rax, QWORD PTR -16[rbp]
+	mov	rax, QWORD PTR fs:40
+	mov	QWORD PTR -8[rbp], rax
+	xor	eax, eax
+	mov	DWORD PTR -14[rbp], 1802398064
+	mov	WORD PTR -10[rbp], 121
+	lea	rax, -14[rbp]
 	mov	rsi, rax
 	lea	rdi, .LC0[rip]
 	mov	eax, 0
 	call	printf@PLT
-.L2:
-	mov	rax, QWORD PTR -16[rbp]
-	lea	rdx, -1[rax]
-	mov	QWORD PTR -16[rbp], rdx
-	cmp	rax, 33
-	jg	.L3
 	mov	eax, 0
+	mov	rdx, QWORD PTR -8[rbp]
+	xor	rdx, QWORD PTR fs:40
+	je	.L3
+	call	__stack_chk_fail@PLT
+.L3:
 	leave
 	.cfi_def_cfa 7, 8
 	ret
