@@ -109,8 +109,9 @@ class StrInit():
         return (len(self.chunkString)) * self.chunkSize
 
     def alignedSize16(self):
-        # @return a number of bytes rounded up to chunksize which will 
-        # contain the string
+        # @return a number of bytes rounded up to 16bits which will 
+        # contain the string. For x64 assembluy, aligning the stack to 
+        # 16bits is a call convention.
         return (((self.len >> 4) + 1) << 4)
             
     def initDecls(self, basePtr, startOffset):
@@ -445,29 +446,41 @@ def commonBuffer(b, name):
 #
 class StackData():
     # Allocate and set data on the stack.
-    # Only for use on an empty frame, and if you use it, don't do 
-    # anything outside it.
+    # Don't do anything outside it until result() has been handled.
+    # Does not assume it will reset the stack pointer. If you want
+    # that, wrap the class in store/reset code. 
     def __init__(self):
         # topPtr moves by bits
         # grows in size. These are offsets, to be removed from rbp
         self.topPtr = 0
         # an anchor register. Preset to 'bpr'
         self.addrReg = 'rbp'
-        # used for aligning. Preset to 8
+        # used for chopping strings. Preset to 8
         self.byteWidth = byteSpace.bit64
         self.namedOffset = {}
         self.decls = []
                 
+    def alignedSize16(self, sz):
+        # @return a number of bytes rounded up to 16bits which will 
+        # contain the string. For x64 assembluy, aligning the stack to 
+        # 16bits is a call convention.
+        #! slower, more efficient
+        #alignedSpace = math.ceil(self.topPtr/16) << 4
+        return (((sz >> 4) + 1) << 4)
+        
     def declData(self, name, sz):
         # @sz in bytes
-        #self.topPtr += 8
-        #self.namedOffset[name] = math.floor(self.topPtr/8)
         self.topPtr += sz
         self.namedOffset[name] = self.topPtr
         
     def initData(self, name, sz, initValue):
+        # @sz in bytes
         self.declData(name, sz)
-        self.decls.append("mov qword [{}-{}], {}".format(self.addrReg, self.namedOffset[name], initValue))
+        self.decls.append("mov qword [{}-{}], {}".format(
+            self.addrReg, 
+            self.namedOffset[name], 
+            initValue
+            ))
         
     def initStr(self, name, initStr):
         # make helper
@@ -483,28 +496,33 @@ class StackData():
     def visit(self, name):
         return "[bpr-{}*8]".format(self.namedOffset[name])
 
-    def intPrint(self, b, name):
+    def intPrint(self, name):
+        b = []
         b.append(cParameter(0, "io_fmt_int", False))
         b.append(cParameter(1, "[{}-{}]".format(self.addrReg, self.namedOffset[name]), False))
         b.append("call printf")
+        return b
 
-    def strPrint(self, b, name):
+    def strPrint(self, name):
+        b = []
         b.append(cParameter(0, "io_fmt_str8", False))
         b.append(cParameter(1, self.addrReg, False))
         b.append(cParameterOffsetNeg(1, self.namedOffset[name]))     
         b.append("call printf")
+        return b
          
-    def buildOpen(self, b):
-        alignedSpace = math.ceil(self.topPtr/16) * 16
+    def resultOpen(self):
+        b = []
+        alignedSpace = self.alignedSize16(self.topPtr)
         b.append("sub rsp, {} ; alloc aligned space".format(alignedSpace))
         b.extend(self.decls)
-
+        return b
+        
     def __repr__(self):
         return "StackData(topPtr:{}, namedOffset:{}, decls:{})".format(
             self.topPtr, self.namedOffset, self.decls
             )
-    
-    
+                
 class HeapData():
     # Allocate and set data on the heap.
     # Use alloc() or init...() funcs, 
@@ -878,6 +896,58 @@ def testStaticArray(b):
     stdoutNewLine(b)
     ASM["free"](b, "paving")
         
+
+def testStackInt(b):
+    headerIO(b)
+    sd = StackData()
+    sd.initData("testData1", byteSpace.bit64, '66')
+    sd.initData("testData2", byteSpace.bit64, '77')
+    sd.initData("testData3", byteSpace.bit64, '99')
+    print(sd)
+    b.extend(sd.resultOpen())
+    b.extend(sd.intPrint('testData1'))
+    printNL(b)
+    b.extend(sd.intPrint('testData2'))
+    printNL(b)
+    b.extend(sd.intPrint('testData3'))
+    printNL(b)
+    
+# def testStackString(b):
+    # headerIO(b)
+    # sb = SectionBuilder(None, StackData())
+    # sb.stack.initStr("testStr1", "wikkyfoobartle")
+    # sb.stack.initStr("testStr2", "ghalumphev")
+    # sb.stack.initStr("testStr3", "petalpeddlaring")
+    # sb.stack.initStr("testStr4", "gonk")
+    # print(sb.stack)
+    # sb.stack.strPrint(sb.decls, "testStr1")
+    # printNL(sb.decls)
+    # sb.stack.strPrint(sb.decls, "testStr2")
+    # printNL(sb.decls)
+    # sb.stack.strPrint(sb.decls, "testStr3")
+    # printNL(sb.decls)
+    # sb.stack.strPrint(sb.decls, "testStr4")
+    # printNL(sb.decls)
+    # b.extend(sb.build())
+
+def testStackString(b):
+    headerIO(b)
+    sd = StackData()
+    sd.initStr("testStr1", "wikkyfoobartle")
+    sd.initStr("testStr2", "ghalumphev")
+    sd.initStr("testStr3", "petalpeddlaring")
+    sd.initStr("testStr4", "gonk")
+    print(sd)
+    b.extend(sd.resultOpen())
+    b.extend(sd.strPrint("testStr1"))
+    printNL(b)
+    b.extend(sd.strPrint("testStr2"))
+    printNL(b)
+    b.extend(sd.strPrint("testStr3"))
+    printNL(b)
+    b.extend(sd.strPrint("testStr4"))
+    printNL(b)
+    
 def testStackData():
     a = StackData()
     a.declData("testVar1")
@@ -890,38 +960,6 @@ def testStackData():
     print(a.visit("after"))
     print(str(a))
     print("\n".join(a.declarations))
-
-def testStackInt(b):
-    headerIO(b)
-    sb = SectionBuilder(None, StackData())
-    sb.stack.initData("testData1", byteSpace.bit64, '66')
-    sb.stack.initData("testData2", byteSpace.bit64, '77')
-    sb.stack.initData("testData3", byteSpace.bit64, '99')
-    print(sb.stack)
-    sb.stack.intPrint(sb.decls, 'testData1')
-    sb.stack.intPrint(sb.decls, 'testData2')
-    sb.stack.intPrint(sb.decls, 'testData3')
-    printNL(sb.decls)
-    b.extend(sb.build())
-
-
-def testStackString(b):
-    headerIO(b)
-    sb = SectionBuilder(None, StackData())
-    sb.stack.initStr("testStr1", "wikkyfoobartle")
-    sb.stack.initStr("testStr2", "ghalumphev")
-    sb.stack.initStr("testStr3", "petalpeddlaring")
-    sb.stack.initStr("testStr4", "gonk")
-    print(sb.stack)
-    sb.stack.strPrint(sb.decls, "testStr1")
-    printNL(sb.decls)
-    sb.stack.strPrint(sb.decls, "testStr2")
-    printNL(sb.decls)
-    sb.stack.strPrint(sb.decls, "testStr3")
-    printNL(sb.decls)
-    sb.stack.strPrint(sb.decls, "testStr4")
-    printNL(sb.decls)
-    b.extend(sb.build())
 
         
 def testHeapData(b):
