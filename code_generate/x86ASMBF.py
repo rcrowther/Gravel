@@ -6,6 +6,12 @@ import collections
 import CodeBuilder
 from assembly.nasmFrames import Frame64
 
+#! formatting issues like 'qword' whenever not usig 64bit
+#! need to move towards an intermediate language
+#! big needs:
+# - method calling
+#! can intermediate language do labelling?
+#! explicit box, like Rust?
 class ByteSpace:
     bit8 = 1
     bit16 = 2
@@ -100,7 +106,50 @@ class ArrayInit():
         return "ArrayInit(elemWidth:{}, values:{}, length:{})".format(
             self.elemWidth, self.values, self.length
             )          
+
+class ClutchInit():
+    # Helper to create an initialised string.
+    # Works by breaking the string into chunks. These chunks
+    # (bit-width numbers) can be declared as 
+    # ''mov' commands to an appropriate space.
+    # The size the space needs to be is returned by alignedSize().
+    
+    def __init__(self, elemData):
+        # helper to form initialised strings for assembly
+        # @elemData is List(value, widths e.g. byteSpace.bit64 = 8)
+        self.elemData = elemData
+        
+    def elemWidths(self):
+        return [e[0] for e in self.elemData]
+        
+    def byteSize(self):
+        # length of clutch in bytes
+        sz = 0
+        for w in self.elemWidths():
+            sz += w 
+        return sz
+
+    def alignedSize16(self):
+        # @return a number of bytes rounded up to 16bits which will 
+        # contain the string. For x64 assembluy, aligning the stack to 
+        # 16bits is a call convention.
+        return (math.ceil(self.byteSize()/16) << 4)
             
+    def initDecls(self, basePtr, startOffset):
+        # Return a string of instructions to initialise a string
+        # @basePtr a register containing a pointer to some allocated space
+        # @startOffset offset from basePointer to start from 
+        topPtr = startOffset
+        b = []
+        for e in self.elemData:
+            b.append('mov qword [{}+{}], {}'.format(basePtr, topPtr, e[0]))
+            topPtr += e[1]
+        return b
+        
+    def __repr__(self):
+        return "ClutchInit(elemData:{})".format(
+            self.elemData
+            )              
             
 class StrInit():
     # Helper to create an initialised byte-encoded string.
@@ -281,9 +330,6 @@ def headerIO(b):
     b.sections['rodata'].append("io_space: db 32")
     b.sections['rodata'].append("io_semiColon: db 59")
 
-# def arrayWrite(b, name, idx):
-    # b.declarations.append(cParameter(0, idxAcess(name, idx), False))
-    # b.declarations.append("call putchar")
     
 #! what to do with returns, if anything?
 def intToStr(b, src, dst, visitSrc):
@@ -375,10 +421,6 @@ def printlnCommonStr(msgLabel):
     b.append(cParameter(1, msgLabel, False))    
     b.append("call printf")
     return b
-    
-#def printNL(b):
-#    b.append(cParameter(0, "io_fmt_nl", False))
-#    b.append("call printf")
 
 def printNL():
     b = []
@@ -588,7 +630,38 @@ class StackData():
             b.extend(printSeparator())
             i -= elemSz
         return b
-                
+
+    def declClutch(self, name, elemWidths):
+        # @elemWidths list of sizes of elements in bytes
+        i = 0
+        for e in elemWidths:
+            i += e
+        self.declData(name, i)
+        print(self)
+
+    def initClutch(self, name, elemData):
+        # elemWidth size of elements in bytes
+        # @values a list
+        ci = ClutchInit(elemData)
+        
+        # Alloc space
+        self.declClutch(name, ci.elemWidths())
+         
+        # add init declarations
+        self.decls.extend( ci.initDecls(self.addrReg, -self.namedOffset[name]))
+
+    def intClutchPrint(self, name, elemWidths):
+        b = []
+        off = self.namedOffset[name]
+        for w in elemWidths:
+            b.append(cParameter(0, "io_fmt_int", False))
+            b.append(cParameter(1, "[{}-{}]".format(self.addrReg, off), False))
+            b.append("call printf")
+            #b.extend(printComma())
+            b.extend(printSeparator())
+            off -= w
+        return b 
+                        
     def visit(self, name):
         return "[bpr-{}*8]".format(self.namedOffset[name])
 
@@ -648,7 +721,20 @@ class HeapData():
         # @sz in bytes
         self.declData(name, sz)
         self.decls.append('mov qword [{}+{}], {}'.format(self.addrReg, self.namedOffset[name], initValue))
+
+    def intPrint(self, name):
+        b = []
+        b.append(cParameter(0, "io_fmt_int", False))
+        b.append(cParameter(1, "[{}+{}]".format(self.addrReg, self.namedOffset[name]), False))
+        b.append("call printf")
+        return b
+
+    def set(self, name, v):
+        return "mov qword [{}+{}*{}], {}".format(self.addrReg, self.namedOffset[name], self.byteWidth, v)
         
+    def get(self, name, to):
+        return "mov {}, [{}+{}*8]".format(to, self.addrReg, self.namedOffset[name])
+
     def initStr(self, name, initStr):
         # make helper
         si = StrInit(initStr, self.byteWidth)
@@ -657,12 +743,19 @@ class HeapData():
          
         # add init declarations
         self.decls.extend( si.initDecls(self.addrReg, self.namedOffset[name]))
-        
+
+    def strPrint(self, name):
+        b = []
+        b.append(cParameter(0, "io_fmt_str8", False))
+        b.append(cParameter(1, self.addrReg, False))
+        b.append(cParameterOffset(1,  self.namedOffset[name]))     
+        b.append("call printf")
+        return b   
+                
     def declArray(self, name, elemWidth, length):
         # @elemWidth size of elements in bytes
         # @length mun of elements in array
         self.declData(name, elemWidth*length)
-        print(self)
 
     def initArray(self, name, elemWidth, values):
         # elemWidth size of elements in bytes
@@ -687,39 +780,49 @@ class HeapData():
             b.extend(printSeparator())
         return b
                 
-    def set(self, name, v):
-        return "mov qword [{}+{}*{}], {}".format(self.addrReg, self.namedOffset[name], self.byteWidth, v)
-        
-    def get(self, name, to):
-        return "mov {}, [{}+{}*8]".format(to, self.addrReg, self.namedOffset[name])
-
-    def intPrint(self, name):
-        b = []
-        b.append(cParameter(0, "io_fmt_int", False))
-        b.append(cParameter(1, "[{}+{}]".format(self.addrReg, self.namedOffset[name]), False))
-        b.append("call printf")
-        return b
-        
-    def strPrint(self, name):
-        b = []
-        b.append(cParameter(0, "io_fmt_str8", False))
-        b.append(cParameter(1, self.addrReg, False))
-        b.append(cParameterOffset(1,  self.namedOffset[name]))     
-        b.append("call printf")
-        return b
-
-    def free(self):        
-        b = []
-        b.append(cParameter(0, self.addrReg, False))
-        b.append("call free")
-        return b
-
     def arrayForEach(self, name, elemSz, sz, func):
         b = []
         b.append("mov rcx, {}+{}".format(self.addrReg, self.offset(name)))
         for x in range(0, sz):
             b.append("add rcx, {}".format(elemSz))
             b.append("{}".format(func))
+        return b
+    
+    def declClutch(self, name, elemWidths):
+        # @elemWidths list of sizes of elements in bytes
+        i = 0
+        for e in elemWidths:
+            i += e
+        self.declData(name, i)
+        print(self)
+
+    def initClutch(self, name, elemData):
+        # elemWidth size of elements in bytes
+        # @values a list
+        ci = ClutchInit(elemData)
+        
+        # Alloc space
+        self.declClutch(name, ci.elemWidths())
+         
+        # add init declarations
+        self.decls.extend( ci.initDecls(self.addrReg, self.namedOffset[name]))
+
+    def intClutchPrint(self, name, elemWidths):
+        b = []
+        off = self.namedOffset[name]
+        for w in elemWidths:
+            b.append(cParameter(0, "io_fmt_int", False))
+            b.append(cParameter(1, "[{}+{}]".format(self.addrReg, off), False))
+            b.append("call printf")
+            #b.extend(printComma())
+            b.extend(printSeparator())
+            off += w
+        return b 
+                       
+    def free(self):        
+        b = []
+        b.append(cParameter(0, self.addrReg, False))
+        b.append("call free")
         return b
         
     def offset(self, name):
@@ -1084,6 +1187,20 @@ def testStackArray(b):
     b.extend(printNL())    
     b.extend(printSeparator())
     
+
+def testStackClutch(b):
+    headerIO(b)
+    sd = StackData()
+    widths = [byteSpace.bit64, byteSpace.bit8, byteSpace.bit64]
+    sd.declClutch('testClutch1', widths)
+    data = [(22, byteSpace.bit64), (9, byteSpace.bit8), (77, byteSpace.bit64)]
+    sd.initClutch('testClutch2', data)
+    b.extend(sd.resultOpen())
+    b.extend(sd.intClutchPrint("testClutch1", widths))
+    b.extend(printNL())
+    b.extend(sd.intClutchPrint("testClutch2", widths))
+    b.extend(printNL()) 
+    
 def testStackData():
     a = StackData()
     a.declData("testVar1")
@@ -1155,7 +1272,21 @@ def testHeapArray(b):
     b.extend(printNL())    
     b.extend(hd.resultClose())
 
-        
+
+def testHeapClutch(b):
+    headerIO(b)
+    hd = HeapData()
+    widths = [byteSpace.bit64, byteSpace.bit8, byteSpace.bit64]
+    hd.declClutch('testClutch1', widths)
+    
+    data = [(22, byteSpace.bit64), (9, byteSpace.bit8), (77, byteSpace.bit64)]
+    hd.initClutch('testClutch2', data)
+    b.extend(hd.resultOpen())
+    b.extend(hd.intClutchPrint("testClutch1", widths))
+    b.extend(printNL())
+    b.extend(hd.intClutchPrint("testClutch2", widths))
+    b.extend(printNL()) 
+            
 def testHeapData(b):
     headerIO(b)
     a = HeapData()
