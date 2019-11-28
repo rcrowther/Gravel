@@ -255,9 +255,9 @@ def headerIO(b):
     b.sections['rodata'].append('io_fmt_float: db "%g", 0')
     b.sections['rodata'].append('io_fmt_addr: db "%p", 0')
     b.sections['rodata'].append('io_fmt_println: db "%s", 10, 0')
-    b.sections['rodata'].append('io_fmt_comma: db ",", 0')
+    #b.sections['rodata'].append('io_fmt_comma: db ",", 0')
     b.sections['rodata'].append('io_fmt_separator: db ", ", 0')
-    b.sections['rodata'].append('io_fmt_nl: db "", 10, 0')
+    #b.sections['rodata'].append('io_fmt_nl: db "", 10, 0')
     b.sections['data'].append("mch_str_buf: dq 2048")
     # reg print
     b.sections['rodata'].append('io_fmt_reg_rax: db 10, "= Reg rax: %lld", 10, 0')
@@ -376,13 +376,19 @@ def printlnCommonStr(msgLabel):
     b.append("call printf")
     return b
     
-def printNL(b):
-    b.append(cParameter(0, "io_fmt_nl", False))
-    b.append("call printf")
-#!? output becomes garbage?
-def printComma():
+#def printNL(b):
+#    b.append(cParameter(0, "io_fmt_nl", False))
+#    b.append("call printf")
+
+def printNL():
     b = []
-    b.append(cParameter(0, "io_comma", False))
+    b.append("mov edi, 10")
+    b.append("call putchar")
+    return b
+
+def printSpace():
+    b = []
+    b.append("mov edi, 32")
     b.append("call putchar")
     return b
 
@@ -526,8 +532,8 @@ class StackData():
         # contain the string. For x64 assembluy, aligning the stack to 
         # 16bits is a call convention.
         #! slower, more efficient
-        #alignedSpace = math.ceil(self.topPtr/16) << 4
-        return (((sz >> 4) + 1) << 4)
+        return math.ceil(self.topPtr/16) << 4
+        #return (((sz >> 4) + 1) << 4)
         
     def declData(self, name, sz):
         # @sz in bytes
@@ -553,7 +559,36 @@ class StackData():
         # add init declarations
         #??? what about minus signs?
         self.decls.extend( si.initDecls(self.addrReg, -self.namedOffset[name]))
+
+    def declArray(self, name, elemWidth, length):
+        # @elemWidth size of elements in bytes
+        # @length mun of elements in array
+        self.declData(name, elemWidth*length)
+        print(self)
         
+    def initArray(self, name, elemWidth, values):
+        # elemWidth size of elements in bytes
+        # @values a list
+        ai = ArrayInit(elemWidth, values)
+        
+        # Alloc space
+        self.declArray(name, elemWidth, ai.length)
+         
+        # add init declarations
+        self.decls.extend( ai.initDecls(self.addrReg, -self.namedOffset[name]))
+
+    def intArrayPrint(self, name, elemSz, sz):
+        b = []
+        i = self.namedOffset[name]
+        end = i - (elemSz*sz)
+        while i > end:
+            b.append(cParameter(0, "io_fmt_int", False))
+            b.append(cParameter(1, "[{}-{}]".format(self.addrReg, i), False))
+            b.append("call printf")
+            b.extend(printSeparator())
+            i -= elemSz
+        return b
+                
     def visit(self, name):
         return "[bpr-{}*8]".format(self.namedOffset[name])
 
@@ -571,7 +606,10 @@ class StackData():
         b.append(cParameterOffsetNeg(1, self.namedOffset[name]))     
         b.append("call printf")
         return b
-         
+
+    def offset(self, name):
+        return "[{}-{}]".format(self.addrReg, self.namedOffset[name])
+                
     def resultOpen(self):
         b = []
         alignedSpace = self.alignedSize16(self.topPtr)
@@ -583,85 +621,8 @@ class StackData():
         return "StackData(topPtr:{}, namedOffset:{}, decls:{})".format(
             self.topPtr, self.namedOffset, self.decls
             )
-                
-# class HeapData():
-    # # Allocate and set data on the heap.
-    # # Use alloc() or init...() funcs, 
-    # # Use buildOpen() to build initcode (place before data manipulation) 
-    # # Utility functions will build access code.
-    # # declarations. 
-    # def __init__(self):
-        # # in bits
-        # self.size = 0           
-        # # an anchor register. Preset to 'r12'
-        # self.addrReg = 'r12'
-        # # used for aligning. Preset to 8
-        # self.byteWidth = byteSpace.bit64
-        # self.namedOffset = {}
-        # self.decls = []
-        
-    # def declData(self, name, sz):
-        # # @sz in bytes
-        # self.namedOffset[name] = self.size 
-        # self.size += (sz*self.byteWidth)
-
-    # def initData(self, name, sz, initValue):
-        # # @sz in bytes
-        # self.declData(name, sz)
-        # self.decls.append('mov qword [{}+{}], {}'.format(self.addrReg, self.namedOffset[name], initValue))
-        
-    # def initStr(self, name, initStr):
-        # # make helper
-        # si = StrInit(initStr, self.byteWidth)
-
-        # # Alloc space
-        # self.declData(name, si.alignedSize())
-         
-        # # add init declarations
-        # self.decls.extend( si.initDecls(self.addrReg, self.namedOffset[name]))
-        
-    # def declArray(self, b, name, elemSz, sz):
-        # # elemSz size of elements in bytes
-        # # @sz mun of elements in array
-        # self.declData(name, elemSz*sz)
-        
-    # def set(self, b, name, v):
-        # b.append( "mov qword [{}+{}*{}], {}".format(self.addrReg, self.namedOffset[name], self.byteWidth, v))
-        
-    # def get(self, b, name, to):
-        # b.append( "mov {}, [{}+{}*8]".format(to, self.addrReg, self.namedOffset[name]))
-
-    # def intPrint(self, b, name):
-        # b.append(cParameter(0, "io_fmt_int", False))
-        # b.append(cParameter(1, "[{}+{}]".format(self.addrReg, self.namedOffset[name]), False))
-        # b.append("call printf")
-
-    # def strPrint(self, b, name):
-        # b.append(cParameter(0, "io_fmt_str8", False))
-        # b.append(cParameter(1, self.addrReg, False))
-        # b.append(cParameterOffset(1,  self.namedOffset[name]))     
-        # b.append("call printf")
-                    
-    # def buildOpen(self, b):
-        # # set the malloc
-        # b.append(cParameter(0, self.size, False))
-        # b.append("call malloc")
-        # b.append(cReturn(self.addrReg, False))
-        # # add the inits
-        # b.extend(self.decls)
-    
-    # def buildClose(self, b):
-        # self._free(b)
-
-    # def _free(self, b):
-        # b.append(cParameter(0, self.addrReg, False))
-        # b.append("call free")
-            
-    # def __repr__(self):
-        # return "HeapData(byteWidth:{}, size:{}, addrReg:{}, namedOffset:{}, decls:{})".format(
-            # self.byteWidth, self.size, self.addrReg, self.namedOffset, self.decls
-            # )
-
+   
+   
 class HeapData():
     # Allocate and set data on the heap.
     # Use alloc() or init...() funcs, 
@@ -670,7 +631,7 @@ class HeapData():
     # declarations. 
     def __init__(self):
         # in bits
-        self.size = 0           
+        self.size = 0
         # an anchor register. Preset to 'r12'
         self.addrReg = 'r12'
         # used for chopping strings. Preset to 8
@@ -681,7 +642,7 @@ class HeapData():
     def declData(self, name, sz):
         # @sz in bytes
         self.namedOffset[name] = self.size 
-        self.size += (sz*self.byteWidth)
+        self.size += sz
 
     def initData(self, name, sz, initValue):
         # @sz in bytes
@@ -691,7 +652,6 @@ class HeapData():
     def initStr(self, name, initStr):
         # make helper
         si = StrInit(initStr, self.byteWidth)
-
         # Alloc space
         self.declData(name, si.alignedSize())
          
@@ -702,12 +662,12 @@ class HeapData():
         # @elemWidth size of elements in bytes
         # @length mun of elements in array
         self.declData(name, elemWidth*length)
+        print(self)
 
     def initArray(self, name, elemWidth, values):
         # elemWidth size of elements in bytes
         # @values a list
         ai = ArrayInit(elemWidth, values)
-        self.declArray(name, elemWidth, ai.length)
         
         # Alloc space
         self.declArray(name, elemWidth, ai.length)
@@ -782,6 +742,7 @@ class HeapData():
         return "HeapData(byteWidth:{}, size:{}, addrReg:{}, namedOffset:{}, decls:{})".format(
             self.byteWidth, self.size, self.addrReg, self.namedOffset, self.decls
             )
+    
             
 class SectionBuilder():
     def __init__(self, heapData, stackData):
@@ -1065,7 +1026,7 @@ def testStaticAlloc(b):
     b.declarations.append("mov rax, [commonNum1]")
     #printReg(b, 'rax')
     b.extend(printReg('rax'))
-    printNL(b)
+    b.extend(printNL())
 
 def testStaticArray(b):
     headerIO(b)
@@ -1087,30 +1048,12 @@ def testStackInt(b):
     print(sd)
     b.extend(sd.resultOpen())
     b.extend(sd.intPrint('testData1'))
-    printNL(b)
+    b.extend(printNL())
     b.extend(sd.intPrint('testData2'))
-    printNL(b)
+    b.extend(printNL())
     b.extend(sd.intPrint('testData3'))
-    printNL(b)
+    b.extend(printNL())
     
-# def testStackString(b):
-    # headerIO(b)
-    # sb = SectionBuilder(None, StackData())
-    # sb.stack.initStr("testStr1", "wikkyfoobartle")
-    # sb.stack.initStr("testStr2", "ghalumphev")
-    # sb.stack.initStr("testStr3", "petalpeddlaring")
-    # sb.stack.initStr("testStr4", "gonk")
-    # print(sb.stack)
-    # sb.stack.strPrint(sb.decls, "testStr1")
-    # printNL(sb.decls)
-    # sb.stack.strPrint(sb.decls, "testStr2")
-    # printNL(sb.decls)
-    # sb.stack.strPrint(sb.decls, "testStr3")
-    # printNL(sb.decls)
-    # sb.stack.strPrint(sb.decls, "testStr4")
-    # printNL(sb.decls)
-    # b.extend(sb.build())
-
 def testStackString(b):
     headerIO(b)
     sd = StackData()
@@ -1121,13 +1064,25 @@ def testStackString(b):
     print(sd)
     b.extend(sd.resultOpen())
     b.extend(sd.strPrint("testStr1"))
-    printNL(b)
+    b.extend(printNL())
     b.extend(sd.strPrint("testStr2"))
-    printNL(b)
+    b.extend(printNL())
     b.extend(sd.strPrint("testStr3"))
-    printNL(b)
+    b.extend(printNL())
     b.extend(sd.strPrint("testStr4"))
-    printNL(b)
+    b.extend(printNL())
+
+def testStackArray(b):
+    headerIO(b)
+    sd = StackData()
+    sd.declArray('testArray1', byteSpace.bit64, 12)
+    sd.initArray('testArray2', byteSpace.bit64, [19, 445, 8, 17, 9])
+    b.extend(sd.resultOpen())
+    b.extend(sd.intArrayPrint("testArray1", byteSpace.bit64, 12))
+    b.extend(printNL())    
+    b.extend(sd.intArrayPrint("testArray2", byteSpace.bit64, 5))
+    b.extend(printNL())    
+    b.extend(printSeparator())
     
 def testStackData():
     a = StackData()
@@ -1152,11 +1107,11 @@ def testHeapInt(b):
     print(hd)
     b.extend(hd.resultOpen())
     b.extend(hd.intPrint('testData1'))
-    printNL(b)
+    b.extend(printNL())
     b.extend(hd.intPrint('testData2'))
-    printNL(b)
+    b.extend(printNL())
     b.extend(hd.intPrint('testData3'))
-    printNL(b)
+    b.extend(printNL())
     b.extend(hd.resultClose())
 
 def testHeapStr(b):
@@ -1170,13 +1125,13 @@ def testHeapStr(b):
     print(hd)
     b.extend(hd.resultOpen())
     b.extend(hd.strPrint("testStr1"))
-    printNL(b)
+    b.extend(printNL())
     b.extend(hd.strPrint("testStr2"))
-    printNL(b)
+    b.extend(printNL())
     b.extend(hd.strPrint("testStr3"))
-    printNL(b)
+    b.extend(printNL())
     b.extend(hd.strPrint("testStr4"))
-    printNL(b)
+    b.extend(printNL())
     b.extend(hd.resultClose())
 
 def testHeapArray(b):
@@ -1195,9 +1150,9 @@ def testHeapArray(b):
     #hd.arrayForEach('testArray1', byteSpace.bit64, 12, func)
     #hd.arrayVisitEach('testArray1', byteSpace.bit64, 12, func)
     b.extend(hd.intArrayPrint("testArray1", byteSpace.bit64, 12))
-    printNL(b)    
+    b.extend(printNL())    
     b.extend(hd.intArrayPrint("testArray2", byteSpace.bit64, 5))
-    printNL(b)    
+    b.extend(printNL())    
     b.extend(hd.resultClose())
 
         
@@ -1280,9 +1235,9 @@ def testStruct(b):
     clutch(b, 3)
     printRegStack(b)
     printReg(b)
-    printNL(b)
+    b.extend(printNL())
     printReg(b)
-    printNL(b)
+    b.extend(printNL())
     #! top of stack
     clt_set(b, 0, 333)
     clt_set(b, 1, 101)
