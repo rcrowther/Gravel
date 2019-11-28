@@ -7,8 +7,9 @@
 
 int foobar()
 {
-    char testStr[] = "pinky";
-    printf("%s", testStr);
+    //char testStr[] = "pinky";
+    //printf("%s", testStr);
+    long mark[5] = {19, 10, 8, 17, 9};
     //long xx = 7;
     //long x = 3;
     //char testStr[] = "cool as tangerine, hot as coke";

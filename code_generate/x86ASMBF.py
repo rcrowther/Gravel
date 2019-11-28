@@ -59,8 +59,51 @@ def newLabel():
     LabelAcc += 1
     return "L" + str(LabelAcc)
     
-class StrInit():
+
+class ArrayInit():
     # Helper to create an initialised string.
+    # Works by breaking the string into chunks. These chunks
+    # (bit-width numbers) can be declared as 
+    # ''mov' commands to an appropriate space.
+    # The size the space needs to be is returned by alignedSize().
+    
+    def __init__(self, elemWidth, values):
+        # helper to form initialised strings for assembly
+        # @chunksize is usually byteSpace.bit64 = 8
+        self.elemWidth = elemWidth
+        # length of array
+        self.length = len(values)
+        self.values = values
+
+    def byteSize(self):
+        # length of array in bytes
+        return (self.elemWidth * self.length)
+
+    def alignedSize16(self):
+        # @return a number of bytes rounded up to 16bits which will 
+        # contain the string. For x64 assembluy, aligning the stack to 
+        # 16bits is a call convention.
+        return (math.ceil(self.byteSize()/16) << 4)
+            
+    def initDecls(self, basePtr, startOffset):
+        # Return a string of instructions to initialise a string
+        # @basePtr a register containing a pointer to some allocated space
+        # @startOffset offset from basePointer to start from 
+        topPtr = startOffset
+        b = []
+        for v in self.values:
+            b.append('mov qword [{}+{}], {}'.format(basePtr, topPtr, v))
+            topPtr += self.elemWidth
+        return b
+        
+    def __repr__(self):
+        return "ArrayInit(elemWidth:{}, values:{}, length:{})".format(
+            self.elemWidth, self.values, self.length
+            )          
+            
+            
+class StrInit():
+    # Helper to create an initialised byte-encoded string.
     # Works by breaking the string into chunks. These chunks
     # (bit-width numbers) can be declared as 
     # ''mov' commands to an appropriate space.
@@ -202,7 +245,8 @@ def frameClose(b):
 def headerIO(b):
     print(str(b ))
     b.headers.append("extern printf")
-    b.headers.append("extern snprintf")
+    #b.headers.append("extern snprintf")
+    b.headers.append("extern putchar")
     b.sections['rodata'].append('io_fmt_str8: db "%s", 0')
     b.sections['rodata'].append('io_fmt_str8_NL: db "%s", 10, 0')
     #b.headers.rodata.append('io_fmt_utf8: db "%s"', 10, 0)
@@ -211,6 +255,8 @@ def headerIO(b):
     b.sections['rodata'].append('io_fmt_float: db "%g", 0')
     b.sections['rodata'].append('io_fmt_addr: db "%p", 0')
     b.sections['rodata'].append('io_fmt_println: db "%s", 10, 0')
+    b.sections['rodata'].append('io_fmt_comma: db ",", 0')
+    b.sections['rodata'].append('io_fmt_separator: db ", ", 0')
     b.sections['rodata'].append('io_fmt_nl: db "", 10, 0')
     b.sections['data'].append("mch_str_buf: dq 2048")
     # reg print
@@ -230,7 +276,10 @@ def headerIO(b):
     b.sections['rodata'].append('io_fmt_reg_str: db 10, "= StringReg", 10, "rsi: %lld", 10, "rdi: %lld", 10, 0')
     b.sections['rodata'].append('io_fmt_reg_64_1: db 10, "= ExtReg1", 10, "r8: %lld", 10, "r9: %lld", 10, "r10: %lld", 10, "r11: %lld", 10, 0')
     b.sections['rodata'].append('io_fmt_reg_64_2: db 10, "= ExtReg2", 10, "r12: %lld", 10, "r13: %lld", 10, "r14: %lld", 10, "r15: %lld", 10, 0')
-
+    b.sections['rodata'].append("io_comma: db 44")
+    b.sections['rodata'].append("io_lineFeed: db 10")
+    b.sections['rodata'].append("io_space: db 32")
+    b.sections['rodata'].append("io_semiColon: db 59")
 
 # def arrayWrite(b, name, idx):
     # b.declarations.append(cParameter(0, idxAcess(name, idx), False))
@@ -330,7 +379,19 @@ def printlnCommonStr(msgLabel):
 def printNL(b):
     b.append(cParameter(0, "io_fmt_nl", False))
     b.append("call printf")
+#!? output becomes garbage?
+def printComma():
+    b = []
+    b.append(cParameter(0, "io_comma", False))
+    b.append("call putchar")
+    return b
 
+def printSeparator():
+    b = []
+    b.append(cParameter(0, "io_fmt_separator", False))
+    b.append("call printf")
+    return b
+        
 #     "rdi", "rsi", "rdx", "rcx", "r8", "r9"
 PrintableRegisters = ['rax', 'rbx', 'rcx', 'rdx', 'rsp', 'rbp', 'r9' 'r10', 'r12', 'r14']
 # def printReg(b, reg):
@@ -523,6 +584,84 @@ class StackData():
             self.topPtr, self.namedOffset, self.decls
             )
                 
+# class HeapData():
+    # # Allocate and set data on the heap.
+    # # Use alloc() or init...() funcs, 
+    # # Use buildOpen() to build initcode (place before data manipulation) 
+    # # Utility functions will build access code.
+    # # declarations. 
+    # def __init__(self):
+        # # in bits
+        # self.size = 0           
+        # # an anchor register. Preset to 'r12'
+        # self.addrReg = 'r12'
+        # # used for aligning. Preset to 8
+        # self.byteWidth = byteSpace.bit64
+        # self.namedOffset = {}
+        # self.decls = []
+        
+    # def declData(self, name, sz):
+        # # @sz in bytes
+        # self.namedOffset[name] = self.size 
+        # self.size += (sz*self.byteWidth)
+
+    # def initData(self, name, sz, initValue):
+        # # @sz in bytes
+        # self.declData(name, sz)
+        # self.decls.append('mov qword [{}+{}], {}'.format(self.addrReg, self.namedOffset[name], initValue))
+        
+    # def initStr(self, name, initStr):
+        # # make helper
+        # si = StrInit(initStr, self.byteWidth)
+
+        # # Alloc space
+        # self.declData(name, si.alignedSize())
+         
+        # # add init declarations
+        # self.decls.extend( si.initDecls(self.addrReg, self.namedOffset[name]))
+        
+    # def declArray(self, b, name, elemSz, sz):
+        # # elemSz size of elements in bytes
+        # # @sz mun of elements in array
+        # self.declData(name, elemSz*sz)
+        
+    # def set(self, b, name, v):
+        # b.append( "mov qword [{}+{}*{}], {}".format(self.addrReg, self.namedOffset[name], self.byteWidth, v))
+        
+    # def get(self, b, name, to):
+        # b.append( "mov {}, [{}+{}*8]".format(to, self.addrReg, self.namedOffset[name]))
+
+    # def intPrint(self, b, name):
+        # b.append(cParameter(0, "io_fmt_int", False))
+        # b.append(cParameter(1, "[{}+{}]".format(self.addrReg, self.namedOffset[name]), False))
+        # b.append("call printf")
+
+    # def strPrint(self, b, name):
+        # b.append(cParameter(0, "io_fmt_str8", False))
+        # b.append(cParameter(1, self.addrReg, False))
+        # b.append(cParameterOffset(1,  self.namedOffset[name]))     
+        # b.append("call printf")
+                    
+    # def buildOpen(self, b):
+        # # set the malloc
+        # b.append(cParameter(0, self.size, False))
+        # b.append("call malloc")
+        # b.append(cReturn(self.addrReg, False))
+        # # add the inits
+        # b.extend(self.decls)
+    
+    # def buildClose(self, b):
+        # self._free(b)
+
+    # def _free(self, b):
+        # b.append(cParameter(0, self.addrReg, False))
+        # b.append("call free")
+            
+    # def __repr__(self):
+        # return "HeapData(byteWidth:{}, size:{}, addrReg:{}, namedOffset:{}, decls:{})".format(
+            # self.byteWidth, self.size, self.addrReg, self.namedOffset, self.decls
+            # )
+
 class HeapData():
     # Allocate and set data on the heap.
     # Use alloc() or init...() funcs, 
@@ -534,7 +673,7 @@ class HeapData():
         self.size = 0           
         # an anchor register. Preset to 'r12'
         self.addrReg = 'r12'
-        # used for aligning. Preset to 8
+        # used for chopping strings. Preset to 8
         self.byteWidth = byteSpace.bit64
         self.namedOffset = {}
         self.decls = []
@@ -559,49 +698,91 @@ class HeapData():
         # add init declarations
         self.decls.extend( si.initDecls(self.addrReg, self.namedOffset[name]))
         
-    def declArray(self, b, name, elemSz, sz):
-        # elemSz size of elements in bytes
-        # @sz mun of elements in array
-        self.declData(name, elemSz*sz)
-        
-    def set(self, b, name, v):
-        b.append( "mov qword [{}+{}*{}], {}".format(self.addrReg, self.namedOffset[name], self.byteWidth, v))
-        
-    def get(self, b, name, to):
-        b.append( "mov {}, [{}+{}*8]".format(to, self.addrReg, self.namedOffset[name]))
+    def declArray(self, name, elemWidth, length):
+        # @elemWidth size of elements in bytes
+        # @length mun of elements in array
+        self.declData(name, elemWidth*length)
 
-    def intPrint(self, b, name):
+    def initArray(self, name, elemWidth, values):
+        # elemWidth size of elements in bytes
+        # @values a list
+        ai = ArrayInit(elemWidth, values)
+        self.declArray(name, elemWidth, ai.length)
+        
+        # Alloc space
+        self.declArray(name, elemWidth, ai.length)
+         
+        # add init declarations
+        self.decls.extend( ai.initDecls(self.addrReg, self.namedOffset[name]))
+                
+    def intArrayPrint(self, name, elemSz, sz):
+        b = []
+        start = self.namedOffset[name]
+        end = start + (elemSz*sz)
+        for i in range(start, end, elemSz):
+            b.append(cParameter(0, "io_fmt_int", False))
+            b.append(cParameter(1, "[{}+{}]".format(self.addrReg, i), False))
+            b.append("call printf")
+            #b.extend(printComma())
+            b.extend(printSeparator())
+        return b
+                
+    def set(self, name, v):
+        return "mov qword [{}+{}*{}], {}".format(self.addrReg, self.namedOffset[name], self.byteWidth, v)
+        
+    def get(self, name, to):
+        return "mov {}, [{}+{}*8]".format(to, self.addrReg, self.namedOffset[name])
+
+    def intPrint(self, name):
+        b = []
         b.append(cParameter(0, "io_fmt_int", False))
         b.append(cParameter(1, "[{}+{}]".format(self.addrReg, self.namedOffset[name]), False))
         b.append("call printf")
-
-    def strPrint(self, b, name):
+        return b
+        
+    def strPrint(self, name):
+        b = []
         b.append(cParameter(0, "io_fmt_str8", False))
         b.append(cParameter(1, self.addrReg, False))
         b.append(cParameterOffset(1,  self.namedOffset[name]))     
         b.append("call printf")
-                    
-    def buildOpen(self, b):
+        return b
+
+    def free(self):        
+        b = []
+        b.append(cParameter(0, self.addrReg, False))
+        b.append("call free")
+        return b
+
+    def arrayForEach(self, name, elemSz, sz, func):
+        b = []
+        b.append("mov rcx, {}+{}".format(self.addrReg, self.offset(name)))
+        for x in range(0, sz):
+            b.append("add rcx, {}".format(elemSz))
+            b.append("{}".format(func))
+        return b
+        
+    def offset(self, name):
+        return "[{}+{}]".format(self.addrReg, self.namedOffset[name])
+        
+    def resultOpen(self):
+        b = []
         # set the malloc
         b.append(cParameter(0, self.size, False))
         b.append("call malloc")
         b.append(cReturn(self.addrReg, False))
         # add the inits
         b.extend(self.decls)
+        return b
     
-    def buildClose(self, b):
-        self._free(b)
-
-    def _free(self, b):
-        b.append(cParameter(0, self.addrReg, False))
-        b.append("call free")
+    def resultClose(self):
+        return self.free()
             
     def __repr__(self):
         return "HeapData(byteWidth:{}, size:{}, addrReg:{}, namedOffset:{}, decls:{})".format(
             self.byteWidth, self.size, self.addrReg, self.namedOffset, self.decls
             )
-
-
+            
 class SectionBuilder():
     def __init__(self, heapData, stackData):
         self.initDecls = []
@@ -961,6 +1142,64 @@ def testStackData():
     print(str(a))
     print("\n".join(a.declarations))
 
+
+def testHeapInt(b):
+    headerIO(b)
+    hd = HeapData()
+    hd.initData("testData1", byteSpace.bit8, '66')
+    hd.initData("testData2", byteSpace.bit8, '77')
+    hd.initData("testData3", byteSpace.bit8, '99')
+    print(hd)
+    b.extend(hd.resultOpen())
+    b.extend(hd.intPrint('testData1'))
+    printNL(b)
+    b.extend(hd.intPrint('testData2'))
+    printNL(b)
+    b.extend(hd.intPrint('testData3'))
+    printNL(b)
+    b.extend(hd.resultClose())
+
+def testHeapStr(b):
+    headerIO(b)
+    hd = HeapData()
+    #! why cut-off on first one?
+    hd.initStr("testStr1", "wikkyfoobartle")
+    hd.initStr("testStr2", "ghalumphev")
+    hd.initStr("testStr3", "petalpeddlaring")
+    hd.initStr("testStr4", "gonk")
+    print(hd)
+    b.extend(hd.resultOpen())
+    b.extend(hd.strPrint("testStr1"))
+    printNL(b)
+    b.extend(hd.strPrint("testStr2"))
+    printNL(b)
+    b.extend(hd.strPrint("testStr3"))
+    printNL(b)
+    b.extend(hd.strPrint("testStr4"))
+    printNL(b)
+    b.extend(hd.resultClose())
+
+def testHeapArray(b):
+    headerIO(b)
+    hd = HeapData()
+    hd.declArray('testArray1', byteSpace.bit64, 12)
+    hd.initArray('testArray2', byteSpace.bit64, [19, 445, 8, 17, 9])
+    b.extend(hd.resultOpen())
+    #off = hd.offset('testArray1')
+    #i = 0
+    #range(off, off, byteSpace.bit64)
+    
+    #def func():
+    # "mov rcx, {}".format(i)
+    #i += 1
+    #hd.arrayForEach('testArray1', byteSpace.bit64, 12, func)
+    #hd.arrayVisitEach('testArray1', byteSpace.bit64, 12, func)
+    b.extend(hd.intArrayPrint("testArray1", byteSpace.bit64, 12))
+    printNL(b)    
+    b.extend(hd.intArrayPrint("testArray2", byteSpace.bit64, 5))
+    printNL(b)    
+    b.extend(hd.resultClose())
+
         
 def testHeapData(b):
     headerIO(b)
@@ -975,47 +1214,6 @@ def testHeapData(b):
     # a.get(b, 'blimey', 'rbx')
     # printRegGen(b)
     ##printReg(b, 'rax')
-
-def testHeapInt(b):
-    headerIO(b)
-    sb = SectionBuilder(HeapData(), None)
-    sb.heap.initData("testData1", byteSpace.bit8, '66')
-    sb.heap.initData("testData2", byteSpace.bit8, '77')
-    sb.heap.initData("testData3", byteSpace.bit8, '99')
-    print(sb.heap)
-    sb.heap.intPrint(sb.decls, 'testData1')
-    sb.heap.intPrint(sb.decls, 'testData2')
-    sb.heap.intPrint(sb.decls, 'testData3')
-    printNL(sb.decls)
-    b.extend(sb.build())
-
-def testHeapStr(b):
-    headerIO(b)
-    sb = SectionBuilder(HeapData(), None)
-    #! why cut-off on first one?
-    sb.heap.initStr("testStr1", "wikkyfoobartle")
-    sb.heap.initStr("testStr2", "ghalumphev")
-    sb.heap.initStr("testStr3", "petalpeddlaring")
-    sb.heap.initStr("testStr4", "gonk")
-    print(sb.heap)
-    sb.heap.strPrint(sb.decls, "testStr1")
-    printNL(sb.decls)
-    sb.heap.strPrint(sb.decls, "testStr2")
-    printNL(sb.decls)
-    sb.heap.strPrint(sb.decls, "testStr3")
-    printNL(sb.decls)
-    sb.heap.strPrint(sb.decls, "testStr4")
-    printNL(sb.decls)
-    b.extend(sb.build())
-
-def testHeapArray(b):
-    headerIO(b)
-    sb = SectionBuilder(HeapData(), None)
-    sb.heap.declArray(sb.decls, 'testArray1', byteSpace.bit64, 12)
-    sb.heap.intArrayPrint(sb.decls, "testArray1")
-    printNL(sb.decls)    
-    b.extend(sb.build())
-
 
 
         

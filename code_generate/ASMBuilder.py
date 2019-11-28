@@ -137,10 +137,11 @@ if __name__ == "__main__":
         #x86ASMBF.testPrintDebug(b)
         #x86ASMBF.testStaticAlloc(b)
         #x86ASMBF.testStackInt(b)
-        x86ASMBF.testStackString(b)
+        #x86ASMBF.testStackString(b)
         #x86ASMBF.testHeapData(b)
         #x86ASMBF.testHeapInt(b)
         #x86ASMBF.testHeapStr(b)
+        x86ASMBF.testHeapArray(b)
         #x86ASMBF.testIf(b)
         #x86ASMBF.testRangeLoop(b)
         

@@ -1,10 +1,6 @@
 	.file	"test.c"
 	.intel_syntax noprefix
 	.text
-	.section	.rodata
-.LC0:
-	.string	"%s"
-	.text
 	.globl	foobar
 	.type	foobar, @function
 foobar:
@@ -15,17 +11,15 @@ foobar:
 	.cfi_offset 6, -16
 	mov	rbp, rsp
 	.cfi_def_cfa_register 6
-	sub	rsp, 16
+	sub	rsp, 48
 	mov	rax, QWORD PTR fs:40
 	mov	QWORD PTR -8[rbp], rax
 	xor	eax, eax
-	mov	DWORD PTR -14[rbp], 1802398064
-	mov	WORD PTR -10[rbp], 121
-	lea	rax, -14[rbp]
-	mov	rsi, rax
-	lea	rdi, .LC0[rip]
-	mov	eax, 0
-	call	printf@PLT
+	mov	QWORD PTR -48[rbp], 19
+	mov	QWORD PTR -40[rbp], 10
+	mov	QWORD PTR -32[rbp], 8
+	mov	QWORD PTR -24[rbp], 17
+	mov	QWORD PTR -16[rbp], 9
 	mov	eax, 0
 	mov	rdx, QWORD PTR -8[rbp]
 	xor	rdx, QWORD PTR fs:40
