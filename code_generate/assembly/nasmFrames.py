@@ -7,10 +7,15 @@ Frame64PIC = """
 BITS 64
 DEFAULT REL
 
-extern printf
+; malloc/free
+; import <stdlib.h>
+; stdOut, printf, etc.
+; import <stdio.h>
 extern malloc
 extern free
-    
+; additional externs
+{}
+
 SECTION .data
     msg: db 'Hi! ', 0h
     ;msg db 'Hello, world!' ;string to be printed
@@ -32,7 +37,7 @@ SECTION .bss
     {}
     
 SECTION .text
-    
+{}
     global main
 main:
     ;??? Why only working with the bp push pop wrap?
@@ -50,14 +55,12 @@ BITS 64
 DEFAULT ABS
     
 ; malloc/free
-; import <stdio.h>
+; import <stdlib.h>
 ; stdOut, printf, etc.
 ; import <stdio.h>
-extern printf
 extern malloc
 extern free
-extern putchar
-
+; additional externs
 {}
     
 SECTION .data
@@ -69,7 +72,7 @@ SECTION .bss
 
 
 SECTION .text
-    
+{}
     global main
 main:
     ;??? Why only working with the bp push pop wrap?

@@ -21,15 +21,31 @@ As Gravel has wandered onwards, a few fundamentals have become exposed,
   ~ The parser will not be extended without revelation
   : I've worked to made it stupid, and will not appreciate changes
   ~ Optomisation is never accepted for itself
-  : For various reasons, some optomisations have emerged, but no optomisation is accepted for the reason it makes code faster.
+  : For various reasons, some optomisations have emerged, but no optomisation is accepted for the reason it makes code faster. If you want faster code, write faster code.
   ~ High-level constructs are accepted if they do not break the rules above
   : Which, if you think about it, is possible. Mind you, Gravel regards ''if' as a philosophy.
 
 == Motto
-There will be another way of doing iy, which is wromg
+There will be another way of doing it, which is wromg
 
-== What's it like?
+== What's Gravel like?
 Pre-historic Scala-toy? Poorly-informed Dylan-that-compiles? Something you'd use if you hadn't heard of Go?
 
 == Why the name?
 I'm opposed to software names that reference suburban-naturalist fantasy---from an industry concentrated on emptying heavy metals and recyclable high-grade engineering into peripheral-society landfill.
+
+== Alternatives
+All languages have their scope. On the basis that Gravel is something you would use if  you needed to tinker with the basics of language, perhaps for performance, peredicability, or interlatability reasons. These may also be interesting,
+
+:: Go
+~~ Made by Google employees. They didn't want to write in C++, so made something like C++.
+
+:: Rust
+~~ Made by Mozilla employees. ''Rust' is a good name for a language that seems tired of language debate. Strong on semi-automatic precision garbage collection.
+
+:: Crystal
+~~ Uses the LLVM compilation toolchanin and puts ''90% Ruby' on top. Too heady for grifters, but if you want to fly with angels, this is your language.
+
+:: Ada
+~~ As a high-concept structured language, arguably should not be in this list, but does allow pointer types, controlled type union, and other low features.
+

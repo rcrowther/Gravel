@@ -8,8 +8,12 @@ class Builder():
     def __init__(self):
         self.headers = []
         self.sections = {"data":[], "bss":[], "rodata":[]}
+        self.funcCode = []
         self.declarations = []
 
+    def extendFuncCode(self, declList):
+        self.funcCode.extend(declList)
+        
     def append(self, declList):
         self.declarations.append(declList)
         
@@ -22,6 +26,7 @@ class Builder():
             "\n    ".join(self.sections["data"]),
             "\n    ".join(self.sections["rodata"]),
             "\n    ".join(self.sections["bss"]),
+            "\n    ".join(self.funcCode),
             "\n    ".join(self.declarations)
            )      
         

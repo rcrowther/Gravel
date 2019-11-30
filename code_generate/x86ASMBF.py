@@ -10,6 +10,10 @@ from assembly.nasmFrames import Frame64
 #! need to move towards an intermediate language
 #! big needs:
 # - method calling
+# - floats
+# - type conversions
+# - utf8
+# - multi-jump
 #! can intermediate language do labelling?
 #! explicit box, like Rust?
 class ByteSpace:
@@ -221,7 +225,7 @@ class StrInit():
             for i, byt in enumerate(chunk):
                 acc += byt << (8*i)
 
-            b.append('mov qword rax, {}'.format(acc))
+            b.append('mov qword rax, {} ;{}'.format(acc, chunk))
             b.append('mov qword [{}+{}], rax'.format(basePtr, topPtr))
             topPtr += self.chunkSize
             
@@ -296,17 +300,18 @@ def headerIO(b):
     b.headers.append("extern printf")
     #b.headers.append("extern snprintf")
     b.headers.append("extern putchar")
+    b.headers.append("extern puts")
     b.sections['rodata'].append('io_fmt_str8: db "%s", 0')
+    #?x unecessary, use puts?
     b.sections['rodata'].append('io_fmt_str8_NL: db "%s", 10, 0')
     #b.headers.rodata.append('io_fmt_utf8: db "%s"', 10, 0)
     b.sections['rodata'].append('io_fmt_int: db "%lld", 0')
     b.sections['rodata'].append('io_fmt_uint: db "%llu", 0')
     b.sections['rodata'].append('io_fmt_float: db "%g", 0')
     b.sections['rodata'].append('io_fmt_addr: db "%p", 0')
+    #X?
     b.sections['rodata'].append('io_fmt_println: db "%s", 10, 0')
-    #b.sections['rodata'].append('io_fmt_comma: db ",", 0')
     b.sections['rodata'].append('io_fmt_separator: db ", ", 0')
-    #b.sections['rodata'].append('io_fmt_nl: db "", 10, 0')
     b.sections['data'].append("mch_str_buf: dq 2048")
     # reg print
     b.sections['rodata'].append('io_fmt_reg_rax: db 10, "= Reg rax: %lld", 10, 0')
@@ -363,15 +368,7 @@ def addrToStr(b, src, dst):
     b.declarations.append("call snprintf")
     #b.declarations.append(cReturn(dst, True))
             
-def printo(b, addr):
-    b.declarations.append(cParameter(0, "io_fmt_str8", False))
-    b.declarations.append(cParameter(1, addr, False))    
-    b.declarations.append("call printf")
-        
-def println(b, addr):
-    b.declarations.append(cParameter(0, "io_fmt_println", False))
-    b.declarations.append(cParameter(1, addr, False))    
-    b.declarations.append("call printf")
+
 
 def intPrint(b, reg, visit):
     b.append(cParameter(0, "io_fmt_int", False))
@@ -384,12 +381,41 @@ def intPrint(b, reg, visit):
     # #b.append(cParameterOffset(1, offset))
     # b.append("call printf")
             
-#! need fresh varnames
-def printStr(b, msg):
-    b.sections['rodata'].append('testStr: db "{}", 0'.format(msg))
-    b.declarations.append(cParameter(0, "io_fmt_str8", False))
-    b.declarations.append(cParameter(1, "testStr", False))    
-    b.declarations.append("call printf")
+# StrPrint
+# common
+def allocCommonStr(b, msgLabel, msg):
+    b.sections['rodata'].append('{}: db "{}", 0'.format(msgLabel, msg))
+    
+def printCommonStr(msgLabel):
+    b = []
+    b.append(cParameter(0, "io_fmt_str8", False))
+    b.append(cParameter(1, msgLabel, False))    
+    b.append("call printf")
+    return b
+    
+def printlnCommonStr(msgLabel):
+    b = []
+    b.append(cParameter(0, msgLabel, False))    
+    b.append("call puts")
+    return b
+    
+# heap
+# Some of this is beyond me
+#? - Why can I not write past rsp
+#? - if printf fafs with the stack, why is that a problem?
+#? Why can printf use an above rsp address?
+def printStr(msg):
+    si = StrInit(msg, byteSpace.bit64)
+    sz = si.alignedSize16()
+    b = [] 
+    b.append("add rsp, {}".format(sz))
+    b.extend( si.initDecls('rsp', 0))
+    b.append(cParameter(0, "io_fmt_str8", False))
+    b.append(cParameter(1, 'rsp', False))
+    #! note the above    
+    b.append("sub rsp, {}".format(sz))
+    b.append("call printf")
+    return b
 
 def printlnStr(msg):
     si = StrInit(msg, byteSpace.bit64)
@@ -397,30 +423,30 @@ def printlnStr(msg):
     b = [] 
     b.append("add rsp, {}".format(sz))
     b.extend( si.initDecls('rsp', 0))
-    b.append(cParameter(0, "io_fmt_str8_NL", False))
-    b.append(cParameter(1, 'rsp', False))    
-    b.append("call printf")
+    b.append(cParameter(0, 'rsp', False))
+    #! note the above    
     b.append("sub rsp, {}".format(sz))
+    b.append("call puts")
     return b
-    
+        
+#X
 def printStrPtr(b, ptrReg, offset):
     b.append(cParameter(0, "io_fmt_str8", False))
     b.append(cParameter(1, ptrReg, False))
     b.append(cParameterOffset(1, offset))     
     b.append("call printf")
-    
-# def printlnStr(b, msg):
-    # b.sections['rodata'].append('testStr2: db "{}", 0'.format(msg))
-    # b.declarations.append(cParameter(0, "io_fmt_str8_NL", False))
-    # b.declarations.append(cParameter(1, "testStr2", False))    
-    # b.declarations.append("call printf")
 
-def printlnCommonStr(msgLabel):
-    b = []
-    b.append(cParameter(0, "io_fmt_str8_NL", False))
-    b.append(cParameter(1, msgLabel, False))    
-    b.append("call printf")
-    return b
+# stack
+#! TODO
+def printo(b, addr):
+    b.declarations.append(cParameter(0, "io_fmt_str8", False))
+    b.declarations.append(cParameter(1, addr, False))    
+    b.declarations.append("call printf")
+        
+def println(b, addr):
+    b.declarations.append(cParameter(0, "io_fmt_println", False))
+    b.declarations.append(cParameter(1, addr, False))    
+    b.declarations.append("call printf")
 
 def printNL():
     b = []
@@ -883,7 +909,7 @@ class SectionBuilder():
 ###
 # Malloc
 #
-#!
+#x
 def alloc(b, sizeInBytes, name):
     #b.sections['bss'].append("{}: resq 1".format(name))
     b.sections['data'].append("{}: dq 3".format(name))
@@ -1062,6 +1088,27 @@ def rangeLoopClose(b):
     # b.append("cmp {}, {}".format(d.reg, d.cmped))
     # b.append("{} .{}".format(LoopOps[d.typ], d.jLabel)) 
 
+###
+# blocks
+#
+def funcOpen(label):
+    b = []
+    b.append("{}: push rbp ;Push the base pointer".format(label))
+    b.append("mov rbp, rsp ;Level the base pointer")
+    return b
+    
+def funcClose():
+    b = []
+    b.append("leave ;Level the stack pointer, pop the base pointer")
+    b.append("ret")
+    return b
+
+def funcInternCall(label):
+    return ["call {}".format(label)]
+        
+def funcExternCall(name):
+    return ["call {}".format(name)]
+    
 
 
 ASM = {
@@ -1082,6 +1129,18 @@ ASM = {
 # Test #
 ######
 #! can add comment stretches?
+
+def testCommonStrPrint(b):
+    headerIO(b)
+    allocCommonStr(b, "testStr1", "unfathomable...")
+    b.extend(printCommonStr("testStr1"))
+    b.extend(printlnCommonStr("testStr1"))
+
+def testHeapStrPrint(b):
+    headerIO(b)
+    b.extend(printStr("beyond*comprehension"))
+    b.extend(printlnStr("..or*reason"))
+
 def testPrint(b):
     headerIO(b)
     #staticVarStr(b, 'StrToPrint', 'ninechar')
@@ -1341,7 +1400,15 @@ def testRangeLoop(b):
     printNL(sb.decls)    
     b.extend(sb.build())
 
-
+def testSubProg(b):
+    headerIO(b)
+    b.extendFuncCode(funcOpen("testCall"))
+    b.extendFuncCode(printlnStr("block called!"))
+    b.extendFuncCode(funcClose())
+    b.extend(printlnStr("block call?"))
+    b.extend(funcInternCall("testCall"))
+    b.extend(printlnStr("done"))
+    b.extend(printNL())     
     
 # def testWhile(b):
     # headerIO(b)
@@ -1361,31 +1428,9 @@ def testRangeLoop(b):
     #    staticVarStr(b, 'StrToPrint', 'ninechary')
     #    ])
 
-def testStruct(b):
-    headerIO(b)
-    clutch(b, 3)
-    printRegStack(b)
-    printReg(b)
-    b.extend(printNL())
-    printReg(b)
-    b.extend(printNL())
-    #! top of stack
-    clt_set(b, 0, 333)
-    clt_set(b, 1, 101)
-    clt_set(b, 2, 48)
-    clt_get(b, 0, "rax")
-    intToStr(b, 'rax', 'mch_str_buf', False)
-    println(b, 'mch_str_buf')
-    # clt_get(b, 1, "rax")
-    # intToStr(b, 'rax', 'mch_str_buf', False)
-    # println(b, 'mch_str_buf')
-    # clt_get(b, 2, "rax")
-    # intToStr(b, 'rax', 'mch_str_buf', False)
-    # println(b, 'mch_str_buf')
+
         
-def testLoop(b):
-    whileNotZero(b, countValue, body)
-    
+
 def main():
     b = CodeBuilder.Builder()
     test(b)
