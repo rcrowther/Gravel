@@ -9,11 +9,9 @@ from assembly.nasmFrames import Frame64
 #! formatting issues like 'qword' whenever not usig 64bit
 #! need to move towards an intermediate language
 #! big needs:
-# - method calling
 # - floats
 # - type conversions
 # - utf8
-# - multi-jump
 #! can intermediate language do labelling?
 #! explicit box, like Rust?
 class ByteSpace:
@@ -383,17 +381,17 @@ def intPrint(b, reg, visit):
             
 # StrPrint
 # common
-def allocCommonStr(b, msgLabel, msg):
+def acommonStrAlloc(b, msgLabel, msg):
     b.sections['rodata'].append('{}: db "{}", 0'.format(msgLabel, msg))
     
-def printCommonStr(msgLabel):
+def commonStrPrint(msgLabel):
     b = []
     b.append(cParameter(0, "io_fmt_str8", False))
     b.append(cParameter(1, msgLabel, False))    
     b.append("call printf")
     return b
     
-def printlnCommonStr(msgLabel):
+def commonStrPrintln(msgLabel):
     b = []
     b.append(cParameter(0, msgLabel, False))    
     b.append("call puts")
@@ -402,9 +400,11 @@ def printlnCommonStr(msgLabel):
 # heap
 # Some of this is beyond me
 #? - Why can I not write past rsp
-#? - if printf fafs with the stack, why is that a problem?
+#? - if printf faffs with the stack, why is that a problem?
 #? Why can printf use an above rsp address?
-def printStr(msg):
+#! revise against compiles
+#! probably a better adressing way than moving rsp
+def strPrint(msg):
     si = StrInit(msg, byteSpace.bit64)
     sz = si.alignedSize16()
     b = [] 
@@ -417,7 +417,7 @@ def printStr(msg):
     b.append("call printf")
     return b
 
-def printlnStr(msg):
+def strPrintln(msg):
     si = StrInit(msg, byteSpace.bit64)
     sz = si.alignedSize16()
     b = [] 
@@ -428,26 +428,22 @@ def printlnStr(msg):
     b.append("sub rsp, {}".format(sz))
     b.append("call puts")
     return b
-        
-#X
-def printStrPtr(b, ptrReg, offset):
+
+# stack & general
+def heapStrPrint(addr):
+    b = [] 
     b.append(cParameter(0, "io_fmt_str8", False))
-    b.append(cParameter(1, ptrReg, False))
-    b.append(cParameterOffset(1, offset))     
+    b.append(cParameter(1, addr, False))    
     b.append("call printf")
-
-# stack
-#! TODO
-def printo(b, addr):
-    b.declarations.append(cParameter(0, "io_fmt_str8", False))
-    b.declarations.append(cParameter(1, addr, False))    
-    b.declarations.append("call printf")
+    return b
         
-def println(b, addr):
-    b.declarations.append(cParameter(0, "io_fmt_println", False))
-    b.declarations.append(cParameter(1, addr, False))    
-    b.declarations.append("call printf")
+def heapStrPrintln(addr):
+    b = [] 
+    b.append(cParameter(0, addr, False))    
+    b.append("call puts")
+    return b
 
+# punctuation
 def printNL():
     b = []
     b.append("mov edi, 10")
@@ -1099,7 +1095,9 @@ def funcOpen(label):
     
 def funcClose():
     b = []
-    b.append("leave ;Level the stack pointer, pop the base pointer")
+    #b.append("leave ;Level the stack pointer, pop the base pointer")
+    # All we really need
+    b.append("pop rbp ;reset the bpr")
     b.append("ret")
     return b
 
@@ -1109,6 +1107,52 @@ def funcInternCall(label):
 def funcExternCall(name):
     return ["call {}".format(name)]
     
+###
+# switch
+#
+def switchOpen(cmpValLabels, cmpVal):
+    # Form:
+    # mov 'rbx', 2
+    # switchOpen([(0, 'c0'),(1, 'c1'),(2, 'c2')], 'rbx')
+    #  ... [optional default code]
+    # switchOpenClose("switch1Close")
+    # 
+    # caseStart('c0')
+    #    ...
+    # caseClose('switch1Close')
+    # caseStart('c1')
+    #    ...
+    # caseClose('switch1Close')
+    # ...
+    # switchClose("switch1Close")
+    # Put the fiat case last and leave off the close to make it a few 
+    # cycles faster.\
+    b = []
+    b.append("mov rax, {}".format(cmpVal))
+    for cVL in cmpValLabels:
+        b.append("cmp rax, {}".format(cVL[0]))
+        b.append("je {}".format(cVL[1]))        
+    return b
+    
+def switchOpenClose(closeLabel):
+    b = []
+    b.append("jmp {}".format(closeLabel))
+    return b
+    
+def caseStart(openLabel):
+    b = []
+    b.append("{}: ".format(openLabel))
+    return b
+
+def caseClose(closeLabel):
+    b = []
+    b.append("jmp {}".format(closeLabel))
+    return b
+
+def switchClose(closeLabel):
+    b = []
+    b.append("{}: ".format(closeLabel))
+    return b
 
 
 ASM = {
@@ -1132,14 +1176,25 @@ ASM = {
 
 def testCommonStrPrint(b):
     headerIO(b)
-    allocCommonStr(b, "testStr1", "unfathomable...")
-    b.extend(printCommonStr("testStr1"))
-    b.extend(printlnCommonStr("testStr1"))
+    commonStrAlloc(b, "testStr1", "unfathomable...")
+    b.extend(commonStrPrint("testStr1"))
+    b.extend(commonStrPrintln("testStr1"))
 
+def testStackStrPrint(b):
+    headerIO(b)
+    b.extend(stackStrPrint("beyond*comprehension"))
+    b.extend(stackStrPrintln("..or*reason"))
+    
 def testHeapStrPrint(b):
     headerIO(b)
-    b.extend(printStr("beyond*comprehension"))
-    b.extend(printlnStr("..or*reason"))
+    hd = HeapData()
+    hd.initStr("testStr1", "wikkyfoobartle")
+    b.extend(hd.resultOpen())
+    #! needs an additive offset
+    b.extend(heapStrPrint(hd.offset("testStr1")))
+    #! needs an additive offset
+    b.extend(heapStrPrintln(hd.offset("testStr1")))
+    b.extend(hd.resultClose())
 
 def testPrint(b):
     headerIO(b)
@@ -1180,7 +1235,6 @@ def testPrintRegGroups(b):
     b.extend(printRegExt1())
     b.extend(printRegExt2())
 
-        
 def testStaticAlloc(b):
     headerIO(b)
     commonNum(b, "commonNum1", 1212)
@@ -1199,7 +1253,6 @@ def testStaticArray(b):
     arrayWrite(b, 'paving', 3)
     stdoutNewLine(b)
     ASM["free"](b, "paving")
-        
 
 def testStackInt(b):
     headerIO(b)
@@ -1259,7 +1312,7 @@ def testStackClutch(b):
     b.extend(printNL())
     b.extend(sd.intClutchPrint("testClutch2", widths))
     b.extend(printNL()) 
-    
+#!    
 def testStackData():
     a = StackData()
     a.declData("testVar1")
@@ -1293,7 +1346,6 @@ def testHeapInt(b):
 def testHeapStr(b):
     headerIO(b)
     hd = HeapData()
-    #! why cut-off on first one?
     hd.initStr("testStr1", "wikkyfoobartle")
     hd.initStr("testStr2", "ghalumphev")
     hd.initStr("testStr3", "petalpeddlaring")
@@ -1400,14 +1452,14 @@ def testRangeLoop(b):
     printNL(sb.decls)    
     b.extend(sb.build())
 
-def testSubProg(b):
+def testCallBlock(b):
     headerIO(b)
     b.extendFuncCode(funcOpen("testCall"))
-    b.extendFuncCode(printlnStr("block called!"))
+    b.extendFuncCode(strPrintln("block called!"))
     b.extendFuncCode(funcClose())
-    b.extend(printlnStr("block call?"))
+    b.extend(strPrintln("block call?"))
     b.extend(funcInternCall("testCall"))
-    b.extend(printlnStr("done"))
+    b.extend(strPrintln("done"))
     b.extend(printNL())     
     
 # def testWhile(b):
@@ -1421,7 +1473,27 @@ def testSubProg(b):
     # printNL(sb.decls)    
     # b.extend(sb.build())
 
-       
+def testSwitch(b):
+    headerIO(b)
+    b.append("mov rbx, 1")
+    b.extend(switchOpen([(0, 's0'),(1, 's1'),(2, 's2')], 'rbx'))
+    #  [optional default code]
+    b.extend(strPrintln("switch default code!"))
+    b.extend(switchOpenClose("switch1Close"))
+    # cases
+    b.extend(caseStart('s1'))
+    b.extend(strPrintln("switch to 1!"))
+    b.extend(caseClose('switch1Close'))
+    b.extend(caseStart('s2'))
+    b.extend(strPrintln("switch to 2!"))
+    b.extend(caseClose('switch1Close'))
+    b.extend(caseStart('s0'))
+    b.extend(strPrintln("switch to 0!"))
+    # unecessary, runs on
+    #b.extend(caseClose('switch1Close'))
+    # close
+    b.extend( switchClose("switch1Close")),
+           
 # def testComment(b):
     #! cant work, currently
     #autoComment(b, [ 

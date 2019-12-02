@@ -34,14 +34,28 @@
     //return 0;
 //}
 
-void testCall() 
-{
-    printf("%s\n", "block called!");
-}
+//void testCall() 
+//{
+    //printf("%s\n", "block called!");
+//}
 
 int main()
 {
-    printf("%s\n", "block call?");
-    testCall();
+    //printf("%s\n", "block call?");
+    //testCall();
+    long trip = 1;
+       switch(trip) {
+      case 1 :
+         printf("Is 1\n" );
+         break;
+      case 2 :
+         printf("Is 2\n" );
+         break;
+      case 3 :
+         printf("Is 3\n" );
+         break;
+      default :
+         printf("Default\n" );
+   }
     return 0;
 }
