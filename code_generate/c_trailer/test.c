@@ -5,8 +5,10 @@
 // test run,
 // gcc -Wall test.c
 // ./a.out
+//  objdump -Mintel -d a.out
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
 
 //int main()
 //{
@@ -39,23 +41,41 @@
     //printf("%s\n", "block called!");
 //}
 
+static const size_t str_builder_min_size = 32;
+
+struct str_builder {
+    char   *str;
+    size_t  alloced;
+    size_t  len;
+};
+
+typedef struct str_builder str_builder_t;
+
 int main()
 {
     //printf("%s\n", "block call?");
     //testCall();
-    long trip = 1;
-       switch(trip) {
-      case 1 :
-         printf("Is 1\n" );
-         break;
-      case 2 :
-         printf("Is 2\n" );
-         break;
-      case 3 :
-         printf("Is 3\n" );
-         break;
-      default :
-         printf("Default\n" );
-   }
+    //long trip = 1;
+       //switch(trip) {
+      //case 1 :
+         //printf("Is 1\n" );
+         //break;
+      //case 2 :
+         //printf("Is 2\n" );
+         //break;
+      //case 3 :
+         //printf("Is 3\n" );
+         //break;
+      //default :
+         //printf("Default\n" );
+   //}
+    str_builder_t *sb;
+
+    sb          = calloc(1, sizeof(*sb));
+    sb->str     = malloc(str_builder_min_size);
+    *sb->str    = '\0';
+    sb->alloced = str_builder_min_size;
+    sb->len     = 0;
+
     return 0;
 }

@@ -2,19 +2,16 @@
 	.intel_syntax noprefix
 	.text
 	.section	.rodata
-.LC0:
-	.string	"Is 1"
-.LC1:
-	.string	"Is 2"
-.LC2:
-	.string	"Is 3"
-.LC3:
-	.string	"Default"
+	.align 8
+	.type	str_builder_min_size, @object
+	.size	str_builder_min_size, 8
+str_builder_min_size:
+	.quad	32
 	.text
 	.globl	main
 	.type	main, @function
 main:
-.LFB0:
+.LFB5:
 	.cfi_startproc
 	push	rbp
 	.cfi_def_cfa_offset 16
@@ -22,35 +19,39 @@ main:
 	mov	rbp, rsp
 	.cfi_def_cfa_register 6
 	sub	rsp, 16
-	mov	QWORD PTR -8[rbp], 1
+    ; calloc
+	mov	esi, 24
+	mov	edi, 1
+	call	calloc@PLT
+    ; strut in rbp-8
+	mov	QWORD PTR -8[rbp], rax
+    ; malloc
+	mov	eax, 32
+	mov	rdi, rax
+	call	malloc@PLT
+    ; str in rdx
+	mov	rdx, rax
+    ; sb->str 
 	mov	rax, QWORD PTR -8[rbp]
-	cmp	rax, 2
-	je	.L3
-	cmp	rax, 3
-	je	.L4
-	cmp	rax, 1
-	jne	.L8
-	lea	rdi, .LC0[rip]
-	call	puts@PLT
-	jmp	.L6
-.L3:
-	lea	rdi, .LC1[rip]
-	call	puts@PLT
-	jmp	.L6
-.L4:
-	lea	rdi, .LC2[rip]
-	call	puts@PLT
-	jmp	.L6
-.L8:
-	lea	rdi, .LC3[rip]
-	call	puts@PLT
-.L6:
+    ; mov str ptr to first strut
+	mov	QWORD PTR [rax], rdx
+	mov	rax, QWORD PTR -8[rbp]
+    ; get string from strut, set 0
+	mov	rax, QWORD PTR [rax]
+	mov	BYTE PTR [rax], 0
+    ; put 32 on second strut item
+	mov	edx, 32
+	mov	rax, QWORD PTR -8[rbp]
+	mov	QWORD PTR 8[rax], rdx
+    ; put 0 on third strut item
+	mov	rax, QWORD PTR -8[rbp]
+	mov	QWORD PTR 16[rax], 0
 	mov	eax, 0
 	leave
 	.cfi_def_cfa 7, 8
 	ret
 	.cfi_endproc
-.LFE0:
+.LFE5:
 	.size	main, .-main
 	.ident	"GCC: (Ubuntu 7.4.0-1ubuntu1~18.04.1) 7.4.0"
 	.section	.note.GNU-stack,"",@progbits

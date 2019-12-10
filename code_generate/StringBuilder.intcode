@@ -1,0 +1,80 @@
+# https://nachtimwald.com/2017/02/26/efficient-c-string-builder/
+StringBuilder {
+dm sizeMin: int8 = 32 
+
+Clutch StrBuilder {
+    dm str: string
+    dm allocSize: int 
+    dm size: int
+}
+
+
+fm create(): StrBuilder
+{
+    dm heap sb = strBuilder()
+    sb.data = malloc(sizeMin)
+    sb.str(0) = '\0'
+    sb.alloced = sizeMin
+    sb.size = 0
+    return sb
+}
+
+fm destroy(sb: StrBuilder)
+{
+    free(sb.str)
+    free(sb)
+}
+
+fm _ensureSpace(sb: StrBuilder, extralen: int)
+{
+    dc newsize = sb.size+add_len+1
+    if (sb.allocSize >= newSize)
+        return
+
+    while (sb.allocSize < newsize) {
+        # Doubling growth strategy.
+        sb.allocSize <<= 1;
+        if (sb.allocSize == 0) {
+            ## Left shift of max bits will go to 0. An unsigned type set to
+              -1 will return the maximum possible size. However, we should
+               have run out of memory well before we need to do this. Since
+               this is the theoretical maximum total system memory we don't
+               have a flag saying we can't grow any more because it should
+               be impossible to get to this point.
+             #
+            sb.allocSize--;
+        }
+    }
+    sb.str = realloc(sb.str, sb.allocSize)
+}
+
+fm +=(sb: StringBuilder, str : string)
+{
+    dm len = str.size
+    _ensureSpace(sb, len)
+    memmove(sb.str+sb->len, str, len)
+    sb.size += len
+    sb.str(sb.size) = '\0'
+}
+
+
+fm clear(sb: StringBuilder)
+{
+    sb.size = 0
+    sb.str(0) = '\0'
+}
+
+
+fm size(sb: StringBuilder)
+{
+    return sb.size
+}
+
+fm result(sb: StringBuilder)
+{
+    dm out: Str
+    out = malloc(sb.size+1)
+    memcpy(out, sb.str, sb.size+1)
+    return out
+}
+}//

@@ -6,6 +6,8 @@ import collections
 import CodeBuilder
 from assembly.nasmFrames import Frame64
 
+import opCode 
+
 #! formatting issues like 'qword' whenever not usig 64bit
 #! need to move towards an intermediate language
 #! big needs:
@@ -318,6 +320,8 @@ def headerIO(b):
     b.sections['rodata'].append('io_fmt_reg_rdx: db 10, "= Reg rdx: %lld", 10, 0')
     b.sections['rodata'].append('io_fmt_reg_rsp: db 10, "= Reg rsp: %llu", 10, 0')
     b.sections['rodata'].append('io_fmt_reg_rbp: db 10, "= Reg rbp: %llu", 10, 0')
+    b.sections['rodata'].append('io_fmt_reg_rsi: db 10, "= Reg rsi: %llu", 10, 0')
+    b.sections['rodata'].append('io_fmt_reg_rdi: db 10, "= Reg rdi: %llu", 10, 0')
     b.sections['rodata'].append('io_fmt_reg_r9: db 10, "= Reg r9: %lld", 10, 0')
     b.sections['rodata'].append('io_fmt_reg_r10: db 10, "= Reg r10: %lld", 10, 0')
     b.sections['rodata'].append('io_fmt_reg_r12: db 10, "= Reg r12: %lld", 10, 0')
@@ -480,10 +484,15 @@ def printReg(reg):
     if(reg not in PrintableRegisters):
         print("[Error] given register name not printable: {}\n    allowed registers {}".format(reg, PrintableRegisters))
         sys.exit()
+
     return [
+    "push rdi",
+    "push rsi",
         cParameter(0, "io_fmt_reg_{}".format(reg), False),
         cParameter(1, reg, False),
         "call printf",
+    "pop rsi",
+    "pop rdi"
         ]
         
 def printRegGen():
@@ -508,11 +517,12 @@ def printRegStack():
         ]
        
 def printRegStr():
+    # works :)
     # Clobbers rdi, rdx
     return [
+        cParameter(2,  "rdi", False), 
         cParameter(0, "io_fmt_reg_str", False),
         # param 1 is rsi :)
-        cParameter(2,  "rdi", False), 
         "call printf",
         ]
        
@@ -1154,7 +1164,15 @@ def switchClose(closeLabel):
     b.append("{}: ".format(closeLabel))
     return b
 
+###
+# Namespace
+#
 
+def mangle(ext, name):
+    return ext + name
+    
+
+#x
 ASM = {
 "alloc" : alloc,
 "free" : free,
@@ -1212,7 +1230,7 @@ def testPrint(b):
     printStr(b, "done")
     #printlnStr(b, "doner")
 
-def testPrintReg(b):
+def testRegPrint(b):
     headerIO(b)  
     #b.extend(printReg('rbp'))
     #b.extend(printReg('rsp'))
@@ -1253,7 +1271,7 @@ def testStaticArray(b):
     arrayWrite(b, 'paving', 3)
     stdoutNewLine(b)
     ASM["free"](b, "paving")
-
+          
 def testStackInt(b):
     headerIO(b)
     sd = StackData()
@@ -1462,6 +1480,19 @@ def testCallBlock(b):
     b.extend(strPrintln("done"))
     b.extend(printNL())     
     
+def testCallBlockParams(b):
+    headerIO(b)
+    b.extendFuncCode(x64["funcOpen"]("testCall"))
+    b.extendFuncCode(printRegStr())
+    b.extendFuncCode(x64["cReturnSet"](33))
+    b.extendFuncCode(x64["funcClose"]())
+    
+    b.extend(strPrintln("block call?"))
+    b.extend(x64["cParamSet"](0, 77))
+    b.extend(x64["cParamSet"](1, 44))
+    b.extend(x64["funcCall"]("testCall"))
+    b.extend(printReg("rax"))
+    b.extend(printNL())   
 # def testWhile(b):
     # headerIO(b)
     # sb = SectionBuilder(None, None)
@@ -1500,8 +1531,14 @@ def testSwitch(b):
     #    staticVarStr(b, 'StrToPrint', 'ninechary')
     #    ])
 
-
-        
+def testClutchCode(b):
+    headerIO(b)
+    b.extendFuncCode(opCode.testClutchCode())
+    b.extendFuncCode("\n")    
+    b.extend(funcInternCall("StringBuilder_create"))
+    b.append("mov rdi, rax")
+    b.extend(funcInternCall("StringBuilder_destroy"))
+    b.extend(printReg('rax'))
 
 def main():
     b = CodeBuilder.Builder()

@@ -1,0 +1,161 @@
+# https://nachtimwald.com/2017/02/26/efficient-c-string-builder/
+#StringBuilder {
+
+#dc sizeMin: int8 = 32 
+strCommonInit("StringBuilder_sizeMin", 32)
+
+
+#Clutch StrBuilder {
+#    dm str: string
+#    dm allocSize: int 
+#    dm size: int
+#}
+
+# str, allocSize, size
+clutchData = [byteSpace.bit64, byteSpace.bit64, byteSpace.bit64]
+clutchSB = ClutchTpl(clutchData)
+
+
+
+#fm create(): StrBuilder
+#{
+#    var heap sb = strBuilder()
+#    sb.data = malloc(sizeMin)
+#    sb.str(0) = '\0'
+#    sb.alloced = sizeMin
+#    sb.size = 0
+#    return sb
+#}
+funcOpen("StringBuilder_create")
+l = Local(0)
+# local 1 clutch
+L1 = l.alloc(byteSpace.bit64)
+# local 2 tmp
+L2 = l.alloc(byteSpace.bit64)
+clutchSB.alloc()
+L1.set(cReturnSrc())
+# string to clutch
+_malloc(StringBuilder_sizeMin)
+L2.set(offset(L1, clutchSB(0))
+L2.addrSet(cReturnSrc())
+# String start is further visit
+L2.set(L2.addrGet())
+L2.addrSet("\"\\0\"")
+L2.set(offset(L1, clutchSB(1)))
+L2.addrSet(StringBuilder_sizeMin)
+L2.set(offset(L1, clutchSB(2)))
+L2.addrSet("0")
+cReturn(l1)
+funcClose()
+
+#fm destroy(sb: StrBuilder)
+#{
+#    free(sb.str)
+#    free(sb)
+#}
+funcOpen("StringBuilder_destroy")
+l = Local(0)
+# L0 clutch
+L0 = l.alloc(byteSpace.bit64)
+# L1 string buffer
+L1 = l.alloc(byteSpace.bit64)
+L0.set(cParam1(0))
+L1.set(offset(L0, clutchSB(0)))
+free(L1)
+free(L0)
+funcClose()
+
+#fm _ensureSpace(sb: StrBuilder, extraLen: int)
+#{
+#    dc newsize = sb.size+extraLen+1
+#    if (sb.allocSize >= newSize)
+#        return
+
+#    while (sb.allocSize < newsize) {
+#        # Doubling growth strategy.
+#        sb.allocSize <<= 1;
+#        if (sb.allocSize == 0) {
+#            ## Left shift of max bits will go to 0. An unsigned type set to
+#              -1 will return the maximum possible size. However, we should
+#               have run out of memory well before we need to do this. Since
+#               this is the theoretical maximum total system memory we don't
+#               have a flag saying we can't grow any more because it should
+#               be impossible to get to this point.
+#             #
+#            sb.allocSize--;
+#        }
+#    }
+#    sb.str = realloc(sb.str, sb.allocSize)
+#}
+
+funcOpen("StringBuilder__ensureSpace")
+localAlloc(x64)
+localSet(0, clutchGet(cParamGet(0), 2)
+add(newsize, cParamGet(1))
+inc(newsize)
+ifOpen(sb.allocSize, newSize, 'gte')
+    ret
+ifClose()
+whileOpen(sb.allocSize, newsize, 'lt')
+shiftL(sb.allocSize, 1)
+#...
+whileClose()
+realloc(sb.str, sb.allocSize)
+mallocMove(sb.str) 
+funcClose("StringBuilder__ensureSpace")
+
+
+#fm +=(sb: StringBuilder, str : string)
+#{
+#    val len = str.size
+#    _ensureSpace(sb, len)
+#    memmove(sb.str+sb->len, str, len)
+#    sb.size += len
+#    sb.str(sb.size) = '\0'
+#}
+
+funcOpen("StringBuilder_+=")
+clutch1.get(cParamSrc(0), 1)
+call("StringBuilder__ensureSpace")
+#    memmove(sb.str+sb->len, str, len)
+set(sb(2), len)
+setIndex(cParamSrc(0)(1), sb.size, '\0')
+funcClose("StringBuilder_+=")
+
+
+#dm clear(sb: StringBuilder)
+#{
+#    sb.size = 0
+#    sb.str(0) = '\0'
+#}
+funcOpen("StringBuilder_clear")
+setIndex(cParamSrc(0)(1), 0, 0)
+setIndex(cParamSrc(0)(0), 0, 0)
+funcClose("StringBuilder_clear")
+
+
+#fm size(sb: StringBuilder)
+#{
+#    return sb.size
+#}
+funcOpen("StringBuilder_size")
+getIndex(cReturn, cParamSrc(0)(2))
+funcClose("StringBuilder_size")
+
+
+#fm result(sb: StringBuilder)
+#{
+#    var out: Str
+#    out = malloc(sb.size+1)
+#    memcpy(out, sb.str, sb.size+1)
+#    return out
+#}
+funcOpen("StringBuilder_result")
+setlocal1(cParamSrc(0))
+inc(local1)
+malloc(local1Addr)
+#    memcpy(out, sb.str, sb.size+1)
+cReturn(local1)
+funcClose("StringBuilder_result")
+
+# }//

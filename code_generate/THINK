@@ -1,0 +1,32 @@
+== Containers
+Clutch/struct and array are fundamentals
+
+
+Why can't structs/clutches iterate?
+clutch(4)
+
+And (short, determined) arrays be labelled?
+array.needle
+
+== Loops
+=== determined
+4.times(i){
+
+}
+
+Range(2,16).repeat(i){
+
+}
+
+[container].for(obj) {
+
+}
+
+=== Non-determined
+[condition].until {
+
+}
+
+[condition].while {
+
+}

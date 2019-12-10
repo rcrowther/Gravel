@@ -24,7 +24,8 @@ def subprocessRun(args, errorMsg):
         # Non-zero oputput
         print("[Error] {}".format(errorMsg))
         #print("    {}".format(e.stderr.decode("utf-8") ))
-        print("    {}".format(e.stderr))
+        #print("    {}".format(e.stderr))
+        print("    {}".format(e))
         #! wont exit?
         sys.exit()
         
