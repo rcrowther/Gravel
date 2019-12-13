@@ -59,6 +59,7 @@ DEFAULT ABS
 ; stdOut, printf, etc.
 ; import <stdio.h>
 extern malloc
+extern realloc
 extern free
 ; additional externs
 {}

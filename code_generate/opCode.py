@@ -93,6 +93,22 @@ CodeData = {
 IdToName = [ data for data in enumerate(CodeData)]
 
 ###
+# arithmetic
+#
+def add(b, x, y):
+    b.append("add {}, {}".format(x, y))
+
+def inc(b, reg):
+    b.append("inc {}".format(reg))
+
+def dec(b, reg):
+    b.append("dec {}".format(reg))
+        
+def shiftL(b, reg, dist):
+    # or is this unsigned shl
+    b.append("sal {}, {}".format(reg, dist))
+
+###
 # C Params
 #
 cParameterRegisters = [
@@ -210,22 +226,23 @@ def localSet(b, local, src):
     # @src can be a register/offset etc.
     b.append("mov {}, {}".format(local, src))
     
+#x
 def localAddrSet(b, local, src):
     # uses the local as an address
     # @src must be literal, label or register
     b.append("mov qword [{}], {}".format(local, src))
-
+#x
 def localAddrGet(b, local, dst):
     # treat the local as an address to retrieve from
     # @dst must be literal, label or register
     b.append("mov {}, [{}]".format(dst, local))
 
-def localAddrSrc(local):
-    # treat the local as an address to retrieve from
+def visit(local):
+    # treat a local as an address to set/get.
     return "[{}]".format(local)
         
-def localOffset(local, offset):
-    # format an offset fragment
+def localOffsetVisit(local, offset):
+    # format a local and offset as an address to set/get
     return "qword [{}+{}]".format(local, offset)
         
 ###
@@ -239,6 +256,13 @@ def _malloc(byteSize):
         #cReturnGet(dst)
         ]
 
+def _realloc(ptr, byteSize):
+    return [
+        cParamSet(0, ptr),
+        cParamSet(1, byteSize),
+        "call realloc",
+        ]
+        
 def _free(addr):        
     return [
         cParamSet(0, addr),
@@ -256,7 +280,9 @@ def heapFree(b, addr):
 #
 def StrAlloc(b, size):
     b += _malloc(size)
-    
+
+def StrRealloc(b, ptr, size):
+    b += _realloc(ptr, size)    
     
     
 ###
@@ -307,7 +333,80 @@ class ClutchTpl:
             self.offsets, self.size
             )
  
-            
+###
+# comparison
+#
+CmpOps = {
+    'gt':  "g",     
+    'lt':  "l",
+    'lte': "le",
+    'gte': "ge",
+    'eq':  "e", 
+    'neq': "ne",      
+    }
+    
+
+def cmpSet(b, local, cmpVal, cmpTyp, dst):
+    # @cmpVal can be literal or a visited address (32bit?)
+    # @src can be a register/offset etc.
+    # @dst can be a register/offset etc.
+    # @cmpTyp 'gt', 'gte' etc.
+    b.append("cmp {}, {}".format(local, cmpVal))
+    b.append("xor {}, {}".format(dst, dst))
+    b.append("set{} {}".format(CmpOps[cmpTyp], dst))
+    
+###
+# if
+#
+#? upside down
+#? works for looks
+JumpOps = {
+    'g':  "jle",     
+    'lt':  "jns",
+    'lte': "jg",
+    'gte': "js",
+    'eq':  "jne", 
+    'neq': "je",      
+    }
+
+InvCmpOps = {
+    'gt':  "le",     
+    'lt':  "ge",
+    'lte': "g",
+    'gte': "l",
+    'eq':  "ne", 
+    'neq': "e",
+    }
+        
+def ifOpen(b, label, local, cmpVal, cmpTyp):
+    # if value (op) cmped
+    # @cmpVal can be literal or a visited address (32bit?)
+    # @cmpTyp 'gt', 'gte' etc
+    #! why use register? guarentee 64bit?
+    b.append("cmp {}, {}".format(local, cmpVal))
+    b.append("j{} {}".format(InvCmpOps[cmpTyp], label))
+  
+def ifClose(b, label):
+    b.append("{}:".format(label))
+
+
+###
+# loop
+#
+
+def whileOpen(b, label):
+    initJmpLabel = label + 'init' 
+    b.append("jmp {}".format(initJmpLabel))
+    b.append("{}:".format(label))
+
+def whileClose(b, label, local, cmpVal, cmpTyp):
+    initJmpLabel = label + 'init' 
+    b.append("{}:".format(initJmpLabel))
+    b.append("cmp {}, {}".format(local, cmpVal))
+    b.append("j{} {}".format(InvCmpOps[cmpTyp], label))
+    
+    
+        
 ###
 # func
 #
@@ -331,6 +430,7 @@ def funcCall(label):
     return ["call {}".format(label)]
     
 
+
 ###
 # tests
 #
@@ -351,6 +451,7 @@ def testClutch():
     print(str(c))
 
 def testClutchCode():
+    # str, allocSize, size
     clutchSB = ClutchTpl([byteSpace.bit64, byteSpace.bit64, byteSpace.bit64])
     # strCommonInit("StringBuilder_sizeMin", 32)
     StringBuilder_sizeMin = 32
@@ -368,13 +469,13 @@ def testClutchCode():
     # # string to clutch
     StrAlloc(b, StringBuilder_sizeMin)
     localSet(b, l(1), l(0))
-    localSet(b, localOffset(l(1), clutchSB(0)),  cReturnSrc())
+    localSet(b, localOffsetVisit(l(1), clutchSB(0)), cReturnSrc())
     # # String start is further visit
-    localSet(b, l(1), localAddrSrc(l(1)))
+    localSet(b, l(1), visit(l(1)))
     localSet(b, l(1), "\"\\0\"")
     localSet(b, l(1), l(0))
-    localSet(b, localOffset(l(1), clutchSB(1)), StringBuilder_sizeMin)
-    localSet(b, localOffset(l(1), clutchSB(2)), "0")
+    localSet(b, localOffsetVisit(l(1), clutchSB(1)), StringBuilder_sizeMin)
+    localSet(b, localOffsetVisit(l(1), clutchSB(2)), "0")
     cReturnSet(b, l(0))
     funcClose(b)
     
@@ -383,9 +484,51 @@ def testClutchCode():
     # L0 clutch
     l.alloc(byteSpace.bit64)
     localSet(b, l(0), cParamSrc(0))
-    heapFree(b, localOffset(l(0), clutchSB(0)))
+    heapFree(b, localOffsetVisit(l(0), clutchSB(0)))
     heapFree(b, l(0))
     funcClose(b)
+    
+
+    #? not sure if working
+    funcOpen(b, "StringBuilder__ensureSpace")
+    l = Local()
+    # L0 newSize
+    l.alloc(byteSpace.bit64)
+
+    localSet(b, l(0), localOffsetVisit(cParamSrc(0), clutchSB(2)))
+    add(b, l(0), cParamSrc(1))
+    inc(b, l(0))
+
+    ifOpen(b, 'if1', localOffsetVisit(cParamSrc(0), clutchSB(1)), l(0), 'gte')
+    # ???
+    b.append("    ret")
+    ifClose(b, 'if1')
+
+    whileOpen(b, "Loop1")
+    shiftL(b, localOffsetVisit(cParamSrc(0), clutchSB(1)), 1)
+    ifOpen(b, 'if2', localOffsetVisit(cParamSrc(0), clutchSB(1)), 0, 'eq')
+    dec(b, localOffsetVisit(cParamSrc(0), clutchSB(1)))
+    ifClose(b, 'if2')
+    whileClose(b, "Loop1", localOffsetVisit(cParamSrc(0), clutchSB(1)), l(0), 'lt')
+
+    StrRealloc(
+        b, 
+        localOffsetVisit(cParamSrc(0), clutchSB(0)), 
+        localOffsetVisit(cParamSrc(0), clutchSB(1))
+        )
+    localSet(b, localOffsetVisit(l(0), clutchSB(0)), cReturnSrc())
+    funcClose(b)
+
+
+
+    funcOpen(b, "StringBuilder_+=")
+#clutch1.get(cParamSrc(0), 1)
+    call("StringBuilder__ensureSpace")
+#    memmove(sb.str+sb->len, str, len)
+#set(sb(2), len)
+#setIndex(cParamSrc(0)(1), sb.size, '\0')
+    funcClose(b)
+
     return b
     #print("\n".join(b))
     

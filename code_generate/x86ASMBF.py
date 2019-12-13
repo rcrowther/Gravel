@@ -1445,7 +1445,26 @@ def testIf(b):
     ifClose(sb.decls)
     sb.extend( printlnCommonStr("done") )
     b.extend(sb.build())
-    
+
+def testIf2(b):
+    headerIO(b)
+    b.extend(strPrintln( "if code test?") )
+    opCode.localSet(b, 'r14', '77')
+    opCode.ifOpen(b, "L1", 'r14', '77', 'gte')
+    b.extend( strPrintln( "gte runs success") )
+    opCode.ifClose(b, "L1")
+    opCode.ifOpen(b, "L2", 'r14', '77', 'lt')
+    b.extend( strPrintln( "lt runs fail") )
+    opCode.ifClose(b, "L2")    
+    opCode.ifOpen(b, "L3", 'r14', '77', 'eq')
+    b.extend( strPrintln( "eq runs success") )
+    opCode.ifClose(b, "L3")  
+    opCode.ifOpen(b, "L4", 'r14', '77', 'neq')
+    b.extend( strPrintln( "neq runs fails") )
+    opCode.ifClose(b, "L4")  
+    b.extend( strPrintln("done") )
+    #b.extend(sb.build())
+        
 def testCountLoop(b):
     headerIO(b)
     sb = SectionBuilder(None, None)
@@ -1470,6 +1489,16 @@ def testRangeLoop(b):
     printNL(sb.decls)    
     b.extend(sb.build())
 
+def testWhile2(b):
+    headerIO(b)
+    b.append( "mov r14, 3" )
+    opCode.whileOpen(b, "Loop1")
+    b.extend( printReg('r14'))
+    b.extend( printNL() )   
+    b.append( "inc r14" )
+    opCode.whileClose(b, "Loop1", 'r14', '8','gte')
+    b.extend( strPrintln( "done") )
+
 def testCallBlock(b):
     headerIO(b)
     b.extendFuncCode(funcOpen("testCall"))
@@ -1493,16 +1522,7 @@ def testCallBlockParams(b):
     b.extend(x64["funcCall"]("testCall"))
     b.extend(printReg("rax"))
     b.extend(printNL())   
-# def testWhile(b):
-    # headerIO(b)
-    # sb = SectionBuilder(None, None)
-    # #def whileOpen(b, count, typ, cmped, reg):
-    # whileOpen(sb.decls, '8', 'gt', 4, 'r14')
-    # sb.append( "dec r14" )
-    # printReg(sb.decls, 'r14')
-    # whileClose(sb.decls)
-    # printNL(sb.decls)    
-    # b.extend(sb.build())
+
 
 def testSwitch(b):
     headerIO(b)

@@ -57,11 +57,9 @@ funcOpen("StringBuilder_destroy")
 l = Local(0)
 # L0 clutch
 L0 = l.alloc(byteSpace.bit64)
-# L1 string buffer
-L1 = l.alloc(byteSpace.bit64)
 L0.set(cParam1(0))
 L1.set(offset(L0, clutchSB(0)))
-free(L1)
+free(clutchSB(0))
 free(L0)
 funcClose()
 
@@ -93,9 +91,9 @@ localAlloc(x64)
 localSet(0, clutchGet(cParamGet(0), 2)
 add(newsize, cParamGet(1))
 inc(newsize)
-ifOpen(sb.allocSize, newSize, 'gte')
+ifOpen('if1', sb.allocSize, newSize, 'gte')
     ret
-ifClose()
+ifClose('if1')
 whileOpen(sb.allocSize, newsize, 'lt')
 shiftL(sb.allocSize, 1)
 #...

@@ -151,6 +151,8 @@ if __name__ == "__main__":
         #x86ASMBF.testCallBlock(b)
         #x86ASMBF.testCallBlockParams(b)
         #x86ASMBF.testIf(b)
+        #x86ASMBF.testIf2(b)
+        #x86ASMBF.testWhile2(b)
         #x86ASMBF.testRangeLoop(b)
         #x86ASMBF.testStruct(b)
         #x86ASMBF.testSwitch(b)
