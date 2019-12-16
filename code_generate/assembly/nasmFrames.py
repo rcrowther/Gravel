@@ -54,13 +54,16 @@ Frame64 = """
 BITS 64
 DEFAULT ABS
     
-; malloc/free
-; import <stdlib.h>
 ; stdOut, printf, etc.
 ; import <stdio.h>
+; from <stdlib.h>
 extern malloc
+extern calloc
 extern realloc
 extern free
+; from <string>
+extern memmove
+extern strlen
 ; additional externs
 {}
     

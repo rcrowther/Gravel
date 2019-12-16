@@ -115,16 +115,27 @@ cParameterRegisters = [
     "rdi", "rsi", "rdx", "rcx", "r8", "r9"
     ]
     
+#? Need a cParamGet to cParamSet
+def cParamGetToSet(getIdx, setIdx):
+    src = cParamSrc(getIdx)
+    dst = cParamSrc(getIdx)
+    if (src != dst):
+        return "mov {}, {}".format(dst, src)
+    return ''
+    
+# keep
 def cParamSet(idx, src):
     if (idx < 6):
         return "mov {}, {}".format(cParameterRegisters[idx], src)
     return "push {}".format(v)
 
+#?x for src?
 def cParamGet(idx, dst):
     if (idx < 6):
         return "mov {}, {}".format(dst, cParameterRegisters[idx])
     return "pop {}".format(dst)
     
+# keep
 def cParamSrc(idx):
     if (idx < 6):
         return "{}".format(cParameterRegisters[idx])
@@ -145,7 +156,7 @@ def cReturnSrc():
 LocalData = collections.namedtuple('LocalData', 'size, isReg, location')
 
 cRegisters = [
-    #param registers
+    #param registesetrs
     #"rdi",
     #"rsi",
     #"rdx",
@@ -244,7 +255,14 @@ def visit(local):
 def localOffsetVisit(local, offset):
     # format a local and offset as an address to set/get
     return "qword [{}+{}]".format(local, offset)
-        
+
+def regOffset(reg, offset):
+    # Code set a register to point at offset from the register.
+    # In other words, move a pointer to an offset
+    # @reg a register containing an address
+    # @offset to move to
+    return "lea {}, [{}+{}]".format(reg, reg, offset)        
+
 ###
 # Malloc
 #
@@ -274,7 +292,16 @@ def heapFree(b, addr):
     b += _free(addr)
     
     
+def memmove(b, src, dst, size):
+    #@src pointer to memory
+    #@dst pointer to memory
+    #@size in bytes
+    b.append(cParamSet(0, src))
+    b.append(cParamSet(1, dst))
+    b.append(cParamSet(2, size))
+    funcCall(b, "memmove")
     
+        
 ###
 # String
 #
@@ -322,7 +349,26 @@ class ClutchTpl:
     def alloc(self, b):
         b += _malloc(self.size)
 
-    def __call__(self, idx):
+    def visit(self, reg, idx):
+        # Code fragment returns contents of an elem.
+        # Uses offset addressing, so only works for base elem size of 
+        # processor.
+        # the fragment can be used as source or destination.
+        # Otherwise, use a pointer. 
+        # @reg a reg or fixed address
+        # @idx elem to return
+        return localOffsetVisit(reg, self.elemOffset(idx))
+
+    def regToElem(self, b, reg, idx):
+        # Instruction moves a pointer to an elem.
+        # For one offs, use the fast visit(). 
+        # @reg a reg or fixed address
+        # @idx elem to return
+        #? must be hand-constructed as offsets add too many visiting 
+        # brackets
+        b.append( regOffset(reg, "{}+{}".format(reg, self.elemOffset(idx)) ))   
+        
+    def elemOffset(self, idx):
         return self.offsets[idx]
          
     def free(self, b, addr):
@@ -426,8 +472,8 @@ def funcClose(b):
         "ret"
         ])
 
-def funcCall(label):
-    return ["call {}".format(label)]
+def funcCall(b, label):
+    b.append("call {}".format(label))
     
 
 
@@ -469,13 +515,13 @@ def testClutchCode():
     # # string to clutch
     StrAlloc(b, StringBuilder_sizeMin)
     localSet(b, l(1), l(0))
-    localSet(b, localOffsetVisit(l(1), clutchSB(0)), cReturnSrc())
+    localSet(b, clutchSB.visit(l(1), 0), cReturnSrc())
     # # String start is further visit
     localSet(b, l(1), visit(l(1)))
     localSet(b, l(1), "\"\\0\"")
     localSet(b, l(1), l(0))
-    localSet(b, localOffsetVisit(l(1), clutchSB(1)), StringBuilder_sizeMin)
-    localSet(b, localOffsetVisit(l(1), clutchSB(2)), "0")
+    localSet(b, clutchSB.visit(l(1), 1), StringBuilder_sizeMin)
+    localSet(b, clutchSB.visit(l(1), 2), "0")
     cReturnSet(b, l(0))
     funcClose(b)
     
@@ -484,7 +530,7 @@ def testClutchCode():
     # L0 clutch
     l.alloc(byteSpace.bit64)
     localSet(b, l(0), cParamSrc(0))
-    heapFree(b, localOffsetVisit(l(0), clutchSB(0)))
+    heapFree(b, clutchSB.visit(l(0), 0))
     heapFree(b, l(0))
     funcClose(b)
     
@@ -495,46 +541,73 @@ def testClutchCode():
     # L0 newSize
     l.alloc(byteSpace.bit64)
 
-    localSet(b, l(0), localOffsetVisit(cParamSrc(0), clutchSB(2)))
+    localSet(b, l(0), clutchSB.visit(cParamSrc(0), 2))
     add(b, l(0), cParamSrc(1))
     inc(b, l(0))
 
-    ifOpen(b, 'if1', localOffsetVisit(cParamSrc(0), clutchSB(1)), l(0), 'gte')
+    ifOpen(b, 'if1', clutchSB.visit(cParamSrc(0), 1), l(0), 'gte')
     # ???
     b.append("    ret")
     ifClose(b, 'if1')
 
     whileOpen(b, "Loop1")
-    shiftL(b, localOffsetVisit(cParamSrc(0), clutchSB(1)), 1)
-    ifOpen(b, 'if2', localOffsetVisit(cParamSrc(0), clutchSB(1)), 0, 'eq')
-    dec(b, localOffsetVisit(cParamSrc(0), clutchSB(1)))
+    shiftL(b, clutchSB.visit(cParamSrc(0), 1), 1)
+    ifOpen(b, 'if2', clutchSB.visit(cParamSrc(0), 1), 0, 'eq')
+    dec(b, clutchSB.visit(cParamSrc(0), 1))
     ifClose(b, 'if2')
-    whileClose(b, "Loop1", localOffsetVisit(cParamSrc(0), clutchSB(1)), l(0), 'lt')
+    whileClose(b, "Loop1", clutchSB.visit(cParamSrc(0), 1), l(0), 'lt')
 
     StrRealloc(
         b, 
-        localOffsetVisit(cParamSrc(0), clutchSB(0)), 
-        localOffsetVisit(cParamSrc(0), clutchSB(1))
+        clutchSB.visit(cParamSrc(0), 0), 
+        clutchSB.visit(cParamSrc(0), 1)
         )
-    localSet(b, localOffsetVisit(l(0), clutchSB(0)), cReturnSrc())
+    localSet(b, clutchSB.visit(l(0), 0), cReturnSrc())
     funcClose(b)
 
 
-
-    funcOpen(b, "StringBuilder_+=")
-#clutch1.get(cParamSrc(0), 1)
-    call("StringBuilder__ensureSpace")
-#    memmove(sb.str+sb->len, str, len)
-#set(sb(2), len)
-#setIndex(cParamSrc(0)(1), sb.size, '\0')
+    
+    #funcOpen(b, "StringBuilder_+=")
+    funcOpen(b, "StringBuilder_append")
+    l = Local()
+    # # local 0 given str size
+    l.alloc(byteSpace.bit64)
+    cParamSet(0, cParamSrc(1))
+    funcCall(b, "strlen")
+    localSet(b, l(0), cReturnSrc())
+    # stringbuiler already on param(0), but...
+    cParamGetToSet(0, 0)
+    cParamSet(1, l(0))
+    funcCall(b, "StringBuilder__ensureSpace")
+    # memmove(sb.str+sb->len, str, len)
+    # local 1 end of struct str
+    l.alloc(byteSpace.bit64)
+    localSet(b, l(1), cParamSrc(0))
+    clutchSB.regToElem(b, l(1), 0)
+    # add len to the ptr
+    add(b, l(1), clutchSB.visit(cParamSrc(0), 1))
+    memmove(b, l(1), cParamSrc(1), l(0))
+    # set the struct length
+    ## current len
+    localSet(b, l(1), clutchSB.visit(cParamSrc(0), 1))
+    ## add str len
+    add(b, l(1), l(0))
+    ## save back
+    localSet(b, clutchSB.visit(cParamSrc(0), 1),  l(1))
+    # set the null
+    ##
+    localSet(b, l(1), cParamSrc(0))
+    clutchSB.regToElem(b, l(1), 0)
+    add(b, l(1), clutchSB.visit(cParamSrc(0), 1))
+    localSet(b, l(1), "\"\\0\"")
     funcClose(b)
-
+    
     return b
-    #print("\n".join(b))
     
 def main():
     #testLocalAlloc()
-    testClutchCode()
-    
+    o = testClutchCode()
+    print("\n".join(o))
+
 if __name__== "__main__":
     main()
