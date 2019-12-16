@@ -125,6 +125,8 @@ def cParamGetToSet(getIdx, setIdx):
     
 # keep
 def cParamSet(idx, src):
+    # Set a parameter register from a source.
+    # @src any memory or immediate
     if (idx < 6):
         return "mov {}, {}".format(cParameterRegisters[idx], src)
     return "push {}".format(v)
@@ -600,6 +602,25 @@ def testClutchCode():
     clutchSB.regToElem(b, l(1), 0)
     add(b, l(1), clutchSB.visit(cParamSrc(0), 1))
     localSet(b, l(1), "\"\\0\"")
+    funcClose(b)
+    
+    funcOpen(b, "StringBuilder_clear")
+    localSet(b, clutchSB.visit(cParamSrc(0), 1),  0)
+    localSet(b, clutchSB.visit(cParamSrc(0), 0),  '\"\\0\"')
+    funcClose(b)
+
+    funcOpen(b, "StringBuilder_size")
+    cReturnSet(b, clutchSB.visit(cParamSrc(0), 1))
+    funcClose(b)
+
+    funcOpen(b, "StringBuilder_result")
+    l = Local()
+    # # local 0 given str size
+    l.alloc(byteSpace.bit64)
+    localSet(b, l(0), cParamSrc(0))
+    StrAlloc(b, clutchSB.visit(l(0), 1))
+    memmove(b, clutchSB.visit(l(0), 0), cReturnSrc(), clutchSB.visit(l(0), 1))
+    cReturnSet(b, l(0))
     funcClose(b)
     
     return b
