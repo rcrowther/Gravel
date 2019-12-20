@@ -581,11 +581,13 @@ def testClutchCode():
     
     funcOpen(b, "StringBuilder_destroy")
     l = Local()
-    # L0 clutch
+    ## reg0 clutch
     l.alloc(byteSpace.bit64)
+    localOpen(l, b)
     localSet(b, l(0), cParamSrc(0))
     heapFree(b, clutchSB.visit(l(0), 0))
     heapFree(b, l(0))
+    localClose(l, b)
     funcClose(b)
     
 
@@ -701,9 +703,11 @@ def testClutchCode():
     l.alloc(byteSpace.bit64)
     localOpen(l, b)
     localSet(b, l(0), cParamSrc(0))
+    # out = malloc(sb.size+1)
     StrAlloc(b, clutchSB.visit(l(0), 2))
+    # memcpy(out, sb.str, sb.size+1)
     memmove(b, clutchSB.visit(l(0), 0), cReturnSrc(), clutchSB.visit(l(0), 1))
-    cReturnSet(b, cReturnSrc())
+    #cReturnSet(b, cReturnSrc())
     localClose(l, b)
     funcClose(b)
     

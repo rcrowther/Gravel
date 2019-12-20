@@ -1595,7 +1595,11 @@ def testClutchCode(b):
     b.append("mov rdi, rbx")
     b.extend(funcInternCall("StringBuilder_str"))    
     b.extend(heapStrPrintln('rax'))
-    
+
+    #b.append("mov rdi, rbx")    
+    #b.extend(funcInternCall("StringBuilder_result"))    
+    #b.extend(heapStrPrintln('rax'))
+
     b.append("mov rdi, rbx")    
     b.extend(funcInternCall("StringBuilder_destroy"))
     #b.extend(printReg('rax'))

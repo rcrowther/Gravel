@@ -76,6 +76,7 @@ def mangleFunc(scopeB, name, typeList):
 # func entry
 # If there are any following calls, then parameters into a function 
 # must be localised, or parameter data will be lost.
+# But not true if paerams used for acess or arithmetic, etc.
 #? This would be more efficient to be only to the parameter depth of the
 # called functions?
 # both below
@@ -109,6 +110,11 @@ def paramSrc(idx):
         b.append("cParamSet(b, {}, {})".format(paramSrc.pos, paramSrc.src) )
     b.append("funcCall(b, \"{}\")".format(funcName))
     
+
+# func exit
+# func exit must include local close, and func close
+# could jump to the repeated code?
+
 def main():
     scopeB = mangleScope(["StringBuilder", "Heap"])
     mangledName = mangleFunc(scopeB, "clutch", ["StringBuilder", "int64"])
