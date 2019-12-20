@@ -385,7 +385,7 @@ def intPrint(b, reg, visit):
             
 # StrPrint
 # common
-def acommonStrAlloc(b, msgLabel, msg):
+def commonStrAlloc(b, msgLabel, msg):
     b.sections['rodata'].append('{}: db "{}", 0'.format(msgLabel, msg))
     
 def commonStrPrint(msgLabel):
@@ -1553,10 +1553,39 @@ def testSwitch(b):
 
 def testClutchCode(b):
     headerIO(b)
+    commonStrAlloc(b, "testStr1", "unfathomable...")
     b.extendFuncCode(opCode.testClutchCode())
     b.extendFuncCode("\n")    
     b.extend(funcInternCall("StringBuilder_create"))
-    b.append("mov rdi, rax")
+    b.append("mov rbx, rax")
+    
+    #b.append("mov rdi, rbx")
+    #b.append("mov rsi, testStr1")
+    #b.extend(funcInternCall("StringBuilder_append"))
+    #b.append("mov rdi, rbx")
+    #b.append("mov rsi, testStr1")
+    #b.extend(funcInternCall("StringBuilder_append"))
+    #b.append("mov rdi, rbx")
+    #b.append("mov rsi, testStr1")
+    #b.extend(funcInternCall("StringBuilder_append"))
+
+    #b.extend(heapStrPrintln('rbx'))
+        
+    #b.append("mov rdi, rbx")
+    #b.extend(funcInternCall("StringBuilder_result"))
+        
+    #b.extend(heapStrPrintln('rax'))
+    
+    
+    b.append("mov rdi, rbx")
+    b.extend(funcInternCall("StringBuilder_size"))    
+    b.extend(printReg('rax'))
+
+    b.append("mov rdi, rbx")
+    b.extend(funcInternCall("StringBuilder_allocSize"))    
+    b.extend(printReg('rax'))
+    
+    b.append("mov rdi, rbx")    
     b.extend(funcInternCall("StringBuilder_destroy"))
     b.extend(printReg('rax'))
 

@@ -30,3 +30,23 @@ Range(2,16).repeat(i){
 [condition].while {
 
 }
+
+== Enumerateed
+??? poor definition, but exhaustive
+LabeledRange(0--5) {
+str:
+}
+
+LabeledInt {
+str,
+size,
+}
+
+LabeledClutch {
+str: int64, 
+size: int64
+}
+
+LabeledArray[int64] {
+str, size
+}
