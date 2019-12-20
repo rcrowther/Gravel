@@ -570,6 +570,7 @@ def testClutchCode():
     # # String start is further visit
     localSet(b, l(1), clutchSB.visit(l(0), 0))
     localSet(b, visit(l(1)), "\"\\0\"")
+    #! localSet(b, visit(l(1)), 0)
     # set the allocsize to sizeMin
     localSet(b, clutchSB.visit(l(0), 1), StringBuilder_sizeMin)
     # set the size to 0
@@ -663,7 +664,8 @@ def testClutchCode():
     # sb.str(sb.size) = '\0'
     localSet(b, l(3), clutchSB.visit(l(0), 0))
     add(b, l(3), clutchSB.visit(l(0), 2))
-    localSet(b, visit(l(3)), "\"\\0\"")
+    #localSet(b, visit(l(3)), "\"\\0\"")
+    localSet(b, visit(l(3)), 0)
     localClose(l, b)
     funcClose(b)
     
@@ -676,7 +678,8 @@ def testClutchCode():
     localSet(b, clutchSB.visit(cParamSrc(0), 1), 0)
     # sb.str(0) = '\0'
     localSet(b, l(0), clutchSB.visit(cParamSrc(0), 0))
-    localSet(b, visit(l(0)),  '\"\\0\"')
+    #localSet(b, visit(l(0)),  '\"\\0\"')
+    localSet(b, visit(l(0)),  0)
     localClose(l, b)
     funcClose(b)
 
@@ -687,7 +690,11 @@ def testClutchCode():
     funcOpen(b, "StringBuilder_allocSize")
     cReturnSet(b, clutchSB.visit(cParamSrc(0), 1))
     funcClose(b)
-    
+
+    funcOpen(b, "StringBuilder_str")
+    cReturnSet(b, clutchSB.visit(cParamSrc(0), 0))
+    funcClose(b)
+        
     funcOpen(b, "StringBuilder_result")
     l = Local()
     ## reg0 sb

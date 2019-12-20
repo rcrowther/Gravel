@@ -435,17 +435,24 @@ def strPrintln(msg):
 
 # stack & general
 def heapStrPrint(addr):
-    b = [] 
-    b.append(cParameter(0, "io_fmt_str8", False))
-    b.append(cParameter(1, addr, False))    
-    b.append("call printf")
-    return b
-        
+    return [
+    "push rdi",
+    "push rsi",
+    cParameter(0, "io_fmt_str8", False),
+    cParameter(1, addr, False),    
+    "call printf",
+    "pop rdi",
+    "pop rsi"
+    ]
+            
 def heapStrPrintln(addr):
-    b = [] 
-    b.append(cParameter(0, addr, False))    
-    b.append("call puts")
-    return b
+    return [
+    "push rdi",
+    cParameter(0, addr, False),    
+    "call puts",
+    "pop rsi"
+    ]
+
 
 # punctuation
 def printNL():
@@ -1585,9 +1592,13 @@ def testClutchCode(b):
     b.extend(funcInternCall("StringBuilder_allocSize"))    
     b.extend(printReg('rax'))
     
+    b.append("mov rdi, rbx")
+    b.extend(funcInternCall("StringBuilder_str"))    
+    b.extend(heapStrPrintln('rax'))
+    
     b.append("mov rdi, rbx")    
     b.extend(funcInternCall("StringBuilder_destroy"))
-    b.extend(printReg('rax'))
+    #b.extend(printReg('rax'))
 
 def main():
     b = CodeBuilder.Builder()
