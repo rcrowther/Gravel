@@ -340,8 +340,8 @@ def memmove(b, src, dst, size):
     #@src pointer to memory
     #@dst pointer to memory
     #@size in bytes
-    cParamSet(b, 0, src)
-    cParamSet(b, 1, dst)
+    cParamSet(b, 0, dst)
+    cParamSet(b, 1, src)
     cParamSet(b, 2, size)
     funcCall(b, "memmove")
     
@@ -557,17 +557,17 @@ def testClutchCode():
     funcOpen(b, "StringBuilder_create")
     # clear the malloc params also
     l = Local()
-    # # reg0 clutch
+    ## reg0 clutch
     l.regAlloc(byteSpace.bit64)
-    # # reg1 tmp
+    ## reg1 tmp
     l.regAlloc(byteSpace.bit64)
     localOpen(l, b)
     clutchSB.alloc(b)
     localSet(b, l(0), cReturnSrc())
-    # # string to clutch
+    ## string to clutch
     StrAlloc(b, StringBuilder_sizeMin)
     localSet(b, clutchSB.visit(l(0), 0), cReturnSrc())
-    # # String start is further visit
+    ## String start is further visit
     localSet(b, l(1), clutchSB.visit(l(0), 0))
     localSet(b, visit(l(1)), "\"\\0\"")
     #! localSet(b, visit(l(1)), 0)
@@ -592,19 +592,24 @@ def testClutchCode():
     
 
     #? not sure if working
+    # am _ensureSpace(sb: StrBuilder, extralen: int)
     funcOpen(b, "StringBuilder__ensureSpace")
     l = Local()
-    # L0 newSize
+    # reg0 sb
+    l.regAlloc(byteSpace.bit64)
+    # reg1 newSize
     l.regAlloc(byteSpace.bit64)
     localOpen(l, b)
+
+    localSet(b, l(0), cParamSrc(0))
     
     # dc newsize = sb.size+add_len+1
-    localSet(b, l(0), clutchSB.visit(cParamSrc(0), 2))
-    add(b, l(0), cParamSrc(1))
-    inc(b, l(0))
+    localSet(b, l(1), clutchSB.visit(l(0), 2))
+    add(b, l(1), cParamSrc(1))
+    inc(b, l(1))
     
     # if (sb.allocSize >= newSize)
-    ifOpen(b, 'if1', clutchSB.visit(cParamSrc(0), 1), l(0), 'gte')
+    ifOpen(b, 'if1', clutchSB.visit(l(0), 1), l(0), 'gte')
     # # ???
     localClose(l, b)
     funcClose(b)
@@ -612,19 +617,19 @@ def testClutchCode():
 
     whileOpen(b, "Loop1")
     # sb.allocSize <<= 1;
-    shiftL(b, clutchSB.visit(cParamSrc(0), 1), 1)
-    ifOpen(b, 'if2', clutchSB.visit(cParamSrc(0), 1), 0, 'eq')
-    dec(b, clutchSB.visit(cParamSrc(0), 1))
+    shiftL(b, clutchSB.visit(l(0), 1), 1)
+    ifOpen(b, 'if2', clutchSB.visit(l(0), 1), 0, 'eq')
+    dec(b, clutchSB.visit(l(0), 1))
     ifClose(b, 'if2')
     # while (sb.allocSize < newsize)
-    whileClose(b, "Loop1", clutchSB.visit(cParamSrc(0), 1), l(0), 'lt')
+    whileClose(b, "Loop1", l(1), clutchSB.visit(l(0), 1), 'lt')
 
 
     # sb.str = realloc(sb.str, sb.allocSize)
     StrRealloc(
         b, 
-        clutchSB.visit(cParamSrc(0), 0), 
-        clutchSB.visit(cParamSrc(0), 1)
+        clutchSB.visit(l(0), 0), 
+        clutchSB.visit(l(0), 1)
         )
     localSet(b, clutchSB.visit(l(0), 0), cReturnSrc())
     
@@ -633,17 +638,17 @@ def testClutchCode():
 
 
     
-    #funcOpen(b, "StringBuilder_+=")
+    #am +=(sb: StringBuilder, str : string)
     funcOpen(b, "StringBuilder_append")
     l = Local()
-    ## local 0 sb
-    l.alloc(byteSpace.bit64)
-    ## local 1 str
-    l.alloc(byteSpace.bit64)
-    ## local 2 given str size
-    l.alloc(byteSpace.bit64)
-    ## reg(3) tmp
-    l.alloc(byteSpace.bit64)
+    ## reg0 sb
+    l.regAlloc(byteSpace.bit64)
+    ## reg1 str
+    l.regAlloc(byteSpace.bit64)
+    ## reg2 given str size
+    l.regAlloc(byteSpace.bit64)
+    ## reg3 tmp
+    l.regAlloc(byteSpace.bit64)
     localOpen(l, b)
         
     localSet(b, l(0), cParamSrc(0))

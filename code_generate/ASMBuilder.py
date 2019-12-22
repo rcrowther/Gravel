@@ -158,5 +158,5 @@ if __name__ == "__main__":
         #x86ASMBF.testSwitch(b)
         
         #x86ASMBF.testLocalAlloc(b)
-        x86ASMBF.testClutchCode(b)
+        x86ASMBF.testSBCode(b)
         fromVirtualCode(pData, b.frame(Frame64))

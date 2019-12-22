@@ -9,7 +9,7 @@ Clutch StrBuilder {
 }
 
 
-fm create(): StrBuilder
+am create(): StrBuilder
 {
     dm heap sb = strBuilder()
     sb.data = malloc(sizeMin)
@@ -19,13 +19,13 @@ fm create(): StrBuilder
     return sb
 }
 
-fm destroy(sb: StrBuilder)
+am destroy(sb: StrBuilder)
 {
     free(sb.str)
     free(sb)
 }
 
-fm _ensureSpace(sb: StrBuilder, extralen: int)
+am _ensureSpace(sb: StrBuilder, extralen: int)
 {
     dc newsize = sb.size+add_len+1
     if (sb.allocSize >= newSize)
@@ -48,7 +48,7 @@ fm _ensureSpace(sb: StrBuilder, extralen: int)
     sb.str = realloc(sb.str, sb.allocSize)
 }
 
-fm +=(sb: StringBuilder, str : string)
+am +=(sb: StringBuilder, str : string)
 {
     dm len = str.size
     _ensureSpace(sb, len)
@@ -58,19 +58,19 @@ fm +=(sb: StringBuilder, str : string)
 }
 
 
-fm clear(sb: StringBuilder)
+am clear(sb: StringBuilder)
 {
     sb.size = 0
     sb.str(0) = '\0'
 }
 
 
-fm size(sb: StringBuilder)
+am size(sb: StringBuilder)
 {
     return sb.size
 }
 
-fm result(sb: StringBuilder)
+am result(sb: StringBuilder)
 {
     dm out: Str
     out = malloc(sb.size+1)

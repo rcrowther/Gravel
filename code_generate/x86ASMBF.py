@@ -1558,23 +1558,33 @@ def testSwitch(b):
     #    staticVarStr(b, 'StrToPrint', 'ninechary')
     #    ])
 
-def testClutchCode(b):
+def testSBCode(b):
     headerIO(b)
     commonStrAlloc(b, "testStr1", "unfathomable...")
     b.extendFuncCode(opCode.testClutchCode())
     b.extendFuncCode("\n")    
     b.extend(funcInternCall("StringBuilder_create"))
     b.append("mov rbx, rax")
-    
-    #b.append("mov rdi, rbx")
-    #b.append("mov rsi, testStr1")
-    #b.extend(funcInternCall("StringBuilder_append"))
-    #b.append("mov rdi, rbx")
-    #b.append("mov rsi, testStr1")
-    #b.extend(funcInternCall("StringBuilder_append"))
-    #b.append("mov rdi, rbx")
-    #b.append("mov rsi, testStr1")
-    #b.extend(funcInternCall("StringBuilder_append"))
+
+    # # shouldn't trigger space
+    # b.append("mov rdi, rbx")
+    # b.append("mov rsi, 15")
+    # b.extend(funcInternCall("StringBuilder__ensureSpace"))    
+        
+    # # trigger space
+    # b.append("mov rdi, rbx")
+    # b.append("mov rsi, 78")
+    # b.extend(funcInternCall("StringBuilder__ensureSpace"))   
+            
+    b.append("mov rdi, rbx")
+    b.append("mov rsi, testStr1")
+    b.extend(funcInternCall("StringBuilder_append"))
+    b.append("mov rdi, rbx")
+    b.append("mov rsi, testStr1")
+    b.extend(funcInternCall("StringBuilder_append"))
+    b.append("mov rdi, rbx")
+    b.append("mov rsi, testStr1")
+    b.extend(funcInternCall("StringBuilder_append"))
 
     #b.extend(heapStrPrintln('rbx'))
         
@@ -1582,8 +1592,8 @@ def testClutchCode(b):
     #b.extend(funcInternCall("StringBuilder_result"))
         
     #b.extend(heapStrPrintln('rax'))
-    
-    
+
+
     b.append("mov rdi, rbx")
     b.extend(funcInternCall("StringBuilder_size"))    
     b.extend(printReg('rax'))
@@ -1596,9 +1606,17 @@ def testClutchCode(b):
     b.extend(funcInternCall("StringBuilder_str"))    
     b.extend(heapStrPrintln('rax'))
 
-    #b.append("mov rdi, rbx")    
-    #b.extend(funcInternCall("StringBuilder_result"))    
-    #b.extend(heapStrPrintln('rax'))
+    # b.extend(strPrintln('After clear:'))
+    # b.append("mov rdi, rbx")
+    # b.extend(funcInternCall("StringBuilder_clear"))    
+    # b.append("mov rdi, rbx")
+    # b.extend(funcInternCall("StringBuilder_str"))    
+    # b.extend(heapStrPrintln('rax'))
+
+    b.extend(strPrintln('result:'))        
+    b.append("mov rdi, rbx")    
+    b.extend(funcInternCall("StringBuilder_result"))    
+    b.extend(heapStrPrintln('rax'))
 
     b.append("mov rdi, rbx")    
     b.extend(funcInternCall("StringBuilder_destroy"))
