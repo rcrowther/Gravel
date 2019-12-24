@@ -515,7 +515,8 @@ def funcClose(b):
         "pop rbp ;reset the bpr",
         "ret"
         ])
-
+        
+        
 def funcCall(b, label):
     b.append("call {}".format(label))
     
@@ -717,11 +718,14 @@ def testClutchCode():
     funcClose(b)
     
     return b
+
+
     
 def main():
-    testLocalAlloc()
+    #testLocalAlloc()
     #o = testClutchCode()
     #print("\n".join(o))
-
+    #print("\n".join(r))
+    
 if __name__== "__main__":
     main()

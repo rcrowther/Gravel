@@ -104,93 +104,108 @@ def mangleFunc(scopeB, name, typeList):
         # # if true local can stay on param. May need defending.
         # local.isParamLocal = (isParam and local.inCorrectPosition and local.liveActCount > 2)
 
-class RegAlloc:
-    def __init__(self, idx, isReg, location):
+class LocalAlloc():
+    def __init__(self, idx, isReg, isNonParamReg, location, isOffload):
         self.idx = idx
         self.isReg = isReg
+        self.isNonParamReg = isNonParamReg
         self.location = location
+        self.isOffload = isOffload
         
     def __repr__(self):
-        return "RegAlloc(idx:{}, isReg:{}, location:{})".format(
-            self.idx, self.isReg, self.location
+        return "LocalAlloc(idx:{}, isReg:{}, isNonParamReg{}, location:{}, isOffload:{})".format(
+            self.idx, self.isReg, self.isNonParamReg, self.location, self.isOffload
             ) 
-            
-StartStop = collections.namedtuple("StartStop", "isStart idx isParam")
+
+
+###
+# StartStops
+#            
+class StartStop():
+    def __init__(self, idx, isStart, callCount):
+        self.idx = idx
+        self.isStart = isStart
+        self.callCount = callCount
+
+    def __repr__(self):
+        return "StartStop(idx:{}, isStart:{}, callCount:{})".format(
+            self.idx, self.isStart, self.callCount
+            ) 
+                        
 def startStopStart(idx):
-    return StartStop(True, idx, False)
+    return StartStop(idx, True, 0)
 
-def startStopUse(idx):
-    return StartStop(False, idx, False)
-
-def startStopParamDeclare(idx):
-    return StartStop(True, idx, True)
-
-def startStopParamUse(idx):
-    return StartStop(False, idx, True)
-        
-# List(startStop)
-#startStops = []
-ParamRegisters = [  
-    "rdi",
-    "rsi",
-    "rdx",
-    "rcx",
-    "r8",
-    "r9", 
-    ]
-    
-NonParamRegisters = [   
-    "rbx",
-    # stack ptr
-    #"r10",
-    #"r11",
-    "r12",
-    "r13",
-    "r14",
-    "r15",
-    ]
-        
-
+def startStopUse(idx, callCount):
+    return StartStop(idx, False, callCount)
 
 
 class StartStopBuilder():
     # Filter data usage to first start and stop
-    #
+    # - Parameters are treated as a local variable.
+    # - All variables, uncluding parameters, must be given a unique and
+    # serial id.
+    # - Parameters must be declared with the correct action.
     def __init__(self):
         self.startStops = []
         self.maxIdx = 0
-        
-    def paramDeclare(self, idx):
-        self.startStops.append(startStopParamDeclare(idx))
-
-    def paramUse(self, idx):
-        self.startStops.append(startStopParamUse(idx))        
-        
+         
     def firstUse(self, idx):
         self.startStops.append(startStopStart(idx))
-    
-    def use(self, idx):
-        self.startStops.append(startStopUse(idx))
         if (idx > self.maxIdx):
             self.maxIdx = idx
-        
+                
+    def use(self, idx, callCount):
+        self.startStops.append(startStopUse(idx, callCount))
+
     def result(self):
         b = []
-        usageEcountered = [False for a in range(0, (self.maxIdx + 1))]
+        # Also stashes callcount to transferr to the start marker.
+        usageEcountered = [-1 for a in range(0, (self.maxIdx + 1))]
         for ss in reversed(self.startStops):
-            if (ss.isStart): 
+            if (ss.isStart):
+                # copy callCount to start mark
+                ss.callCount = usageEcountered[ss.idx]
                 b.append(ss)
-            if ((not ss.isStart) and (not usageEcountered[ss.idx])):
+            if ((not ss.isStart) and (usageEcountered[ss.idx] == -1)):
                 b.append(ss)
-                usageEcountered[ss.idx] = True
+                usageEcountered[ss.idx] = ss.callCount
         b.reverse()
         return b
 
     def __repr__(self):
         return "StartStopBuilder(startStops:{}, maxIdx:{})".format(
             self.startStops, self.maxIdx
-            )         
-        
+            )       
+            
+#NB: a sketch, keep!
+# def stopStartScan(lines):
+    # # rScan lines and return a start stop list
+    # # The list is the first and last occurence of a label. It has
+    # # no location, but is in order of appearence.
+    # # Note that parameters are treated no differently, they too are 
+    # # measured from first use to last use (not from the start of all 
+    # # lines).
+    # # The resulting information also carriees a count of calls made 
+    # # within the scope of the labels.
+    # b = StartStopBuilder()
+    # #? just a big number?
+    # # also carries callCount
+    # labelActive = [-1 for a in range(0, 32)]
+    # currentHighIdx = 0
+    
+    # while line in lines:
+        # if line contains label:
+            # if (labelActive[labelIdx] == -1):
+                # b.firstUse(labelIdx)
+                # labelActive[labelIdx] = 0
+                # currentHighIdx = labelIdx
+            # else:
+                # b.use(labelIdx, labelActive[labelIdx])
+        # if line contains call:
+           # for i in range(0, currentHighIdx):
+               # labelActive[i] += 1 
+    # return b.result()
+    
 def parameterAlloc(paramData, localAllocs, startStopB):
             
     if (action.isLeaf or action.callCount < 3):
@@ -199,7 +214,7 @@ def parameterAlloc(paramData, localAllocs, startStopB):
         # load localAlloc data
         #? stopStart not required? Yes, we need to know whee to stop to stop protecting.
         for i, p in enumerate(paramData):
-            localAllocs.append(RegAlloc(i, True, paramRegisters[i]))
+            localAllocs.append(LocalAlloc(i, True, True, paramRegisters[i], False))
     else:
         # alloc stash locals
         for i, p in enumerate(paramData):
@@ -218,32 +233,43 @@ def parameterAlloc(paramData, localAllocs, startStopB):
 # if not offloaded is the cParam reg
 # caveat, needs to generate code for offloading
 # so it only needs to know the register
-def parametersAllocate(paramCount, paramRegisters, startStopB, offload):
-    localAllocs = []
+# def parametersAllocate(paramCount, paramRegisters, startStopB, offload):
+    # localAllocs = []
 
-    if (offload):
-        # params become locals to allocate.
-        i = 0
-        while(i < paramCount):
-            startStopB.firstUse(i)        
-            i += 1
+    # if (offload):
+        # # params become locals to allocate.
+        # i = 0
+        # while(i < paramCount):
+            # startStopB.firstUse(i)        
+            # i += 1
         
-    if (not offload):
-        # straight on localAllocs
-        i = 0
-        while(i < paramCount):
-            reg = paramRegisters[i]
-            localAllocs.append(RegAlloc(i, True, reg))
-            i += 1
+    # if (not offload):
+        # # straight on localAllocs
+        # i = 0
+        # while(i < paramCount):
+            # reg = paramRegisters[i]
+            # localAllocs.append(LocalAlloc(i, True, False, reg, False))
+            # i += 1
             
+# current logic
+# - Parameter ids are given the parameter register if not offloaded, or
+# a non parameter register if offloaded
+# Thus offload tells if offload code required.
+# Other local ids are given non-parameter registers or an offset.
+# Non-parameter free lists are recycled if the id is out of scope.
+#! Use parameter free list if no actions intrude.
+#! - these would have high priority
+#! lower param reg usage protection by only using in-scope protection
 def localsAllocate(
-    nonParamRegisters, 
-    paramRegisters, 
+    paramRegCount, 
+    nonParamRegCount, 
     startStops, 
     offloadParams
     ):
     # Make allocation decisions from a startStopList
-    #
+    # 
+    # UsedParamReg and UsedNonParamReg hold used registers
+    # @startStops 
     paramRegisters = ParamRegisters.copy()
     paramRegisters.reverse()
     offsetPtr = 0
@@ -253,7 +279,9 @@ def localsAllocate(
     freeParamReg = []
     freeOffsets = []
     # following holds usage data
+    #! currently a full solution, narrow this for scope
     UsedParamReg = set()
+    #NB all need protection on action entry and exit
     UsedNonParamReg = set()
     # container for final decisions
     localAllocs = []
@@ -271,7 +299,7 @@ def localsAllocate(
             if (ss.isStart):
                 reg = paramRegisters.pop()            
                 UsedParamReg.add(reg)           
-                localAllocs.append(RegAlloc(ss.idx, True, reg))
+                localAllocs.append(LocalAlloc(ss.idx, True, False, reg, False))
         else:
             if (not ss.isStart):
                 # register is now free
@@ -286,18 +314,32 @@ def localsAllocate(
                     # to the freelist
                     reg = freeNonParamregisters.pop()
                     UsedNonParamReg.add(reg)           
-                    localAllocs.append(RegAlloc(ss.idx, True, reg))
+                    localAllocs.append(LocalAlloc(ss.idx, True, False, reg, False))
                 elif (len(freeOffsets) > 0):
                     loc = freeOffsets.pop()            
-                    localAllocs.append(RegAlloc(ss.idx, False, loc))
+                    localAllocs.append(LocalAlloc(ss.idx, False, False, loc, False))
                 else:
                     loc = offsetPtr
                     offsetPtr += 8
-                    localAllocs.append(RegAlloc(ss.idx, False, loc))
+                    localAllocs.append(LocalAlloc(ss.idx, False, False, loc, False))
     print(str(UsedParamReg))    
     print(str(UsedNonParamReg))    
     return localAllocs
                 
+def actionIntCode(b, aName, paramsOffloaded, localAllocs):
+    # @paramsOffloaded List((id:int, dst:int)) of params to offload
+    b.append("actionOpen({})".format(aName))
+    # protect on entry nonparam registers for convention
+    # series of pushes
+    b.append("protectLocals({})".format(nonparamCount))
+    if (paramsOffloaded):
+        b.append("offloadParams({})".format(nonparamCount))
+        
+
+    # protect on exit nonparam registers for convention
+    b.append("unProtectLocals({})".format(nonparamCount))
+    b.append("actionClose({})".format(aName))
+        
 # # its depth problem. Wait to do this code, I don't recall offhand
     # if (freeReg > 0):
          # local.location(pop(freeReg))
@@ -332,11 +374,97 @@ def localsAllocate(
 # func exit must include local close, and func close
 # could jump to the repeated code?
 
+
+class Action():
+    def __init__(self, label, localAlloc):
+        # @paramOffloads List(id:int, loc) of params to offload
+        self.label = label
+        #self.localCount = localCount
+        self.localAlloc = localAlloc
+        print(str(localAlloc))
+        self.regOffloads = [a for a in localAlloc if ((a.isOffload == True) and (a.isReg == True))]
+        
+    def open(self, b):
+        b.extend([
+            "",
+            "{}:".format(self.label),
+            "push rbp ;Push the base pointer",
+            "mov rbp, rsp ;Level the base pointer"
+            ])
+
+        # protect used nonparam registers
+        npRegAllocs = [a for a in self.localAlloc if (a.isNonParamReg == True)]
+        for a in npRegAllocs:
+            b.append("push {}".format(a.location))
+        # set any offloads
+        allOffloads = [a for a in self.localAlloc if (a.isOffload == True)]
+        for a in allOffloads:
+            if (a.isReg):
+                b.append("mov {}, {}".format(
+                    a.location,
+                    ParamRegisters[a.idx]
+                    ))
+            if (not a.isReg):
+                b.append("mov [bpr+{}], {}".format(
+                    a.location,
+                    ParamRegisters[a.idx]
+                    ))
+                    
+    def close(self, b):
+        # restore used nonparam registers
+        for a in reversed(self.regOffloads):
+            b.append("pop {}".format(a.location))
+        b.extend([
+            "pop rbp ;reset the bpr",
+            "ret"
+            ])
+
+###
+# Tests
+#
 def testMangle():
     scopeB = mangleScope(["StringBuilder", "Heap"])
     mangledName = mangleFunc(scopeB, "clutch", ["StringBuilder", "int64"])
     print(mangledName)
+
+def testStartStopBuilder():
+    # inline scopes
+    b = StartStopBuilder()
+    b.firstUse(0)
+    b.use(0, 0)
+    b.firstUse(1)
+    b.use(1, 0)
+    #print(str(b))
+    print(b.result())
+
+    # callCount handling
+    b = StartStopBuilder()
+    b.firstUse(0)
+    b.use(0, 1)
+    b.firstUse(1)
+    b.use(1, 3)
+    #print(str(b))
+    print(b.result())
+
+    # multiple use scope
+    b = StartStopBuilder()
+    b.firstUse(0)
+    b.use(0, 0)
+    b.use(0, 1)
+    b.use(0, 3)
+    #print(str(b))
+    print(b.result())
         
+    # overlaid scopes
+    b = StartStopBuilder()
+    b.firstUse(0)
+    b.use(0, 0)
+    b.firstUse(1)
+    b.use(1, 0)
+    b.use(0, 0)
+    #print(str(b))
+    print(b.result())
+               
 
 def testlocalsAllocate():
     # 2 flat allocs
@@ -379,28 +507,24 @@ def testlocalsAllocate():
         )
     print(la)
     
-def testStartStopBuilder():
-    b = StartStopBuilder()
-    b.firstUse(0)
-    b.use(0)
-    b.firstUse(1)
-    b.use(1)
-    print(str(b))
-    print(b.result())
-
-    b = StartStopBuilder()
-    b.firstUse(0)
-    b.use(0)
-    b.firstUse(1)
-    b.use(1)
-    b.use(0)
-    print(str(b))
-    print(b.result())
-        
+ 
+def testActionCode():
+    b = []
+    localAlloc = [
+        LocalAlloc(0, True, True, 'rbx', True),
+        LocalAlloc(1, True, True, 'r12', False),
+        ]
+    a = Action("testAction", localAlloc)
+    a.open(b)
+    a.close(b)
+    return b
+    
 def main():
     #testMangle()
-    testlocalsAllocate()
-    #testStartStopBuilder()
+    #testlocalsAllocate()
+    testStartStopBuilder()
+    #r = testActionCode()
+    #print("\n".join(r))
     
 if __name__== "__main__":
     main()
