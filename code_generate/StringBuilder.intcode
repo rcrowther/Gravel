@@ -27,7 +27,7 @@ am destroy(sb: StrBuilder)
 
 am _ensureSpace(sb: StrBuilder, extralen: int)
 {
-    dc newsize = sb.size+add_len+1
+    dc newsize = sb.size+extralen+1
     if (sb.allocSize >= newSize)
         return
 
