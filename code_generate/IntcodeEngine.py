@@ -146,7 +146,7 @@ class StartStopBuilder():
     # Parameters are treated as a local variable. They should not be 
     # noted at source (i.e. at top of call code) but when they are first
     # used (even if not an allocation).
-    # However, if a label is the same as a param, call paramAsoc() also, 
+    # However, if a label is the same as a param, call paramAssocLabel() also, 
     # as the data is needed.
     # Call() should be used whenever there is a call. It is treated as 
     # an index.
@@ -154,13 +154,13 @@ class StartStopBuilder():
         self.startStops = []
         self.maxIdx = 0
         self.callCount = -1
-        self.paramAssocs = {}
+        self.paramIdTolabelIds = {}
         
     def call(self):
         self.callCount += 1
         
-    def paramAssoc(self, paramId, labelId):
-        self.paramAssocs[paramId] = labelId
+    def paramAssocLabel(self, paramId, labelId):
+        self.paramIdTolabelIds[paramId] = labelId
         
     def firstUse(self, idx):
         self.startStops.append(startStopStart(idx, self.callCount))
@@ -213,7 +213,7 @@ class StartStopBuilder():
             # if (labelActive[labelIdx] == -1):
                 # r = paramLabels.find(label)
                 # if (r != -1):
-                    # b.paramAssocs(r, labelIdx)
+                    # b.paramIdTolabelIds(r, labelIdx)
                 # b.firstUse(labelIdx)
                 # labelActive[labelIdx] = 0
                 # currentHighIdx = labelIdx
@@ -273,6 +273,19 @@ def parameterAlloc(paramData, localAllocs, startStopB):
             # reg = paramRegisters[i]
             # localAllocs.append(LocalAlloc(i, True, False, reg, False))
             # i += 1
+        
+class LiveAllocStats():
+    def __init__(self):
+        self.paramsLeftOnRegisters = []
+        self.paramsMovedToNonParamRegisters = []
+        self.paramsMovedToStack = []
+        
+    def __repr__(self):
+        return "StartStopBuilder(paramsLeftOnRegisters:{}, paramsMovedToNonParamRegisters:{}, paramsMovedToStack:{})".format(
+            self.paramsLeftOnRegisters,
+            self.paramsMovedToNonParamRegisters,
+            self.paramsMovedToStack,
+            ) 
             
 # current logic
 # - Parameter ids are given the parameter register if not offloaded, or
@@ -298,15 +311,18 @@ class LiveAllocate():
     # of a parameter, but do include the subsequent use of parameters.
     def __init__(self, 
         paramCount,
-        paramAssocs, 
+        paramIdTolabelIds, 
         paramRegCount, 
         nonParamRegCount, 
         startStops,
         labelCount,
         ):
         self.paramCount = paramCount
-        self.paramAssocs = paramAssocs
+        self.paramIdTolabelIds = paramIdTolabelIds
+        # reversse lookup too
+        self.labelToParamIds = {kv[1]:kv[0] for kv in self.paramIdTolabelIds.items()}
         self.paramRegCount = paramRegCount
+        self.nonParamRegCount = nonParamRegCount
         self.startStops = startStops
         self.labelCount = labelCount
         # Parameter registers are of limited use.
@@ -316,12 +332,13 @@ class LiveAllocate():
         # (even a push/pop may not protect against subcalls).
         # but they are a valuable resource for quick calculation
         # witness the use of rax etc.
-        self.paramRegisters = [] #[r for r in range(0, paramRegCount)]
+        self.paramRegistersFree = [] #[r for r in range(0, paramRegCount)]
         # All used non-param registers should be restored by 
         # initial/funal push/pops (often convention) 
         self.nonParamRegistersToProtect = set()
-        self.nonParamRegisters = [r for r in range(paramRegCount, paramRegCount + nonParamRegCount)]
-        # Array(Tuple(MemLoc(from), to))
+        # all are free, initially
+        self.nonParamRegistersFree = [r for r in range(paramRegCount, paramRegCount + nonParamRegCount)]
+        # Array(Tuple(from: MemLoc, to: MemLoc))
         self.initialParamTransfer = []
         # if a paramreg wishes to sustain over a call, it must be 
         # push/popped.
@@ -344,27 +361,39 @@ class LiveAllocate():
         # finally, this is where a local is to be found
         # Array(MemLoc) where array idx = localIdx
         self.localAllocs = [-1 for id in range(0, labelCount)]
+        self.stats = LiveAllocStats()
         
     def paramRegisterCanAlloc(self):
-        return (len(self.paramRegisters) > 0)
+        return (len(self.paramRegistersFree) > 0)
 
-    def paramRegisterAlloc(self):
-        rid = self.paramRegisters.pop()
+    def paramRegisterAlloc(self, stopStartStart):
+        rid = self.paramRegistersFree.pop()
+        dstMemLoc = regMemLoc(rid)
+        lid = stopStartStart.idx
+        self.localAllocs[lid] = dstMemLoc
+        self.paramInitAssert(lid, dstMemLoc)
+        # Needs protection over inner calls
+        for cid in stopStartStart.scopedCalls:
+            self.callParamRegProtection[cid].append(rid)
         return rid
         
     def paramRegisterDealloc(self, rid):
-        self.paramRegisters.append(rid)
+        self.paramRegistersFree.append(rid)
                 
     def nonParamRegisterCanAlloc(self):
-        return (len(self.nonParamRegisters) > 0)
+        return (len(self.nonParamRegistersFree) > 0)
 
-    def nonParamRegisterAlloc(self):
-        rid = self.nonParamRegisters.pop()
+    def nonParamRegisterAlloc(self, lid):
+        rid = self.nonParamRegistersFree.pop()
+        dstMemLoc = regMemLoc(rid)
+        self.localAllocs[lid] = dstMemLoc
+        self.paramInitAssert(lid, dstMemLoc)
+        # needs protection over call entry/exit
         self.nonParamRegistersToProtect.add(rid)
         return rid
-
+        
     def nonParamRegisterDealloc(self, rid):
-        self.nonParamRegisters.append(rid)
+        self.nonParamRegistersFree.append(rid)
         
     def stackAlloc(self):
         if (len(self.stackFreeList) > 0):
@@ -378,71 +407,76 @@ class LiveAllocate():
         loc = memLoc.loc
         if (memLoc.isReg):
             if (loc < self.paramRegCount):
-                self.paramRegisters.append(loc)
+                self.paramRegistersFree.append(loc)
             else:
-                self.nonParamRegisters.append(loc)
+                self.nonParamRegistersFree.append(loc)
         else:
             stackFreeList.append(memLoc.loc)
-                            
+
+    def paramInitAssert(self, lid, dstMemLoc):
+        if (lid in self.labelToParamIds):
+            srcIdx = self.labelToParamIds[lid]
+            #? mor than this for srces, need a list of src memlocs
+            trans = (regMemLoc(srcIdx), dstMemLoc)
+            self.initialParamTransfer.append(trans) 
+
     def paramAlloc(self):
         # Q & A :)
-        #! don't defend. Stuff to do.
-        if(self.paramCount > 0):
-            if(self.paramRegCount > 0):
-                #paramLabelsOnRegisters = math.min(self.paramCount, self.paramRegCount)
-                #paramLabelsOnStack = 0
-                #diff = self.paramCount - paramLabelsOnRegisters
-                #if (diff > 0):
-                #    paramLabelsOnStack = diff
-                paramLabelsOnRegisters = self.paramCount
-                paramLabelsOnStack = 0
-            else:
-                paramLabelsOnStack = self.paramCount
-                
-            # (for what it is worth) Any paramregs over the paramcount are
-            # available                
-            self.paramRegisters = [reg for reg in range(paramLabelsOnRegisters, self.paramRegCount)]
+        paramLabelOnRegisterCount = min(self.paramCount, self.paramRegCount)
+        paramLabelOnStackCount = self.paramCount - paramLabelOnRegisterCount
+            
+        # Assuming all paramreg values will be offloaded, any paramregs 
+        # are initially available.
+        # This may be modified by code below.               
+        self.paramRegistersFree = [i for i in range(0, self.paramRegCount)]
 
-            for rid in range(0, paramLabelsOnRegisters):
-                print(str(rid))
-                # Q leave parameter on register? 
-                # A if scope within 1 call of param (the start)?
-                prevCallIdx = self.startAccess[self.paramAssocs[rid]].prevCallIdx
-                if (prevCallIdx < 2):
-                    print("reg param value close enough to code to leave param on register; rid {}".format(rid))
-                    # mark any first funcCall for paramReg protection
-                    if (prevCallIdx == 1):
-                        self.callParamRegProtection[0] = [idx] 
-                else:
-                    # Move param value somewhere
-                    # subject of an initial param transfer, the register
-                    # is deallocated.
-                    self.paramRegisterDealloc(rid)
-                    #Q can it be stashed on a nonParam register?
-                    #? and if it is distant/somewhat usused, should it be?
-                    if (self.nonParamRegisterCanAlloc()):
-                        print("reg param value moved to nonParamRegister; rid {}".format(rid))
-                        rid = self.nonParamRegisterAlloc()
-                        # mark paramRegister for transfer to nonParamRegister
-                        trans = (regMemLoc(idx), regMemLoc(rid))
-                        self.initialParamTransfer.append(trans) 
-                    else:
-                        # onto stack
-                        print("reg param value moved to nonParamRegister; rid {}".format(rid))
-                        sid = self.stackAlloc()
-                        # mark paramRegister for transfer to stack
-                        locs = (regMemLoc(idx), stackMemLoc(sid))
-                        self.initialParamTransfer.append(locs) 
-                        
-                        # Q on use, do we need to transfer from stack?
-                        #? do this here, or later?
-                        #if (not param.stayonStack)
-                        # mark stackVal for transfer to register
-                        #rid = ???
-                        #locs = (stackMemLoc(sid), regMemLoc(rid))
-                        #locInitialize[idx] = locs
-            #for idx in range(0, paramLabelsOnStack):
-                # Nothing to do?
+        for pid in range(0, paramLabelOnRegisterCount):
+            print(str(pid))
+            # Q leave parameter on register? 
+            # A if scope within 1 call of param (the start)?
+            prevCallIdx = self.startAccess[self.paramIdTolabelIds[pid]].prevCallIdx
+            if (prevCallIdx < 2):
+                print("reg param value close enough to code to leave param on register; pid {}".format(pid))
+                # mark any first funcCall for paramReg protection
+                self.callParamRegProtection[0] = [pid]
+                # alloc and reserve the register
+                lid = self.paramIdTolabelIds[pid]
+                self.localAllocs[lid] = regMemLoc(pid)
+                self.paramRegistersFree.remove(pid)
+                
+            #NB dont allocate, we'll figure out later
+            # else:
+                # # Move param value somewhere
+                # # subject of an initial param transfer, the register
+                # # is deallocated.
+                # self.paramRegisterDealloc(rid)
+                # #Q can it be stashed on a nonParam register?
+                # #? and if it is distant/somewhat usused, should it be?
+                # if (self.nonParamRegisterCanAlloc()):
+                    # print("reg param value moved to nonParamRegister; pid {}".format(pid))
+                    # rid = self.nonParamRegisterAlloc()
+                    # # mark paramRegister for transfer to nonParamRegister
+                    # trans = (regMemLoc(idx), regMemLoc(rid))
+                    # self.initialParamTransfer.append(trans) 
+                    # self.localAllocs[self.paramIdTolabelIds[pid]] = regMemLoc(pid)                    
+                # else:
+                    # # onto stack
+                    # print("reg param value moved to stack; pid {}".format(pid))
+                    # sid = self.stackAlloc()
+                    # # mark paramRegister for transfer to stack
+                    # locs = (regMemLoc(pid), stackMemLoc(sid))
+                    # self.initialParamTransfer.append(locs) 
+                    # self.localAllocs[self.paramIdTolabelIds[pid]] = stackMemLoc(pid)                    
+                   
+                    # Q on use, do we need to transfer from stack?
+                    #? do this here, or later?
+                    #if (not param.stayonStack)
+                    # mark stackVal for transfer to register
+                    #rid = ???
+                    #locs = (stackMemLoc(sid), regMemLoc(rid))
+                    #locInitialize[idx] = locs
+        #for idx in range(0, paramLabelOnStackCount):
+            # Nothing to do?
                 
     def localAlloc(self):
         for ss in self.startStops:
@@ -452,24 +486,23 @@ class LiveAllocate():
             if (not ss.isStart):
                 # mem location is now free
                 memLoc = self.localAllocs[ss.idx]
-                self.memLocDeAlloc(memLoc)
-            if (ss.isStart):
-                #! paramscheck
-                paramAssocs
-                if (ss.idx in self.scopeToParam):
-                    # ok, we found a scope which labels a parameter
+                if (memLoc == -1):
+                    print("deallocating unallocated memLoc!: lid:{}".format(ss.idx))
+                else:
+                    self.memLocDeAlloc(memLoc)
                 
-                
+            # if a label labels a parameter this is already allocated.   
+            # Only start if not alloced already?
+            #(not(ss.idx in self.paramLabels))             
+            if (ss.isStart and (self.localAllocs[ss.idx] == -1)):
                 if (self.nonParamRegisterCanAlloc()):
-                    rid = self.nonParamRegisterAlloc()
+                    rid = self.nonParamRegisterAlloc(ss.idx)
                     print("local on nonParamRegister; lid:{} rid {}".format(ss.idx, rid))
-                    self.localAllocs[ss.idx] = regMemLoc(rid)
                 else:
                     callsInScope = ss.callCount
                     if (self.paramRegisterCanAlloc() and (callsInScope < 1)):
-                        rid = self.nonParamRegisterAlloc()
+                        rid = self.paramRegisterAlloc(ss)
                         print("local on nonParamRegister; lid:{} rid {}".format(ss.idx, rid))
-                        self.localAllocs[ss.idx] = regMemLoc(rid)
                     else:
                         raise Error( "No registrs, no solution: data{}".format(ss))
 
@@ -478,95 +511,97 @@ class LiveAllocate():
                         #sid = self.stackAlloc()
             
     def resultStr(self):
-        return "LiveAllocateData(nonParamRegistersToProtect:{}, initialParamTransfer:{}, locInitialize:{}, callParamRegProtection:{})".format(
+        return "LiveAllocateData(nonParamRegistersToProtect:{}, initialParamTransfer:{}, locInitialize:{}, callParamRegProtection:{}, localAllocs:{})".format(
             self.nonParamRegistersToProtect,
             self.initialParamTransfer,
             self.locInitialize, 
             self.callParamRegProtection,
+            self.localAllocs,
         )
 
     def stateStr(self):
-        return "LiveAllocateState(paramRegisters:{}, nonParamRegisters:{}, stackOffset:{}, stackFreeList:{})".format(
-            self.paramRegisters,
-            self.nonParamRegisters,
+        return "LiveAllocateState(paramRegistersFree:{}, nonParamRegistersFree:{}, stackOffset:{}, stackFreeList:{})".format(
+            self.paramRegistersFree,
+            self.nonParamRegistersFree,
             self.stackOffset, 
             self.stackFreeList,
         )        
         
     def __repr__(self):
-        return "LiveAllocate(paramCount:{}, paramAssocs:{}, paramRegCount:{}, labelCount:{})".format(
+        return "LiveAllocate(paramCount:{}, paramIdTolabelIds:{}, paramRegCount:{}, nonParamRegCount:{}, labelCount:{})".format(
             self.paramCount,
-            self.paramAssocs,
+            self.paramIdTolabelIds,
             self.paramRegCount, 
+            self.nonParamRegCount,
             self.labelCount,
             #self.startStops,
             )       
     
-def localsAllocate(
-    paramRegCount, 
-    nonParamRegCount, 
-    startStops, 
-    offloadParams
-    ):
-    # Make allocation decisions from a startStopList
-    # 
-    # UsedParamReg and UsedNonParamReg hold used registers
-    # @startStops 
-    paramRegisters = ParamRegisters.copy()
-    paramRegisters.reverse()
-    offsetPtr = 0
-    # the following hold currently free storage places
-    freeNonParamregisters = nonParamRegisters.copy()
-    freeNonParamregisters.reverse()
-    freeParamReg = []
-    freeOffsets = []
-    # following holds usage data
-    #! currently a full solution, narrow this for scope
-    UsedParamReg = set()
-    #NB all need protection on action entry and exit
-    UsedNonParamReg = set()
-    # container for final decisions
-    localAllocs = []
+# def localsAllocate(
+    # paramRegCount, 
+    # nonParamRegCount, 
+    # startStops, 
+    # offloadParams
+    # ):
+    # # Make allocation decisions from a startStopList
+    # # 
+    # # UsedParamReg and UsedNonParamReg hold used registers
+    # # @startStops 
+    # paramRegisters = ParamRegisters.copy()
+    # paramRegisters.reverse()
+    # offsetPtr = 0
+    # # the following hold currently free storage places
+    # freeNonParamregisters = nonParamRegisters.copy()
+    # freeNonParamregisters.reverse()
+    # freeParamReg = []
+    # freeOffsets = []
+    # # following holds usage data
+    # #! currently a full solution, narrow this for scope
+    # UsedParamReg = set()
+    # #NB all need protection on action entry and exit
+    # UsedNonParamReg = set()
+    # # container for final decisions
+    # localAllocs = []
     
-    for ss in startStops:
-        # NB if this first test fails, params are treated
-        # as a local variable, and alllocated accordingly
-        if (ss.isParam and (not offloadParams)):
-            #! not dealing with offsets/stack storage
-            if (not ss.isStart):
-                # register is now free
-                alloc = localAllocs[ss.idx]
-                if (alloc.isReg):
-                    freeParamReg.append(alloc.location)                
-            if (ss.isStart):
-                reg = paramRegisters.pop()            
-                UsedParamReg.add(reg)           
-                localAllocs.append(LocalAlloc(ss.idx, True, False, reg, False))
-        else:
-            if (not ss.isStart):
-                # register is now free
-                alloc = localAllocs[ss.idx]
-                if (alloc.isReg):
-                    freeNonParamregisters.append(alloc.location)
-                if (not alloc.isReg):
-                    freeOffsets.append(alloc.location)            
-            if (ss.isStart):
-                if (len(freeNonParamregisters) > 0):
-                    # Non Params are unordered, so sourced and pushed
-                    # to the freelist
-                    reg = freeNonParamregisters.pop()
-                    UsedNonParamReg.add(reg)           
-                    localAllocs.append(LocalAlloc(ss.idx, True, False, reg, False))
-                elif (len(freeOffsets) > 0):
-                    loc = freeOffsets.pop()            
-                    localAllocs.append(LocalAlloc(ss.idx, False, False, loc, False))
-                else:
-                    loc = offsetPtr
-                    offsetPtr += 8
-                    localAllocs.append(LocalAlloc(ss.idx, False, False, loc, False))
-    print(str(UsedParamReg))    
-    print(str(UsedNonParamReg))    
-    return localAllocs
+    # for ss in startStops:
+        # # NB if this first test fails, params are treated
+        # # as a local variable, and alllocated accordingly
+        # if (ss.isParam and (not offloadParams)):
+            # #! not dealing with offsets/stack storage
+            # if (not ss.isStart):
+                # # register is now free
+                # alloc = localAllocs[ss.idx]
+                # if (alloc.isReg):
+                    # freeParamReg.append(alloc.location)                
+            # if (ss.isStart):
+                # reg = paramRegisters.pop()            
+                # UsedParamReg.add(reg)           
+                # localAllocs.append(LocalAlloc(ss.idx, True, False, reg, False))
+        # else:
+            # if (not ss.isStart):
+                # # register is now free
+                # alloc = localAllocs[ss.idx]
+                # if (alloc.isReg):
+                    # freeNonParamregisters.append(alloc.location)
+                # if (not alloc.isReg):
+                    # freeOffsets.append(alloc.location)            
+            # if (ss.isStart):
+                # if (len(freeNonParamregisters) > 0):
+                    # # Non Params are unordered, so sourced and pushed
+                    # # to the freelist
+                    # reg = freeNonParamregisters.pop()
+                    # UsedNonParamReg.add(reg)           
+                    # localAllocs.append(LocalAlloc(ss.idx, True, False, reg, False))
+                # elif (len(freeOffsets) > 0):
+                    # loc = freeOffsets.pop()            
+                    # localAllocs.append(LocalAlloc(ss.idx, False, False, loc, False))
+                # else:
+                    # loc = offsetPtr
+                    # offsetPtr += 8
+                    # localAllocs.append(LocalAlloc(ss.idx, False, False, loc, False))
+    # print(str(UsedParamReg))    
+    # print(str(UsedNonParamReg))    
+    # return localAllocs
                 
 def actionIntCode(b, aName, paramsOffloaded, localAllocs):
     # @paramsOffloaded List((id:int, dst:int)) of params to offload
@@ -576,7 +611,6 @@ def actionIntCode(b, aName, paramsOffloaded, localAllocs):
     b.append("protectLocals({})".format(nonparamCount))
     if (paramsOffloaded):
         b.append("offloadParams({})".format(nonparamCount))
-        
 
     # protect on exit nonparam registers for convention
     b.append("unProtectLocals({})".format(nonparamCount))
@@ -739,11 +773,36 @@ def testliveAllocate():
         
     ll = LiveAllocate(
         paramCount = 2,
-        paramAssocs = {0:1, 1:2}, 
+        paramIdTolabelIds = {0:1, 1:2}, 
         paramRegCount = 6, 
         nonParamRegCount = 5, 
         startStops = testStartStops,
         labelCount = 3,
+        )
+    ll.paramAlloc()
+    ll.localAlloc()
+    print(ll)
+    print(ll.stateStr())
+    print(ll.resultStr())
+
+def testliveAllocate2():
+    #StringBuilder_create
+    testStartStops = [
+        # sb
+        startStopStart(0, 2),
+        # ptr
+        startStopStart(1, 2),
+        startStopUse(1, 2),
+        startStopUse(0, 2),
+        ]
+        
+    ll = LiveAllocate(
+        paramCount = 0,
+        paramIdTolabelIds = {}, 
+        paramRegCount = 6, 
+        nonParamRegCount = 5, 
+        startStops = testStartStops,
+        labelCount = 2,
         )
     ll.paramAlloc()
     ll.localAlloc()
@@ -796,7 +855,8 @@ def testActionCode():
 def main():
     #testMangle()
     #testStartStopBuilder()
-    testliveAllocate()
+    #testliveAllocate()
+    testliveAllocate2()
     #r = testActionCode()
     #print("\n".join(r))
     
