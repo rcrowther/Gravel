@@ -75,58 +75,26 @@ def mangleFunc(scopeB, name, typeList):
     return "-Z{}{}".format("".join(scopeB), "".join(typeB))
 
 
-# func entry
-# If there are any following calls, then parameters into a function 
-# must be localised, or parameter data will be lost.
-# True even if a one off into one action
-# But not true if paerams used for acess or arithmetic, etc.
-#? This would be more efficient to be only to the parameter depth of the
-# called functions?
-# both below
-
-#allLocals = List()
-# class Local():
-    # def __init__(self):
-        # self.isParam = False 
-        # self.param = None
-        # self.inCorrectPosition = False 
-        # self.liveActCount = 0
-        # self.isParamLocal = False
-        # self.localIdx = 0
-        # self.liveDepth = 0
-        # self.location = 0
-        
-# allLocals = []
-# if (not func.isLeafCode):    
-    # #func.localiseParameters
-    # i = 0
-    # for local in allLocals:
-        # # if true local can stay on param. May need defending.
-        # local.isParamLocal = (isParam and local.inCorrectPosition and local.liveActCount > 2)
-
-class LocalAlloc():
-    def __init__(self, idx, isReg, isNonParamReg, location, isOffload):
-        self.idx = idx
-        self.isReg = isReg
-        self.isNonParamReg = isNonParamReg
-        self.location = location
-        self.isOffload = isOffload
-        
-    def __repr__(self):
-        return "LocalAlloc(idx:{}, isReg:{}, isNonParamReg{}, location:{}, isOffload:{})".format(
-            self.idx, self.isReg, self.isNonParamReg, self.location, self.isOffload
-            ) 
+#? how span actions
+# if it goes into an action, it doen't span it.
+#? what if only one use?
+# No such thing. If stated, will be repeated?
+#! add read/write comment on usage, and compact, write most significant
+#! therefore, consider edhge swapping, which implies what?
+#! leaf acttions now considered?
+#! stack backup for registry overflow?
+#? what about types
 
 
 ###
 # StartStops
 #            
 class StartStop():
-    def __init__(self, idx, isStart, prevCallIdx):
+    def __init__(self, idx, isStart, prevCallIdx, scopedCalls):
         self.idx = idx
         self.isStart = isStart
         self.prevCallIdx = prevCallIdx
-        self.scopedCalls = None
+        self.scopedCalls = scopedCalls
 
     def __repr__(self):
         return "StartStop(idx:{}, isStart:{}, prevCallIdx:{}, scopedCalls:{})".format(
@@ -134,10 +102,11 @@ class StartStop():
             ) 
                         
 def startStopStart(idx, prevCallIdx):
-    return StartStop(idx, True, prevCallIdx)
+    return StartStop(idx, True, prevCallIdx, None)
 
 def startStopUse(idx, prevCallIdx):
-    return StartStop(idx, False, prevCallIdx)
+    return StartStop(idx, False, prevCallIdx, None)
+
 
 
 class StartStopBuilder():
@@ -228,52 +197,20 @@ class StartStopBuilder():
 ###
 # Allocing
 #
-
-def parameterAlloc(paramData, localAllocs, startStopB):
-            
-    if (action.isLeaf or action.callCount < 3):
-        # leave on the parameter
-        # do not scan for parameter vars
-        # load localAlloc data
-        #? stopStart not required? Yes, we need to know whee to stop to stop protecting.
-        for i, p in enumerate(paramData):
-            localAllocs.append(LocalAlloc(i, True, True, paramRegisters[i], False))
-    else:
-        # alloc stash locals
-        for i, p in enumerate(paramData):
-            startStopB.firstUse(i)
-        #! how to generate load code?
-    
-# Right. Need to know what to do with this gear.
-# locals will be replaced with local alloc.
-#? params different? but not used differently? so include?
-# params need to know if using direct call (so needs protection)
-# or offload
-# offloaded params act like a local
-#isParam isOffloaded
-# So whenever meet the name, 
-# if offloaded is the idx location
-# if not offloaded is the cParam reg
-# caveat, needs to generate code for offloading
-# so it only needs to know the register
-# def parametersAllocate(paramCount, paramRegisters, startStopB, offload):
-    # localAllocs = []
-
-    # if (offload):
-        # # params become locals to allocate.
-        # i = 0
-        # while(i < paramCount):
-            # startStopB.firstUse(i)        
-            # i += 1
+class LocalAlloc():
+    def __init__(self, idx, isReg, isNonParamReg, location, isOffload):
+        self.idx = idx
+        self.isReg = isReg
+        self.isNonParamReg = isNonParamReg
+        self.location = location
+        self.isOffload = isOffload
         
-    # if (not offload):
-        # # straight on localAllocs
-        # i = 0
-        # while(i < paramCount):
-            # reg = paramRegisters[i]
-            # localAllocs.append(LocalAlloc(i, True, False, reg, False))
-            # i += 1
-        
+    def __repr__(self):
+        return "LocalAlloc(idx:{}, isReg:{}, isNonParamReg{}, location:{}, isOffload:{})".format(
+            self.idx, self.isReg, self.isNonParamReg, self.location, self.isOffload
+            ) 
+
+#! enable
 class LiveAllocStats():
     def __init__(self):
         self.paramsLeftOnRegisters = []
@@ -287,6 +224,13 @@ class LiveAllocStats():
             self.paramsMovedToStack,
             ) 
             
+MemLoc = collections.namedtuple("MemLoc", "isReg loc")
+def regMemLoc(loc):
+    return MemLoc(True, loc)
+
+def stackMemLoc(loc):
+    return MemLoc(False, loc)
+    
 # current logic
 # - Parameter ids are given the parameter register if not offloaded, or
 # a non parameter register if offloaded
@@ -296,14 +240,7 @@ class LiveAllocStats():
 #! Use parameter free list if no actions intrude.
 #! - these would have high priority
 #! lower param reg usage protection by only using in-scope protection
-
-MemLoc = collections.namedtuple("MemLoc", "isReg loc")
-def regMemLoc(loc):
-    return MemLoc(True, loc)
-
-def stackMemLoc(loc):
-    return MemLoc(False, loc)
-    
+#?  carries a lot of init data?
 class LiveAllocate():
     # registers are from 0. Registers include param and nonparam
     # in the same sequence.
@@ -377,6 +314,23 @@ class LiveAllocate():
             self.callParamRegProtection[cid].append(rid)
         return rid
         
+    #? unused, preferring pre-edge scan
+    def paramRegisterTargetedAlloc(self, stopStartStart, rid):
+        # Target a particular paramregisteer for allocation.
+        # This can be useful especially at the start of the allocaations,
+        # to keep a parameter on it's allocated register.
+        if (not(rid in self.paramRegistersFree)):
+            raise IndexError("reg param id not in free list; rid {}, list:{} ".format(rid, self.nonParamRegistersFree))
+        self.paramRegistersFree.remove(rid)
+        dstMemLoc = regMemLoc(rid)
+        lid = stopStartStart.idx
+        self.localAllocs[lid] = dstMemLoc
+        self.paramInitAssert(lid, dstMemLoc)
+        # Needs protection over inner calls
+        for cid in stopStartStart.scopedCalls:
+            self.callParamRegProtection[cid].append(rid)
+        return rid
+                
     def paramRegisterDealloc(self, rid):
         self.paramRegistersFree.append(rid)
                 
@@ -440,10 +394,11 @@ class LiveAllocate():
                 # mark any first funcCall for paramReg protection
                 self.callParamRegProtection[0] = [pid]
                 # alloc and reserve the register
+                self.paramRegistersFree.remove(pid)
                 lid = self.paramIdTolabelIds[pid]
                 self.localAllocs[lid] = regMemLoc(pid)
-                self.paramRegistersFree.remove(pid)
-                
+                #self.paramRegisterTargetedAlloc(stopStartStart, rid)
+
             #NB dont allocate, we'll figure out later
             # else:
                 # # Move param value somewhere
@@ -537,72 +492,8 @@ class LiveAllocate():
             #self.startStops,
             )       
     
-# def localsAllocate(
-    # paramRegCount, 
-    # nonParamRegCount, 
-    # startStops, 
-    # offloadParams
-    # ):
-    # # Make allocation decisions from a startStopList
-    # # 
-    # # UsedParamReg and UsedNonParamReg hold used registers
-    # # @startStops 
-    # paramRegisters = ParamRegisters.copy()
-    # paramRegisters.reverse()
-    # offsetPtr = 0
-    # # the following hold currently free storage places
-    # freeNonParamregisters = nonParamRegisters.copy()
-    # freeNonParamregisters.reverse()
-    # freeParamReg = []
-    # freeOffsets = []
-    # # following holds usage data
-    # #! currently a full solution, narrow this for scope
-    # UsedParamReg = set()
-    # #NB all need protection on action entry and exit
-    # UsedNonParamReg = set()
-    # # container for final decisions
-    # localAllocs = []
-    
-    # for ss in startStops:
-        # # NB if this first test fails, params are treated
-        # # as a local variable, and alllocated accordingly
-        # if (ss.isParam and (not offloadParams)):
-            # #! not dealing with offsets/stack storage
-            # if (not ss.isStart):
-                # # register is now free
-                # alloc = localAllocs[ss.idx]
-                # if (alloc.isReg):
-                    # freeParamReg.append(alloc.location)                
-            # if (ss.isStart):
-                # reg = paramRegisters.pop()            
-                # UsedParamReg.add(reg)           
-                # localAllocs.append(LocalAlloc(ss.idx, True, False, reg, False))
-        # else:
-            # if (not ss.isStart):
-                # # register is now free
-                # alloc = localAllocs[ss.idx]
-                # if (alloc.isReg):
-                    # freeNonParamregisters.append(alloc.location)
-                # if (not alloc.isReg):
-                    # freeOffsets.append(alloc.location)            
-            # if (ss.isStart):
-                # if (len(freeNonParamregisters) > 0):
-                    # # Non Params are unordered, so sourced and pushed
-                    # # to the freelist
-                    # reg = freeNonParamregisters.pop()
-                    # UsedNonParamReg.add(reg)           
-                    # localAllocs.append(LocalAlloc(ss.idx, True, False, reg, False))
-                # elif (len(freeOffsets) > 0):
-                    # loc = freeOffsets.pop()            
-                    # localAllocs.append(LocalAlloc(ss.idx, False, False, loc, False))
-                # else:
-                    # loc = offsetPtr
-                    # offsetPtr += 8
-                    # localAllocs.append(LocalAlloc(ss.idx, False, False, loc, False))
-    # print(str(UsedParamReg))    
-    # print(str(UsedNonParamReg))    
-    # return localAllocs
-                
+#! needs rewriting
+#! add action stubs
 def actionIntCode(b, aName, paramsOffloaded, localAllocs):
     # @paramsOffloaded List((id:int, dst:int)) of params to offload
     b.append("actionOpen({})".format(aName))
@@ -615,43 +506,9 @@ def actionIntCode(b, aName, paramsOffloaded, localAllocs):
     # protect on exit nonparam registers for convention
     b.append("unProtectLocals({})".format(nonparamCount))
     b.append("actionClose({})".format(aName))
-        
-# # its depth problem. Wait to do this code, I don't recall offhand
-    # if (freeReg > 0):
-         # local.location(pop(freeReg))
-        # else if (cRegisters > 0):
-            # local.location(pop(cRegister))
-        # else:
-            # local.isStack = True
-            # local.location(offset)
-            # offset += size
-        # b.append("l.alloc(byteSpace.bit64)")
-        # b.append("localSet(b, l({}), cParamSrc({}))".format(i) )
-
-# # Now sources are
-# def paramSrc(idx):
-    # param = allParams[idx]
-    # if (param.isCorrect):
-        # return "cParamSrc({})".format(idx)
-    # return "l({})".format(idx)
-
-# # func call
-    # funcName = ???
-    # # Not including correct positioned params
-    # # src may be a localIdx if unmodified?
-    # # List((pos, src))
-    # paramSrcList = []
-    # for paramSrc in paramSrcList:
-        # b.append("cParamSet(b, {}, {})".format(paramSrc.pos, paramSrc.src) )
-    # b.append("funcCall(b, \"{}\")".format(funcName))
-    
-
-# func exit
-# func exit must include local close, and func close
-# could jump to the repeated code?
 
 
-class Action():
+class StubIntCode():
     def __init__(self, label, localAlloc):
         # @paramOffloads List(id:int, loc) of params to offload
         self.label = label
@@ -759,6 +616,7 @@ def testStartStopBuilder():
                
 
 def testliveAllocate():
+    #StringBuilder__ensureSpace
     testStartStops = [
         # newsize
         startStopStart(0, 0),
@@ -809,45 +667,61 @@ def testliveAllocate2():
     print(ll)
     print(ll.stateStr())
     print(ll.resultStr())
+
+
+def testliveAllocate3():
+    #StringBuilder_append
+    b = StartStopBuilder()
+    # len
+    b.firstUse(0)
+    # str
+    b.firstUse(1)
+    ## strlen
+    b.call()
+    # sb
+    b.firstUse(2)
+    b.use(0)
+    ## ensure
+    b.call()
+    # sb.str    
+    b.firstUse(3)
+    b.use(3)
+    b.use(0)
+    ## memmove
+    b.call()
+    # sb.size += len
+    b.firstUse(4)
+    b.use(2)
+    b.use(4)
+    b.use(0)
+    # sb.str(sb.size)
+    b.firstUse(5)
+    b.use(5)
+    b.use(2)
+    #print(b.result())
+            
+    ll = LiveAllocate(
+        paramCount = 2,
+        paramIdTolabelIds = {0:2, 1:1}, 
+        paramRegCount = 6, 
+        nonParamRegCount = 5, 
+        startStops = b.result(),
+        labelCount = 6,
+        )
+    ll.paramAlloc()
+    ll.localAlloc()
+    print(ll)
+    print(ll.stateStr())
+    print(ll.resultStr())
+
     
-    # # 2 flat allocs
-    # testStartStops0 = [
-        # startStopStart(0),
-        # startStopUse(0),
-        # startStopStart(1),
-        # startStopUse(1),
-        # ]
-    # # 3 overlap allocs
-    # testStartStops1 = [
-        # startStopStart(0),
-        # startStopStart(1),
-        # startStopStart(2),
-        # startStopUse(1),
-        # startStopUse(0),
-        # startStopUse(2),
-        # ]
-    # # param and alloc
-    # testStartStops2 = [
-        # startStopParamDeclare(0),
-        # startStopParamUse(0),
-        # startStopStart(1),
-        # startStopUse(1),
-        # ]
-    # # param and alloc overlap
-    # testStartStops3 = [
-        # startStopParamDeclare(0),
-        # startStopStart(1),
-        # startStopUse(1),
-        # startStopParamUse(0),
-        # ]
-        
-def testActionCode():
+def testStubIntCode():
     b = []
     localAlloc = [
         LocalAlloc(0, True, True, 'rbx', True),
         LocalAlloc(1, True, True, 'r12', False),
         ]
-    a = Action("testAction", localAlloc)
+    a = StubIntCode("testAction", localAlloc)
     a.open(b)
     a.close(b)
     return b
@@ -856,8 +730,9 @@ def main():
     #testMangle()
     #testStartStopBuilder()
     #testliveAllocate()
-    testliveAllocate2()
-    #r = testActionCode()
+    #testliveAllocate2()
+    testliveAllocate3()
+    #r = testStubIntCode()
     #print("\n".join(r))
     
 if __name__== "__main__":
