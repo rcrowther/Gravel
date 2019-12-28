@@ -87,29 +87,59 @@ def mangleFunc(scopeB, name, typeList):
 
 
 ###
-# StartStops
-#            
-class StartStop():
-    def __init__(self, idx, isStart, prevCallIdx, scopedCalls):
+# ScopeMarks
+# 
+Read = False
+Write = True
+           
+class ScopeMark():
+    def __init__(self, idx, isStart, readWrite, prevCallIdx, scopedCalls):
         self.idx = idx
         self.isStart = isStart
+        self.readWrite = readWrite
         self.prevCallIdx = prevCallIdx
         self.scopedCalls = scopedCalls
 
     def __repr__(self):
-        return "StartStop(idx:{}, isStart:{}, prevCallIdx:{}, scopedCalls:{})".format(
-            self.idx, self.isStart, self.prevCallIdx, self.scopedCalls
+        rw = 'r'
+        if (self.readWrite == True):
+            rw = 'w' 
+        return "ScopeMark(idx:{}, isStart:{}, readWrite:'{}', prevCallIdx:{}, scopedCalls:{})".format(
+            self.idx, self.isStart, rw, self.prevCallIdx, self.scopedCalls
             ) 
                         
-def startStopStart(idx, prevCallIdx):
-    return StartStop(idx, True, prevCallIdx, None)
+def scopeStart(idx, readWrite, prevCallIdx):
+    return ScopeMark(idx, True, readWrite, prevCallIdx, None)
 
-def startStopUse(idx, prevCallIdx):
-    return StartStop(idx, False, prevCallIdx, None)
+def scopeUse(idx, readWrite, prevCallIdx):
+    return ScopeMark(idx, False, readWrite, prevCallIdx, None)
 
+# Things this can' do or tell you
+# - if a local is made for a register
+# - What is currenlty on a register
+# - swap mid-stream, though this could be done when a new register
+# is allocated, shunting the old one out
+# - if a local is preparing for a parameter 
+#! really would be useful knowing lid of parameter on a call
+#! We need to be able to aassert:
+#! ""Prefer this on register X"
+#! etc.
+#! Note the ""Prefer". This is not a simple score system.
+#! also would like some flexibility for placing, ass currently this is
+#! assertive.
+#! can be made lasy by making final decisions on closure, not opening.
+#! (this would save some transfer shenannigans used currently)
+#! Also useful, the abiloity to break down scopes and say,
+#! ""At this point we fid scope x in reg/stackLoc x
+# This may be easier to organise thann appears. All that matters are 
+# start edges, thats where locations can be changed.
+#! and all that matters is the actial usage of the local. So just say,
+#! ""on occurence y of local x, x can be found at z"
+#! i.e. Memlocss for each local become an array, and must carry an 
+#! ocurrence number (single, not ranges, likely easier. Not that many)
+#1 also a mechanism for swap needed (which may cover initial parameters?)
 
-
-class StartStopBuilder():
+class ScopeBuilder():
     # Filter data usage to first start and stop
     # The indexes given for labels are unique and serial ids.
     # Parameters are treated as a local variable. They should not be 
@@ -120,35 +150,44 @@ class StartStopBuilder():
     # Call() should be used whenever there is a call. It is treated as 
     # an index.
     def __init__(self):
-        self.startStops = []
+        self.scopeMarks = []
         self.maxIdx = 0
         self.callCount = -1
         self.paramIdTolabelIds = {}
         
     def call(self):
+        # Declare a call has been encountered.
+        # Close call parameters before the call.
         self.callCount += 1
         
     def paramAssocLabel(self, paramId, labelId):
         self.paramIdTolabelIds[paramId] = labelId
         
-    def firstUse(self, idx):
-        self.startStops.append(startStopStart(idx, self.callCount))
+    def firstUse(self, idx, readWrite):
+        # @readWrite read is false, write is true
+        self.scopeMarks.append(scopeStart(idx, Read, self.callCount))
         if (idx > self.maxIdx):
             self.maxIdx = idx
                 
-    def use(self, idx):
-        self.startStops.append(startStopUse(idx, self.callCount))
+    def use(self, idx, readWrite):
+        # @readWrite read is false, write is true
+        self.scopeMarks.append(scopeUse(idx, readWrite, self.callCount))
 
     def result(self):
         b = []
         # Also stashes callcount to transfer to the start marker.
         usageEcountered = [False for a in range(0, (self.maxIdx + 1))]
         tailPrevCallIdx = [-1 for a in range(0, (self.maxIdx + 1))]
-        for ss in reversed(self.startStops):
+        isReadWrite = [-1 for a in range(0, (self.maxIdx + 1))]
+        
+        for ss in reversed(self.scopeMarks):
             if (ss.isStart):
                 # copy callCount to start mark
                 ss.scopedCalls = range(ss.prevCallIdx + 1, tailPrevCallIdx[ss.idx] + 1)
+                ss.readWrite = (ss.readWrite and isReadWrite[ss.idx])
                 b.append(ss)
+            if (not ss.isStart):
+                isReadWrite[ss.idx] = (isReadWrite[ss.idx] and ss.readWrite)
             if ((not ss.isStart) and (usageEcountered[ss.idx] == False)):
                 b.append(ss)
                 usageEcountered[ss.idx] = True
@@ -157,8 +196,8 @@ class StartStopBuilder():
         return b
 
     def __repr__(self):
-        return "StartStopBuilder(startStops:{}, maxIdx:{})".format(
-            self.startStops, self.maxIdx
+        return "ScopeBuilder(scopeMarks:{}, maxIdx:{})".format(
+            self.scopeMarks, self.maxIdx
             )       
             
 #NB: a sketch, keep!
@@ -171,7 +210,7 @@ class StartStopBuilder():
     # # lines).
     # # The resulting information also carriees a count of calls made 
     # # within the scope of the labels.
-    # b = StartStopBuilder()
+    # b = ScopeBuilder()
     # #? just a big number?
     # # also carries callCount
     # labelActive = [-1 for a in range(0, 32)]
@@ -218,7 +257,7 @@ class LiveAllocStats():
         self.paramsMovedToStack = []
         
     def __repr__(self):
-        return "StartStopBuilder(paramsLeftOnRegisters:{}, paramsMovedToNonParamRegisters:{}, paramsMovedToStack:{})".format(
+        return "LiveAllocStats(paramsLeftOnRegisters:{}, paramsMovedToNonParamRegisters:{}, paramsMovedToStack:{})".format(
             self.paramsLeftOnRegisters,
             self.paramsMovedToNonParamRegisters,
             self.paramsMovedToStack,
@@ -232,15 +271,17 @@ def stackMemLoc(loc):
     return MemLoc(False, loc)
     
 # current logic
-# - Parameter ids are given the parameter register if not offloaded, or
-# a non parameter register if offloaded
-# Thus offload tells if offload code required.
+# - Parameter ids are given the parameter register if within one call, 
+# or offloaded to a non parameter register
 # Other local ids are given non-parameter registers or an offset.
-# Non-parameter free lists are recycled if the id is out of scope.
+# Non-parameter free lists are recycled if the lid is out of scope.
 #! Use parameter free list if no actions intrude.
 #! - these would have high priority
 #! lower param reg usage protection by only using in-scope protection
 #?  carries a lot of init data?
+#! logic for readWrite
+#! write direcct to call parameters that do not survive 
+#! (or even two or three calls?)
 class LiveAllocate():
     # registers are from 0. Registers include param and nonparam
     # in the same sequence.
@@ -251,7 +292,7 @@ class LiveAllocate():
         paramIdTolabelIds, 
         paramRegCount, 
         nonParamRegCount, 
-        startStops,
+        localScopes,
         labelCount,
         ):
         self.paramCount = paramCount
@@ -260,7 +301,7 @@ class LiveAllocate():
         self.labelToParamIds = {kv[1]:kv[0] for kv in self.paramIdTolabelIds.items()}
         self.paramRegCount = paramRegCount
         self.nonParamRegCount = nonParamRegCount
-        self.startStops = startStops
+        self.localScopes = localScopes
         self.labelCount = labelCount
         # Parameter registers are of limited use.
         # At first they are locked and unavailable, so this is empty.
@@ -283,7 +324,7 @@ class LiveAllocate():
         self.callParamRegProtection = {}
         # leap to start info easily
         self.startAccess = [-1 for id in range(0, labelCount)]
-        for ss in self.startStops:
+        for ss in self.localScopes:
             if ss.isStart:
                 self.startAccess[ss.idx] = ss
         self.stackOffset = 8
@@ -303,19 +344,19 @@ class LiveAllocate():
     def paramRegisterCanAlloc(self):
         return (len(self.paramRegistersFree) > 0)
 
-    def paramRegisterAlloc(self, stopStartStart):
+    def paramRegisterAlloc(self, stoplocalStart):
         rid = self.paramRegistersFree.pop()
         dstMemLoc = regMemLoc(rid)
-        lid = stopStartStart.idx
+        lid = stoplocalStart.idx
         self.localAllocs[lid] = dstMemLoc
-        self.paramInitAssert(lid, dstMemLoc)
+        #self.paramInitAssert(lid, dstMemLoc)
         # Needs protection over inner calls
-        for cid in stopStartStart.scopedCalls:
+        for cid in stoplocalStart.scopedCalls:
             self.callParamRegProtection[cid].append(rid)
         return rid
         
     #? unused, preferring pre-edge scan
-    def paramRegisterTargetedAlloc(self, stopStartStart, rid):
+    def paramRegisterTargetedAlloc(self, stoplocalStart, rid):
         # Target a particular paramregisteer for allocation.
         # This can be useful especially at the start of the allocaations,
         # to keep a parameter on it's allocated register.
@@ -323,17 +364,25 @@ class LiveAllocate():
             raise IndexError("reg param id not in free list; rid {}, list:{} ".format(rid, self.nonParamRegistersFree))
         self.paramRegistersFree.remove(rid)
         dstMemLoc = regMemLoc(rid)
-        lid = stopStartStart.idx
+        lid = stoplocalStart.idx
         self.localAllocs[lid] = dstMemLoc
-        self.paramInitAssert(lid, dstMemLoc)
+        #self.paramInitAssert(lid, dstMemLoc)
         # Needs protection over inner calls
-        for cid in stopStartStart.scopedCalls:
+        for cid in stoplocalStart.scopedCalls:
             self.callParamRegProtection[cid].append(rid)
         return rid
                 
     def paramRegisterDealloc(self, rid):
         self.paramRegistersFree.append(rid)
-                
+
+    def paramInitAssert(self, lid, dstMemLoc):
+        if (lid in self.labelToParamIds):
+            srcIdx = self.labelToParamIds[lid]
+            #? mor than this for srces, need a list of src memlocs
+            trans = (regMemLoc(srcIdx), dstMemLoc)
+            self.initialParamTransfer.append(trans)
+            self.stats.paramsMovedToNonParamRegisters.append(srcIdx)
+
     def nonParamRegisterCanAlloc(self):
         return (len(self.nonParamRegistersFree) > 0)
 
@@ -367,12 +416,6 @@ class LiveAllocate():
         else:
             stackFreeList.append(memLoc.loc)
 
-    def paramInitAssert(self, lid, dstMemLoc):
-        if (lid in self.labelToParamIds):
-            srcIdx = self.labelToParamIds[lid]
-            #? mor than this for srces, need a list of src memlocs
-            trans = (regMemLoc(srcIdx), dstMemLoc)
-            self.initialParamTransfer.append(trans) 
 
     def paramAlloc(self):
         # Q & A :)
@@ -397,7 +440,8 @@ class LiveAllocate():
                 self.paramRegistersFree.remove(pid)
                 lid = self.paramIdTolabelIds[pid]
                 self.localAllocs[lid] = regMemLoc(pid)
-                #self.paramRegisterTargetedAlloc(stopStartStart, rid)
+                self.stats.paramsLeftOnRegisters.append(pid)
+                #self.paramRegisterTargetedAlloc(stoplocalStart, rid)
 
             #NB dont allocate, we'll figure out later
             # else:
@@ -434,7 +478,7 @@ class LiveAllocate():
             # Nothing to do?
                 
     def localAlloc(self):
-        for ss in self.startStops:
+        for ss in self.localScopes:
             # Q Where do non-param locals go?
             # A if register available and scope less then 1 call, on register
             #! not dealing with offsets/stack storage
@@ -489,22 +533,33 @@ class LiveAllocate():
             self.paramRegCount, 
             self.nonParamRegCount,
             self.labelCount,
-            #self.startStops,
+            #self.localScopes,
             )       
     
-#! needs rewriting
+#! needs rewriting. Not clear if this is an intermediate code, using 
+#! abstract references, or a codewriter.
 #! add action stubs
-def actionIntCode(b, aName, paramsOffloaded, localAllocs):
+def actionIntCode(b, aName, paramsOffloaded, localAlloc):
     # @paramsOffloaded List((id:int, dst:int)) of params to offload
     b.append("actionOpen({})".format(aName))
     # protect on entry nonparam registers for convention
     # series of pushes
-    b.append("protectLocals({})".format(nonparamCount))
-    if (paramsOffloaded):
-        b.append("offloadParams({})".format(nonparamCount))
+    b.append("protectLocals({})".format(localAlloc.nonParamRegistersToProtect))
+    for kv in localAlloc.initialParamTransfer:
+        b.append("parammov {}, {}".format(nonparamCount))
 
+    for call in callParamRegProtection.items():
+        for reg in call[1]:
+            b.append("push reg{}".format()
+        b.append("call{}".format(call[0])
+        for reg in call[1]:
+            b.append("pop reg{}".format(call[1])
+        
+        
     # protect on exit nonparam registers for convention
-    b.append("unProtectLocals({})".format(nonparamCount))
+    b.append("unProtectLocals({})".format(
+        reverse(localAlloc.nonParamRegistersToProtect)
+        )
     b.append("actionClose({})".format(aName))
 
 
@@ -515,7 +570,6 @@ class StubIntCode():
         #self.localCount = localCount
         self.localAlloc = localAlloc
         print(str(localAlloc))
-        self.regOffloads = [a for a in localAlloc if ((a.isOffload == True) and (a.isReg == True))]
         
     def open(self, b):
         b.extend([
@@ -555,27 +609,28 @@ class StubIntCode():
 ###
 # Tests
 #
+
 def testMangle():
     scopeB = mangleScope(["StringBuilder", "Heap"])
     mangledName = mangleFunc(scopeB, "clutch", ["StringBuilder", "int64"])
     print(mangledName)
 
-def testStartStopBuilder():
+def testScopeBuilder():
     # inline scopes
-    b = StartStopBuilder()
-    b.firstUse(0)
-    b.use(0)
-    b.firstUse(1)
-    b.use(1)
+    b = ScopeBuilder()
+    b.firstUse(0, Read)
+    b.use(0, Read)
+    b.firstUse(1, Read)
+    b.use(1, Read)
     #print(str(b))
     print(b.result())
 
     # callCount handling
-    b = StartStopBuilder()
-    b.firstUse(0)
+    b = ScopeBuilder()
+    b.firstUse(0, Read)
     b.call()
-    b.use(0)
-    b.firstUse(1)
+    b.use(0, Read)
+    b.firstUse(1, Read)
     b.call()
     b.call()
     b.use(1)
@@ -583,50 +638,50 @@ def testStartStopBuilder():
     print(b.result())
 
     # callCount dead calls
-    b = StartStopBuilder()
+    b = ScopeBuilder()
     b.call()
-    b.firstUse(0)
-    b.use(0)
+    b.firstUse(0, Read)
+    b.use(0, Read)
     b.call()
     b.call()
     #print(str(b))
     print(b.result())
     
     # multiple use scope
-    b = StartStopBuilder()
-    b.firstUse(0)
+    b = ScopeBuilder()
+    b.firstUse(0, Read)
     b.call()
-    b.use(0)
+    b.use(0, Read)
     b.call()
-    b.use(0)
+    b.use(0, Read)
     b.call()
     b.use(0)
     #print(str(b))
     print(b.result())
         
     # overlaid scopes
-    b = StartStopBuilder()
-    b.firstUse(0)
-    b.use(0)
-    b.firstUse(1)
-    b.use(1)
-    b.use(0)
+    b = ScopeBuilder()
+    b.firstUse(0, Read)
+    b.use(0, Read)
+    b.firstUse(1, Read)
+    b.use(1, Read)
+    b.use(0, Read)
     #print(str(b))
     print(b.result())
                
 
 def testliveAllocate():
     #StringBuilder__ensureSpace
-    testStartStops = [
+    testScopeMarks = [
         # newsize
-        startStopStart(0, 0),
+        scopeStart(0, 0),
         # sb
-        startStopStart(1, 0),
+        scopeStart(1, 0),
         # extralen
-        startStopStart(2, 0),
-        startStopUse(2, 0),
-        startStopUse(0, 0),
-        startStopUse(1, 1)
+        scopeStart(2, 0),
+        scopeUse(2, 0),
+        scopeUse(0, 0),
+        scopeUse(1, 1)
         ]
         
     ll = LiveAllocate(
@@ -634,7 +689,7 @@ def testliveAllocate():
         paramIdTolabelIds = {0:1, 1:2}, 
         paramRegCount = 6, 
         nonParamRegCount = 5, 
-        startStops = testStartStops,
+        localScopes = testScopeMarks,
         labelCount = 3,
         )
     ll.paramAlloc()
@@ -645,13 +700,13 @@ def testliveAllocate():
 
 def testliveAllocate2():
     #StringBuilder_create
-    testStartStops = [
+    testScopeMarks = [
         # sb
-        startStopStart(0, 2),
+        scopeStart(0, 2),
         # ptr
-        startStopStart(1, 2),
-        startStopUse(1, 2),
-        startStopUse(0, 2),
+        scopeStart(1, 2),
+        scopeUse(1, 2),
+        scopeUse(0, 2),
         ]
         
     ll = LiveAllocate(
@@ -659,7 +714,7 @@ def testliveAllocate2():
         paramIdTolabelIds = {}, 
         paramRegCount = 6, 
         nonParamRegCount = 5, 
-        startStops = testStartStops,
+        localScopes = testScopeMarks,
         labelCount = 2,
         )
     ll.paramAlloc()
@@ -671,33 +726,33 @@ def testliveAllocate2():
 
 def testliveAllocate3():
     #StringBuilder_append
-    b = StartStopBuilder()
+    b = ScopeBuilder()
     # len
-    b.firstUse(0)
+    b.firstUse(0, Write)
     # str
-    b.firstUse(1)
+    b.firstUse(1, Read)
     ## strlen
     b.call()
     # sb
-    b.firstUse(2)
-    b.use(0)
+    b.firstUse(2, Read)
+    b.use(0, Read)
     ## ensure
     b.call()
     # sb.str    
-    b.firstUse(3)
-    b.use(3)
-    b.use(0)
+    b.firstUse(3, Read)
+    b.use(3, Read)
+    b.use(0, Read)
     ## memmove
     b.call()
     # sb.size += len
-    b.firstUse(4)
-    b.use(2)
-    b.use(4)
-    b.use(0)
+    b.firstUse(4, Write)
+    b.use(2, Read)
+    b.use(4, Read)
+    b.use(0, Read)
     # sb.str(sb.size)
-    b.firstUse(5)
-    b.use(5)
-    b.use(2)
+    b.firstUse(5, Write)
+    b.use(5, Read)
+    b.use(2, Read)
     #print(b.result())
             
     ll = LiveAllocate(
@@ -705,7 +760,7 @@ def testliveAllocate3():
         paramIdTolabelIds = {0:2, 1:1}, 
         paramRegCount = 6, 
         nonParamRegCount = 5, 
-        startStops = b.result(),
+        localScopes = b.result(),
         labelCount = 6,
         )
     ll.paramAlloc()
@@ -713,6 +768,8 @@ def testliveAllocate3():
     print(ll)
     print(ll.stateStr())
     print(ll.resultStr())
+    print(str(ll.stats))
+    #print(ll.localScopes)
 
     
 def testStubIntCode():
@@ -728,7 +785,7 @@ def testStubIntCode():
     
 def main():
     #testMangle()
-    #testStartStopBuilder()
+    #testScopeBuilder()
     #testliveAllocate()
     #testliveAllocate2()
     testliveAllocate3()
