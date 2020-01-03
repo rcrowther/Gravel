@@ -10,7 +10,7 @@ for cp in it:
     print(type(cp))
 
 === StringLine
-from gio.CodepointIterators import StringLineIterator
+from gio.CodepointIterators import StringIterator
 it = StringIterator('val quip = 19')
 for cp in it:
     print(cp)
@@ -86,7 +86,8 @@ from reporters.ConsoleStreamReporter import ConsoleStreamReporter
 from gio.TokenIterator import mkTokenIterator
 from Tokens import tokenToString
 r = ConsoleStreamReporter()
-src = FileSource('test/tokens.gv')
+#src = FileSource('test/tokens.gv')
+src = FileSource('test/syntax.gv')
 it = mkTokenIterator(src, r)
 for tok in it:
     print("[{},{}] '{}': '{}'".format(

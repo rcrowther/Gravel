@@ -1,0 +1,10 @@
+== Scala DSLs
+https://stackoverflow.com/questions/49216312/what-is-dsl-in-scala
+
+From 2.10.7
+
+Look in,
+
+/home/rob/Downloads/scala-2.10.7/src/compiler/scala/tools
+
+/home/rob/Downloads/scala-2.10.7/src/reflect/scala/reflect

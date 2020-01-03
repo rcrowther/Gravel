@@ -107,6 +107,7 @@ class VirtualFile:
 # constructors
 def VirtualFileCode(code):
     return VirtualFile("", code)
+    
 def VirtualFileSource(asmPath):
     return VirtualFile(asmPath, "")
     

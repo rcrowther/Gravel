@@ -8,12 +8,9 @@ from Position import Position
 ## TODO:
 # Test for end
 # Need to test for '$' initially, as used to mark 
-# internal-generated names and marked-up operator to alphanumeric transforms. 
-#! take a reporter for 'token error'
-#! this is for string sources?
+# internal-generated names and marked-up operator to alphanumeric transforms.
 #! do stubs '???'
-#! two problems:
-#! reporter needs a source
+#! problems:
 #! eagar grabbing of the cp means if we hit EOF,  we can do not know if 
 # brackets are closed.
 class TokenIterator():
@@ -54,21 +51,24 @@ class TokenIterator():
     def __init__(self, trackingIterator, reporter, src):
         self.src = src
         self.exhausted = False
-        self.reporter = reporter
         self.it = trackingIterator
+        self.reporter = reporter
+        # To hold data for each token e.g. a string, a number etc.
         self.b = []
+        # current token in iterator
         #something dead to start
         self.tok = None
         # by setting the first cp to space, the whitepace skip
         # is triggered, loading the first significant codepoint.
         self.c = SPACE
+        #! not very clever with depths?
+        # track brackets in case of breaks
         self.brackets_closed = True
         # keep track for errors. Start being more useful than end.
         self.start_pos = None
         # offset of a token is the first cp in every token
         # so we need to stash this position as the source is iterated
-        self.lineOffset = self.it.lineOffset
-        self.lineCount = self.it.lineCount        
+        self.stashOffsets()     
         
     #def source(self):
     #    return self.it.source
@@ -95,7 +95,10 @@ class TokenIterator():
 
     def _loadUntil(self, cp):
         '''
-        Load the builder from current until matching the given codepoint.
+        Load the builder from current char until matching the given 
+        codepoint.
+        
+        Used for gathering strings and ids.
         '''
         while(self.c != cp):
             #print('cmmnt ' + str(self.c) + str(chr(self.c)))
@@ -103,6 +106,9 @@ class TokenIterator():
             self._next()
 
     def isWhitespace(self):
+        return (self.c <= 32 and (not self.c == LINE_FEED))
+
+    def isWhitespaceOrLinefeed(self):
         return (self.c <= 32)
 
     def isAlphabetic(self):
@@ -117,6 +123,14 @@ class TokenIterator():
         '''
         return (self.c >= 48 and self.c <= 57)
 
+    def isOperator(self):
+        return (not(
+            self.isAlphabetic() or 
+            self.isWhitespaceOrLinefeed() or
+            self.isNumeric() or
+            self.isPunctuation()
+            ))
+        
     def scanIdentifier(self):
         '''
         [a-z, A-Z] ~ zeroOrMore(not(Whitespace) | not(Punctuation))
@@ -129,7 +143,7 @@ class TokenIterator():
                 # allow most codepoints after the alphabetic,
                 # short of whitespace or punctuation
                 if (
-                    (self.isWhitespace()) or
+                    (self.isWhitespaceOrLinefeed()) or
                     (self.isPunctuation())
                  ):
                     break
@@ -149,6 +163,11 @@ class TokenIterator():
 
     def scanNumber(self):
         if (self.isNumeric()):
+            self.start_pos = Position(
+                self.src,
+                self.lineCount, 
+                self.lineOffset
+                )
             self.tok = Tokens.INT_NUM
             while(True):
                 self.b.append(self.c)
@@ -163,6 +182,14 @@ class TokenIterator():
                     self._next()
                     if(not self.isNumeric()):
                         break
+            if (not(
+                (self.isWhitespaceOrLinefeed()) or
+                (self.isPunctuation())
+             )): 
+                msg = 'Token scanned as a number not ends with whitespace or punctuation'
+                self.reporter.error(Message.withPos(msg, self.src, self.start_pos))
+                raise StopIteration
+                
             return True
         else:
             return False
@@ -200,12 +227,15 @@ class TokenIterator():
                 self.lineOffset
                 )
             self._next()
+            if(not self.c == ICOMMAS):
+                msg = 'Token scanned as string not opens with double inverted commas'
+                self.reporter.error(Message.withPos(msg, self.src, self.start_pos))
+                raise StopIteration
+            self._next()
             if (self.c == ICOMMAS):
                 self.tok = Tokens.MULTILINE_STRING
                 self._next()
-                self._loadUntil(ICOMMAS)
-            else:
-                self._loadUntil(LINE_FEED)
+            self._loadUntil(ICOMMAS)
             # step over the end delimiters
             self.brackets_closed = True
             self._next()
@@ -217,30 +247,37 @@ class TokenIterator():
         '''
         [^a-z, A-Z] ~  zeroOrMore(not(Whitespace) | not(Numeric) | not(Alphabetic) | not(Punctuation))
         '''
-        while (True):
-            self.b.append(self.c)
-            self._next()
+        if (self.isOperator()):
+            while(True):
+                self.b.append(self.c)
+                self._next()
+                if(not self.isOperator()):
+                    break
+            self.tok = Tokens.MONO_OPERATER                    
             if (
-                (self.isWhitespace()) 
-                or (self.isNumeric())
-                or (self.isAlphabetic())
+                (self.isWhitespaceOrLinefeed())
                 or (self.isPunctuation())
                 ):
-                break
-        if (self.isNumeric() or self.isAlphabetic()):
-            self.tok = Tokens.MONO_OPERATER
+                self.tok = Tokens.OPERATER
+            return True
         else:
-            self.tok = Tokens.OPERATER
-        return True
-
+            return False
+            
     def skipWhitespace(self):
-          while (self.isWhitespace()):
-             self._next()
-          
+        #print("whitespace {}".format(self.isWhitespace()))  
+        while (self.isWhitespace()):
+            self._next()
+
+    #def skipWhitespace(self):
+    #      while (self.isWhitespace()):
+    #         self._next()
+                       
     def getNext(self):
         self._clear()
+        #print("getNext")
         # skip to non-whitespace
         self.skipWhitespace()
+        #print("skipped")
         self.stashOffsets()
         if (self.scanIdentifier()):
             pass
@@ -253,19 +290,25 @@ class TokenIterator():
         elif (self.scanString()):
             pass
         # Note, this is anything that is left?
+        elif (self.scanOperatorIdentifier()):
+            pass
         else:
-            self.scanOperatorIdentifier()
-            #pass
-        #else:
             # Unscanable. Should never be reached.
-            #self.tok = tokens['empty']
-
+            self.start_pos = Position(
+                self.src,
+                self.lineCount, 
+                self.lineOffset
+                )
+            msg = 'Codepoint can not be recognised as token; codepoint:{}'.format(self.c)
+            self.reporter.error(Message.withPos(msg, self.src, self.start_pos))
+            raise StopIteration
+                
     def __iter__(self):
         return self
 
     def __next__(self):
-        #print ('nxt')
-        #print(str(self.c))
+        #NB This catch because if a StopIteration is raised, there is 
+        # still work to do
         try:
             self.getNext()
         except StopIteration as e:
@@ -279,10 +322,10 @@ class TokenIterator():
                 # parser
                 if (not self.brackets_closed):
                     # MULTILINE_COMMENT && STRING 
-                    msg = 'Open {} brackets not closed by end of file.'.format(
-                    Tokens.tokenToString[self.tok]
-                    )
-                    self.reporter.error(Message(msg, self.start_pos))
+                    msg = 'Open {} brackets not closed at end of file.'.format(
+                        Tokens.tokenToString[self.tok]
+                        )
+                    self.reporter.error(Message.withPos(msg, self.src, self.start_pos))
                 raise e
         return self.tok
 

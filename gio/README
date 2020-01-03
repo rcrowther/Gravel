@@ -1,0 +1,13 @@
+== For reading sources
+
+:: Source
+~~ Abstracted description of a source. Includes common actions, and gear for reporting on a source.
+
+:: CodepointIterator
+~~ Iteraters for stepping through the codepoints of various sources 
+
+:: TrackingIterator
+~~ Tracks, in source-relative coordinates, the position of the iteratore
+
+:: TokenIterator
+~~ Transforms the souce contents into a series of simple tokens

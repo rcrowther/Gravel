@@ -1,7 +1,10 @@
+from Codepoints import LINE_FEED
+
 
 class CodePointIterator:
     '''
-    Iterate codepoints from some source.  
+    Iterate codepoints from some Source.  
+    
     Should:
     ++
     - return unicode codepoints
@@ -9,14 +12,16 @@ class CodePointIterator:
     - do any tidy, such as file descriptor closing
     +
     Returned streams will include line ends.
+    Line ends will be unified to a single codepoint, 
+    Codepoints.LINE_FEED.
     '''
     def __iter__(self):
         return self
         
         
-        
+#! assumes Linuxy Python by assuming line-end is codepoint LINE_FEED         
 class FileIterator(CodePointIterator):
-    # Changes the syntax from read-a-char
+    #NB Changes the syntax from read-a-char
     # to __next__-for-a-char iteration
     def __init__(self, path):
         self.path = path
@@ -39,7 +44,7 @@ class StringIterator(CodePointIterator):
     def __init__(self, line):
         # ensuring newline
         self.line = line.rstrip()
-        self.line += '\n'
+        self.line += chr(LINE_FEED)
         self.i = 0
         self.lineLen = len(self.line)
   
@@ -59,7 +64,7 @@ class StringsIterator(CodePointIterator):
         assert (len(strings) > 0), "supplied 'strings' data has no content"
         self.strings = strings
         # ensure line ends
-        self.strings = [line.rstrip() + '\n' for line in self.strings]
+        self.strings = [line.rstrip() + chr(LINE_FEED) for line in self.strings]
         self.lineI = 0
         self.line = self.strings[0]
         self.linesLen = len(self.strings)

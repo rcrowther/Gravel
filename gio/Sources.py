@@ -13,6 +13,7 @@ class Source:
     # Yes, I know it's not Pythonic.
     # But it works allwhere. R.C.
     def cmp(self, other):
+        # Compare one source with another for equality.
         raise NotImplementedError()
         
     def isLinebasedSource(self):

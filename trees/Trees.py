@@ -233,6 +233,7 @@ def mkStringNamelessData(position, valueStr):
 
 
 class NamelessBody(Tree, BodyParameterMixin):
+    #? difference between this and NamelessFunc
     '''
     Body expression with no name or params.
     Has no name, so has no params.
@@ -448,6 +449,7 @@ class NamelessFunc(ExpressionWithBodyBase):
     1 + {2/3}
     and as closures
     '''    
+    #? difference between this and NamelessBody
     #! Currently serves as the base for a main() access point?? (which needs parameters, no?)
     def __init__(self, body):
         #! the name needs some thought

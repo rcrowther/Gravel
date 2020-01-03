@@ -1,124 +1,14 @@
 # Gravel Syntax set
 
+{
+    238
+}
+
+lb hereTher {
 ## Atom expressions
 #
+}
 
 # Integer
-1923
-
-# Float
-1965.34
-
-# String
-# Single line string
-"string along for a line
-
-# Multiline String
-""
-A string covering
-several
-lines
-...
-"
-# Atoms can be followed by optional Kind annotation
-1923 : Bit32U
-
-
-## Val definition
-#
-val pi{3.143}
-
-# can be followed by kind annotation
-var waterFilter: Int32 {10}
-
-## Function definition
-#
-
-# must have explicit parameter list, even if empty
-fnc map() {
-}
-
-# ...and have kinded parameters
-fnc map2(dom: Int plode: Float) {
-}
-
-# ...and handle optional trailing kinds
-fnc map3(dom: Int knode: Float) : Float {
-}
-
-## Operater definition
-#
-
-# ...same as function definition
-fnc ++=(dom: Int strode: String) : String {
-}
-
-
-
-## Name Function call
-#
-
-# no arguments
-println
-
-# empty arguments
-println()
-
-# many arguments
-println(data1 data2 data3)
-
-# ...arguments can have optional kinds
-println(spiral: Spiral)
-
-# ...call handles optional trailing kinds
-println(spiral) : Nothing
-
-
-
-## Op Function call
-#
-
-# no arguments
-???
-
-# empty arguments
-|||()
-
-# many arguments
-|||(data1 data2 data3)
-
-
-## Chained functions
-#
-# nameFunctions can be chained
-grabList().filter1().filter3()
-
-# opFunctions can be chained
->£.>$.>%.>^
-
-# opFunctions can be chained without periods or brackets (as BinOps)
-1 + 2 - 4
-
-# can be chained with nameless functions
-Gervaise != {5 % 6}
-
-# can be chained with operater functions
-waterFilter ?- 7
-
-
-
-
-## MonoOpCall
--45
-#
-# if crushed againster number, is mono-op
-<<2
-
-# if crushed against alphabetic, is mono-op
-@tag()
-
-
-#?
-#++= 49333 - 93 % (45 * 3) 
-#++= 49333 - 93 
+67.5
 

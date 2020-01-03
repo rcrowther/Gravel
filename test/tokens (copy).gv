@@ -25,10 +25,10 @@
    
   # Strings
   # Single line
-  ""C'est facile, non?"
+  "C'est facile, non?
   
   # Multiline String
-  """Can go on for a bit, these. Textfull.
+  ""Can go on for a bit, these. Textfull.
   ...and have newlines.
   ...and newlines...
   "

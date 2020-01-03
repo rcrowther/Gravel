@@ -24,7 +24,7 @@ def isInfix(name):
   
 class Syntaxer:
     '''
-    Generates a tree holding the structure of tokens.
+    Tree holding the structure of tokens.
     The sole purpose of this class is to extract and organise data from 
     the token stream. Unlike most other parsers it is not concerned with
     names, ''symbols', or anything else. 
@@ -523,37 +523,7 @@ class Syntaxer:
                 #self.chainedItem = lst.pop()
                 
         return commit
-######### NEW
-
-
-    def seqAnon(self, lst):
-        #! too like namelessBodyCall(self, lst):
-        '''
-        '{'~ oneOrMore(ExpressionCall) ~'}'
-        '''
-        commit = (self.isToken(LCURLY))
-        if(commit): 
-            self._next()
-            
-            # node    
-            t = mkNamelessBody(self.position())
-            lst.append(t)
-
-            # body
-            #self.oneOrMoreDelimited(t.body, self.expressionCall, RCURLY)
-            self.seqContents(t.body)
-            self.skipTokenOrError('Anonymous Seq', RCURLY)
-        return commit
-
-    def lineFeed(self):
-        '''
-        'Nothing'
-        '''
-        commit = (self.isToken(LINEFEED))
-        if(commit): 
-            self._next()
-        return commit
-                                    
+        
     def seqContents(self, lst):
         '''
         Used for body contents.
@@ -562,25 +532,21 @@ class Syntaxer:
         while(
             self.comment(lst)
             or self.multilineComment(lst)
-            or self.seqAnon(lst)
-            or self.namelessDataExpression(lst)
-            #or self.dataDefine(lst)
-            #or self.functionDefine(lst)
+            or self.dataDefine(lst)
+            or self.functionDefine(lst)
             # calls must go after defines, which are more 
             # specialised in the first token
-            #or self.expressionCall(lst)
-            or self.lineFeed()
+            or self.expressionCall(lst)
             ):
-            #? what are we doing here at the end?
             if (len(lst) > 1):
                 lst[-1].prev = lst[-2]        
-    
+        
     def root(self):
         try:
             # charge
             self._next()
             self.seqContents(self.ast.body)
-            # if we don't get StopIteration...
+            # if we don't except on StopIteration...
             self.error('Parsing did not complete: lastToken: {},'.format(
                 tokenToString[self.tok],                
                 ))

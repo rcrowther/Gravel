@@ -17,10 +17,15 @@ from Codepoints import LINE_FEED
 
 class TrackingIterator():
     '''
+    Iterate codepoints keeping track of positions.
+    
     LineCount starts from 1.
     lineOffset starts from 0 (col:...).
     lineOffset and lineCount are designed to give the point
     after next().
+    
+    Passesa all source characters, including lineends and whitespace, 
+    unmodified.
     '''
 
     def __init__(self, codepointIt):

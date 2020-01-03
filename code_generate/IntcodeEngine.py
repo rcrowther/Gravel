@@ -539,7 +539,7 @@ class LiveAllocate():
 #! needs rewriting. Not clear if this is an intermediate code, using 
 #! abstract references, or a codewriter.
 #! add action stubs
-def actionIntCode(b, aName, paramsOffloaded, localAlloc):
+def actionIntCode(b, aName, localAlloc):
     # @paramsOffloaded List((id:int, dst:int)) of params to offload
     b.append("actionOpen({})".format(aName))
     # protect on entry nonparam registers for convention
@@ -550,16 +550,15 @@ def actionIntCode(b, aName, paramsOffloaded, localAlloc):
 
     for call in callParamRegProtection.items():
         for reg in call[1]:
-            b.append("push reg{}".format()
-        b.append("call{}".format(call[0])
+            b.append("push reg{}".format())
+        b.append("call{}".format(call[0]))
         for reg in call[1]:
-            b.append("pop reg{}".format(call[1])
+            b.append("pop reg{}".format(call[1]))
         
         
-    # protect on exit nonparam registers for convention
-    b.append("unProtectLocals({})".format(
-        reverse(localAlloc.nonParamRegistersToProtect)
-        )
+    # # protect on exit nonparam registers for convention
+    rList = reverse(localAlloc.nonParamRegistersToProtect)
+    b.append("unProtectLocals({})".format(rList))
     b.append("actionClose({})".format(aName))
 
 
