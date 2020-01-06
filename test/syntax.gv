@@ -1,14 +1,46 @@
-# Gravel Syntax set
+# Gravel Syntax test
 
 {
     238
 }
 
-lb hereTher {
-## Atom expressions
-#
+nb hereThere {
+    # nb contents
+    612
 }
 
+## Atom expressions
+#
 # Integer
 67.5
 
+# The problem is the ambiguous second parameter.
+# is that x(y) or x.y?
+# x + 3 or x.3?
+# Not clear for
+# x + y or x.y
+am move = {}
+move
+
+am walk(speed) = {}
+walk(speed)
+
+am wriggle (speed width) = {}
+wriggle (speed width)
+
+# Should fail
+#am move() = {}
+
+
+am > value = {}
+1 > count
+
+am -value = {}
+-count
+
+# Should fail
+#am > (value) = {}
+
+ns Clutch {
+    # Discs
+    }

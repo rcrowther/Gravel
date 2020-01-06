@@ -255,7 +255,24 @@ thing)? Note: should Maps only contain the
 connection ('map') between subjectID and the objectID, not the 
 subjects and objects themselves? What about references, or is that 
 cheating? 
+== abstract variables
+The compiler makes variables that that the programmer doesn't know.
 
+How about the programmer making variables that the compiler doesnt know?
+
+OCAML has them,
+
+Let x in...
+
+So when do we need a variabele?
+
+When it is assigned to twice. Until then, it is ''just a lablel for an expression'
+
+== Namespaces
+Are a set of addressable labels, arn't they?
+
+== dot operator
+means ""evoke label x in a namespace"
 
 == Further interesting
 Alef

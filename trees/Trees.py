@@ -265,7 +265,7 @@ def mkNamelessBody(position):
 class Expression(Tree, NameMixin):
     '''
     Join an action name and a list of NamelessData/Expression.
-    The list is ''parms'.
+    The list is ''params'.
     e.g. +(3,2)
     '''
     parsedKind = ''
@@ -273,6 +273,8 @@ class Expression(Tree, NameMixin):
     def __init__(self, nameStr, params):
         super().__init__()
         self.parsedData = nameStr
+        # list of param data
+        #? explain
         self.params = params
         # chain contains reviever-notated expressions. 
         # ask the chain to be by instance, not classwide.
@@ -343,8 +345,58 @@ def mkDataDefine(position, nameStr):
     t.position = position
     return t
     
+#! can do better than these OOP mad
+# redefs
+class NameSpaceDefine(ExpressionWithBodyBase):
+    '''
+    Expression where the body is executed in context of surrounding code.
+    Or, a ''closure' or 'inline'.
+    Special case
+    e.g. def mult(x, y) { *(x, y) }
+    '''
+    def __init__(self, nameStr, body):
+        super().__init__(nameStr, [], body)
+        self.isDefinition = True
+        self.isMark = True
+
+    def toString(self):
+        return "NameSpaceDefine('{}', {})".format(
+        self.parsedData, 
+        self.body
+        )
+
+
+def mkNameSpaceDefine(position, nameStr):
+    t = NameSpaceDefine(nameStr, [])
+    t.position = position
+    return t
     
     
+
+class UnboundContextDefine(ExpressionWithBodyBase):
+    '''
+    Expression where the body is executed in context of surrounding code.
+    Or, a ''closure' or 'inline'.
+    Special case
+    e.g. def mult(x, y) { *(x, y) }
+    '''
+    def __init__(self, nameStr, body):
+        super().__init__(nameStr, [], body)
+        self.isDefinition = True
+        self.isMark = True
+
+    def toString(self):
+        return "UnboundContextDefine('{}', {})".format(
+        self.parsedData, 
+        self.body
+        )
+
+def mkUnboundContextDefine(position, nameStr):
+    t = UnboundContextDefine(nameStr, [])
+    t.position = position
+    return t
+                   
+                   
 class ContextDefine(ExpressionWithBodyBase):
     '''
     Expression where the body is executed in context of the params.
@@ -358,15 +410,66 @@ class ContextDefine(ExpressionWithBodyBase):
         self.isMark = True
 
     def toString(self):
-        return "ContextDefine('{}', {})".format(self.parsedData, self.params, self.body)
+        return "ContextDefine('{}', {}, {})".format(
+            self.parsedData,
+            self.params,
+            self.body
+            )
                 
 def mkContextDefine(position, nameStr):
     t = ContextDefine(nameStr, [], [])
     t.position = position
     return t
     
+class OperatorContextDefine(ExpressionWithBodyBase):
+    '''
+    Expression where the body is executed in context of the params.
+    Or, a ''function' or ''proceedure' of some kind
+    Special case
+    e.g. def mult(x, y) { *(x, y) }
+    '''
+    def __init__(self, nameStr, params, body):
+        super().__init__(nameStr, params, body)
+        self.isDefinition = True
+        self.isMark = True
 
+    def toString(self):
+        return "OperatorContextDefine('{}', {}, {})".format(
+            self.parsedData,
+            self.params,
+            self.body
+            )
+                
+def mkOperatorContextDefine(position, nameStr):
+    t = OperatorContextDefine(nameStr, [], [])
+    t.position = position
+    return t
 
+class MonoOperatorContextDefine(ExpressionWithBodyBase):
+    '''
+    Expression where the body is executed in context of the params.
+    Or, a ''function' or ''proceedure' of some kind
+    Special case
+    e.g. def mult(x, y) { *(x, y) }
+    '''
+    def __init__(self, nameStr, params, body):
+        super().__init__(nameStr, params, body)
+        self.isDefinition = True
+        self.isMark = True
+
+    def toString(self):
+        return "MonoOperatorContextDefine('{}', {}, {})".format(
+            self.parsedData,
+            self.params,
+            self.body
+            )
+                
+def mkMonoOperatorContextDefine(position, nameStr):
+    t = MonoOperatorContextDefine(nameStr, [], [])
+    t.position = position
+    return t
+    
+    
 class ContextCall(ExpressionWithBodyBase):
     '''
     Call on a function/operator.
