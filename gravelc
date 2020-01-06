@@ -59,13 +59,13 @@ if __name__ == "__main__":
         # default='src'
         # )
 
-    # parser.add_argument(
-        # "-l",
-        # "--last-phase", 
-        # help="last action of compile chain",
-        # choices=['src', 'mchn', 'link', 'run'],
-        # default='run'
-        # )
+    parser.add_argument(
+        "-l",
+        "--last-phase", 
+        help="last action of compile chain",
+        choices=['tokens', 'syntax'],
+        default='syntax'
+        )
 
     # parser.add_argument(
         # "-a",
@@ -127,13 +127,35 @@ if __name__ == "__main__":
 
     reporter = ConsoleStreamReporter()
 
-    ## Treeprint
-    from Syntaxer import Syntaxer
-    from trees.Visitors import RawPrint
-    src = FileSource('test/syntax.gv')
-    r = ConsoleStreamReporter()
-    s = Syntaxer(src, r)
-    RawPrint(s.ast)
+    srcPath = 'test/syntax.gv'
+
+    lastP = args.last_phase
+    # decide which parser phases to use
+    if (lastP == 'tokens'):
+        from gio.CodepointIterators import FileIterator
+        from gio.TrackingIterator import TrackingIterator
+        from gio.TokenIterator import TokenIterator
+        from Tokens import tokenToString
+
+        src = FileSource(srcPath)
+        it = FileIterator(src.srcPath)
+        it = TrackingIterator(it)
+        it = TokenIterator(it, reporter, src)
+        for tok in it:
+            print("[{},{}] '{}': '{}'".format(
+            it.lineCount,
+            it.lineOffset,
+            tokenToString[tok], it.textOf()
+            ))
+            
+    elif (lastP == 'syntax'):
+        ## Treeprint
+        from Syntaxer import Syntaxer
+        from trees.Visitors import RawPrint
+        src = FileSource(srcPath)
+        r = ConsoleStreamReporter()
+        s = Syntaxer(src, r)
+        RawPrint(s.ast)
 
     ## Stock pipe
     # cu = CompilationUnit(FileSource('test/syntax.gv'))

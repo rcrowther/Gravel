@@ -623,8 +623,8 @@ class Syntaxer:
             self.skipTokenOrError('Named Block', RCURLY)            
         return commit
         
-    def nameCaLL(self, lst):
-        ???
+    #def nameCaLL(self, lst):
+    #    ???
                       
     def lineFeed(self):
         '''
