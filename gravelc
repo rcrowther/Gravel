@@ -27,16 +27,19 @@ from phases.Checks import (
     MarkTableValidate
     )
     
+    
 """
 MAIN
 """
-
+def phaseTitle(name):
+    return "[{} phase]".format(name)
+    
 if __name__ == "__main__":
     
     parser = argparse.ArgumentParser(description="compiler for Gravel code")
 
     parser.add_argument(
-        '-s',
+        '-d',
         '--src-dir',
         type=str,
         default = "src",
@@ -44,7 +47,7 @@ if __name__ == "__main__":
         )
         
     parser.add_argument(
-        '-d',
+        '-b',
         '--build-dir',
         type=str,
         default = "buildDir",
@@ -96,51 +99,65 @@ if __name__ == "__main__":
         # action="store_true"
         # )
 
-        
     parser.add_argument(
         "-v",
         "--verbose", 
         help="talk about what is being done",
         action="store_true"
         )
-        
+
+
+    parser.add_argument(
+        '-s',
+        "--src-files",         
+        type=str,
+        #type=argparse.FileType('r'),
+        help="input file sources",
+        )  
+                
     args = parser.parse_args()
     print(str(args))
 
+    # ensure the build dir
     if (args.verbose):
         print(phaseTitle('source resolution')) 
     os.makedirs(args.build_dir, exist_ok=True)
-    
-    # All ''gv' files in the srcDir
-    if (not os.path.exists(args.src_dir)):
-        raise KeyError( "Directory for source files not exists; dir;'{}'".format(
-            args.src_dir,        
+
+    srcB = []
+    if (args.src_files == None):
+        # no specified files, use the directory    
+        # All ''gv' files in the srcDir
+        if (args.verbose):
+            print("using source directory; dir:'{}'".format(args.src_dir))
+        if (not os.path.exists(args.src_dir)):
+            raise KeyError( "Directory for source files not exists; dir;'{}'".format(
+                args.src_dir,        
+                )
             )
-        )
+        l = File.List(args.src_dir)
+        for fp in l.filterExtensionFP('gv'):
+            srcB.append(FileSource(fp))
 
-    l = File.List(args.src_dir)
-    b = []
-    for fp in l.filterExtensionFP('gv'):
-        b.append(CompilationUnit(FileSource(fp)))
-    print(str(b))
+    if (args.src_files):
+        # specified files
+        if (args.verbose):
+            print("using source paths")
+        srcB.append(FileSource(args.src_files))        
 
+    if (args.verbose):
+        srcs = ", ".join([src.locationStr() for src in srcB])
+        print("sources: {}".format(srcs))
 
     reporter = ConsoleStreamReporter()
-
-    srcPath = 'test/syntax.gv'
-
+    #srcPath = 'test/syntax.gv'
     lastP = args.last_phase
+            
     # decide which parser phases to use
     if (lastP == 'tokens'):
-        from gio.CodepointIterators import FileIterator
-        from gio.TrackingIterator import TrackingIterator
-        from gio.TokenIterator import TokenIterator
         from Tokens import tokenToString
+        from gio.TokenIterator import mkTokenIterator
 
-        src = FileSource(srcPath)
-        it = FileIterator(src.srcPath)
-        it = TrackingIterator(it)
-        it = TokenIterator(it, reporter, src)
+        it = mkTokenIterator(srcB[0], reporter)
         for tok in it:
             print("[{},{}] '{}': '{}'".format(
             it.lineCount,
@@ -152,9 +169,7 @@ if __name__ == "__main__":
         ## Treeprint
         from Syntaxer import Syntaxer
         from trees.Visitors import RawPrint
-        src = FileSource(srcPath)
-        r = ConsoleStreamReporter()
-        s = Syntaxer(src, r)
+        s = Syntaxer(srcB[0], reporter)
         RawPrint(s.ast)
 
     ## Stock pipe

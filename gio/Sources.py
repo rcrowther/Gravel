@@ -48,14 +48,10 @@ class Source:
         # e.g. File "<stdin>" (Python), <console> (Scala)
         raise NotImplementedError()
             
-    def toString(self):
-        return '<Source locationStr:{}>'.format(
+    def __repr__(self):
+        return 'Source(locationStr:{})'.format(
             self.locationStr(),
             )
-            
-    def __repr__(self):
-        return self.toString()
-
 
 
 class _BuiltInSource:
@@ -75,6 +71,7 @@ BuiltInSource = _BuiltInSource()
                  
 class FileSource(Source):
     def __init__(self, srcPath):
+        # @srcPath a string (not a File)
         self.srcPath = srcPath
         self.lineList = []
 

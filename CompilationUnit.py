@@ -35,3 +35,8 @@ class CompilationUnit:
       # final code (icode)?
       # namegenerators?
       #dependencies?
+            
+    def __repr__(self):
+        return 'CompilationUnit(src:{})'.format(
+            self.source,
+            )

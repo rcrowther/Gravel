@@ -682,7 +682,7 @@ class Syntaxer:
         Enforced bracketing.
         '''
         commit = self.isToken(LBRACKET)
-        print(str(commit))
+        #print(str(commit))
         if (commit):
             # One or more params
             self._next()
