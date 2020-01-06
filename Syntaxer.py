@@ -161,6 +161,7 @@ class Syntaxer:
             #self.optionalGenericParams(k)
         return coloned
         
+    #? nmelessData?
     def namelessDataExpression(self, lst):
         '''
         (IntNum | FloatNum | String) ~ option(KindAnnotation)
@@ -526,6 +527,7 @@ class Syntaxer:
 ######### NEW
 
 
+## Seq
     def seqAnon(self, lst):
         #! too like namelessBodyCall(self, lst):
         '''
@@ -545,7 +547,8 @@ class Syntaxer:
             self.skipTokenOrError('Anonymous Seq', RCURLY)
         return commit
 
-    #! no Kind option
+
+    #? No Kind option
     def namedBlockDefine(self, lst):
         '''
         'nb' ~ (Identifier | OperatorIdentifier) ~ Option(Kind) ~ ExplicitSeq
@@ -580,7 +583,11 @@ class Syntaxer:
             self.skipTokenOrError('Named Block', RCURLY)            
         return commit
         
-        
+## Namespace
+
+    #! don't call it this, its a nameSet, or something
+    #! Code lot like a function call but different (DRY). No return
+    #! cause it's assumed to be anamespace or Unit.... if anything.
     def nameSpaceDefine(self, lst):
         '''
         'ns' ~ Identifier ~ ExplicitSeq
@@ -606,13 +613,18 @@ class Syntaxer:
             # node    
             t = mkNameSpaceDefine(self.position(), markStr)
             lst.append(t)
-
+            
+            # params
+            self.parametersOption(t.params)
+                
             # body
             self.skipTokenOrError('Named Block', LCURLY)            
             self.seqContents(t.body)
             self.skipTokenOrError('Named Block', RCURLY)            
         return commit
         
+    def nameCaLL(self, lst):
+        ???
                       
     def lineFeed(self):
         '''
@@ -648,6 +660,7 @@ class Syntaxer:
             if (len(lst) > 1):
                 lst[-1].prev = lst[-2]        
 
+## Construction parts
     def parameter(self, lst):
         '''
         identifier ~ Option(':' ~ Kind)
@@ -676,6 +689,7 @@ class Syntaxer:
             self.oneOrMoreDelimited(lst, self.parameter, RBRACKET)        
         return commit
         
+## Actions
     def actionDefine(self, lst):
         '''
         ('am' | 'ac') ~ 
@@ -791,6 +805,8 @@ class Syntaxer:
                                 
         return commit
         
+        
+## Root rule
     def root(self):
         try:
             # charge

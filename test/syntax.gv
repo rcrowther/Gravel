@@ -41,6 +41,6 @@ am -value = {}
 # Should fail
 #am > (value) = {}
 
-ns Clutch {
+ns Clutch (toad){
     # Discs
     }

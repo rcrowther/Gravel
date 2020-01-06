@@ -345,8 +345,9 @@ def mkDataDefine(position, nameStr):
     t.position = position
     return t
     
-#! can do better than these OOP mad
+#! can do better than these, OOP mad
 # redefs
+#! don't call it this, its a nameSet, or something
 class NameSpaceDefine(ExpressionWithBodyBase):
     '''
     Expression where the body is executed in context of surrounding code.
