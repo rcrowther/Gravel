@@ -622,9 +622,92 @@ class Syntaxer:
             self.seqContents(t.body)
             self.skipTokenOrError('Named Block', RCURLY)            
         return commit
-        
-    #def nameCaLL(self, lst):
-    #    ???
+
+    #def gteOperatorPrecidence(op1, op2):
+        #op1
+        #return
+    
+    def multiActionCall(self, lst):
+        # has no idea if calling within a nameSet, or container, but 
+        # does it matter?
+        out = []
+        opStack = []
+        commit = (           
+            self.isToken(INT_NUM) or
+            self.isToken(FLOAT_NUM)  or
+            self.isToken(STRING) or
+            self.isToken(MULTILINE_STRING) or
+            self.isToken(IDENTIFIER) or
+            self.isToken(MONO_OPERATER)
+            )
+        # print('multiActionCall1 {} {} {}'.format(
+            # tokenToString[self.tok], 
+            # self.textOf(),
+            # commit
+            # ))
+        while(
+            self.isToken(INT_NUM) or
+            self.isToken(FLOAT_NUM)  or
+            self.isToken(STRING) or
+            self.isToken(MULTILINE_STRING) or
+            self.isToken(IDENTIFIER) or
+            self.isToken(OPERATER) or
+            self.isToken(LBRACKET) or
+            self.isToken(RBRACKET) or
+            self.isToken(MONO_OPERATER)
+            ):
+            # #StringNamelessData
+            # #ContextCall
+            if (self.isToken(IDENTIFIER)):
+                t = mkContextCall(self.position(), self.textOf())
+                out.append(t)
+                # params
+                self._next()
+                self.parametersOption(t.params)
+            
+            elif(
+                self.isToken(INT_NUM) or
+                self.isToken(FLOAT_NUM)  or
+                self.isToken(STRING) or
+                self.isToken(MULTILINE_STRING)
+                ):
+                self.namelessDataExpression(out)
+
+            elif (
+                self.isToken(OPERATER) or
+                self.isToken(MONO_OPERATER)
+                ):
+                t = mkOperatorCallMark(self.position(), self.textOf())
+                if (self.isToken(MONO_OPERATER)):
+                    #! should also be ultimate precidence
+                    t.paramCount = 1
+                    
+                # #! for now, assume equal
+                while (
+                    (len(opStack) > 0) and
+                    # #t.precidence >= opStack.top.precidence and
+                    opStack[-1] != LBRACKET
+                    ):
+                    out.append(opStack.pop())
+                opStack.append(t)
+                self._next()
+            if (self.isToken(LBRACKET)):
+                opStack.append(LBRACKET)
+                self._next()
+            if (self.isToken(RBRACKET)):
+                while(opStack[-1] != LBRACKET):
+                    out.append(opStack.pop())
+                opStack.pop()
+                self._next()
+            
+        #print('multiActionCall2')
+        # empty out
+        if (len(opStack) > 0):
+            out.append(opStack.pop())
+        print("str out: {}".format(out))
+        self._next()
+        return commit
+            
                       
     def lineFeed(self):
         '''
@@ -643,12 +726,13 @@ class Syntaxer:
         while(
             self.comment(lst)
             or self.multilineComment(lst)
-            or self.namelessDataExpression(lst)
+            #or self.namelessDataExpression(lst)
             or self.seqAnon(lst)
             or self.namedBlockDefine(lst)
             or self.actionDefine(lst)
-            or self.nameSpaceDefine(lst) 
-            or self.actionCall(lst)
+            or self.nameSpaceDefine(lst)
+            or self.multiActionCall(lst) 
+            #or self.actionCall(lst)
             #or self.dataDefine(lst)
             #or self.functionDefine(lst)
             # calls must go after defines, which are more 

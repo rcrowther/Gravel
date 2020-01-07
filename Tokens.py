@@ -157,7 +157,7 @@ punctuationBase = {
     'colon': (COLON, Codepoints.COLON),
     'scolon': (SEMI_COLON, Codepoints.SEMI_COLON),
     #'solidus': (SOLIDUS, Codepoints.SOLIDUS),
-    'period': (PERIOD, Codepoints.PERIOD),
+    #'period': (PERIOD, Codepoints.PERIOD),
     'lbracket': (LBRACKET, Codepoints.LEFT_BRACKET),
     'rbracket': (RBRACKET, Codepoints.RIGHT_BRACKET),
     'lsquare': (LSQUARE, Codepoints.LEFT_SQR),

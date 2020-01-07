@@ -187,11 +187,15 @@ class NamelessDataBase(Tree):
     '''
     parsedKind = ''
     typeStr = "Call on base NamelessDataBase, do not do this, use subtypes"
-    
+        
     def __init__(self, valueStr):
         super().__init__()
         self.parsedData = valueStr
+        # old one
         self.chain = []
+        # new one
+        self.nextExp = None
+
         
     def toString(self):      
         #chainStr = '.'.join([e.toString for e in self.chain])
@@ -276,9 +280,12 @@ class Expression(Tree, NameMixin):
         # list of param data
         #? explain
         self.params = params
+        # old
         # chain contains reviever-notated expressions. 
         # ask the chain to be by instance, not classwide.
         self.chain = []
+        # new
+        self.nextExp = None
 
     def toString(self):
         chainStr = '.'.join([e.toString for e in self.chain])
@@ -488,8 +495,48 @@ def mkContextCall(position, nameStr):
     t.position = position
     return t
         
-        
-        
+
+class OperatorCall(ExpressionWithBodyBase):
+    '''
+    Call on a function/operator.
+    Can take a name, parameters and a body (for closures).
+    '''
+    def __init__(self, nameStr, params, body):
+        super().__init__(nameStr, params, body)
+        self.isMark = True
+
+    def toString(self):
+        return "OperatorCall('{}', {})".format(self.parsedData, self.params, self.body)
+            
+def mkOperatorCall(position, nameStr):
+    t = OperatorCall(nameStr, [], [])
+    t.position = position
+    return t
+
+
+class OperatorCallMark():
+    '''
+    Call on a function/operator.
+    Can take a name, parameters and a body (for closures).
+    '''
+    def __init__(self, opStr, paramCount):
+        self.opStr = opStr
+        self.paramCount = paramCount
+        self.position = NoPosition
+
+
+    def __repr__(self):
+        return "OperatorCallMark('{}', {})".format(
+            self.opStr, 
+            self.paramCount
+            )
+            
+def mkOperatorCallMark(position, opStr):
+    t = OperatorCallMark(opStr, 2)
+    t.position = position
+    return t                
+
+            
 # should this exist, or should we drop it?
 # was here for infixing, I recall
 class MonoOpExpressionCall(Expression):
