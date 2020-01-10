@@ -1,4 +1,6 @@
 colors . RGB . blue 
 3 + (9 % 2)
 >>>90
+siot = 5
+a = stun(speed direction)
 # goo

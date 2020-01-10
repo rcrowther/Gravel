@@ -636,7 +636,7 @@ class Syntaxer:
             self.isToken(INT_NUM) or
             self.isToken(FLOAT_NUM)  or
             self.isToken(STRING) or
-            self.isToken(MULTILINE_STRING) or
+            #self.isToken(MULTILINE_STRING) or
             self.isToken(IDENTIFIER) or
             self.isToken(MONO_OPERATER)
             )
@@ -649,7 +649,7 @@ class Syntaxer:
             self.isToken(INT_NUM) or
             self.isToken(FLOAT_NUM)  or
             self.isToken(STRING) or
-            self.isToken(MULTILINE_STRING) or
+            #self.isToken(MULTILINE_STRING) or
             self.isToken(IDENTIFIER) or
             self.isToken(OPERATER) or
             self.isToken(LBRACKET) or
@@ -663,7 +663,7 @@ class Syntaxer:
                 out.append(t)
                 # params
                 self._next()
-                self.parametersOption(t.params)
+                #self.parametersOption(t.params)
             
             elif(
                 self.isToken(INT_NUM) or

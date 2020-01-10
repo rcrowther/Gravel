@@ -24,7 +24,7 @@ def isInfix(name):
   
 class Syntaxer:
     '''
-    Tree holding the structure of tokens.
+    Generates a tree holding the structure of tokens.
     The sole purpose of this class is to extract and organise data from 
     the token stream. Unlike most other parsers it is not concerned with
     names, ''symbols', or anything else. 
@@ -161,6 +161,7 @@ class Syntaxer:
             #self.optionalGenericParams(k)
         return coloned
         
+    #? nmelessData?
     def namelessDataExpression(self, lst):
         '''
         (IntNum | FloatNum | String) ~ option(KindAnnotation)
@@ -523,7 +524,200 @@ class Syntaxer:
                 #self.chainedItem = lst.pop()
                 
         return commit
+######### NEW
+
+
+## Seq
+    def seqAnon(self, lst):
+        #! too like namelessBodyCall(self, lst):
+        '''
+        '{'~ oneOrMore(ExpressionCall) ~'}'
+        '''
+        commit = (self.isToken(LCURLY))
+        if(commit): 
+            self._next()
+            
+            # node    
+            t = mkNamelessBody(self.position())
+            lst.append(t)
+
+            # body
+            #self.oneOrMoreDelimited(t.body, self.expressionCall, RCURLY)
+            self.seqContents(t.body)
+            self.skipTokenOrError('Anonymous Seq', RCURLY)
+        return commit
+
+
+    #? No Kind option
+    def namedBlockDefine(self, lst):
+        '''
+        'nb' ~ (Identifier | OperatorIdentifier) ~ Option(Kind) ~ ExplicitSeq
+        Definitions attached to code blocks
+        Used for both named and operater functions.
+        '''
+        #! this textOf is direct, but could be done by token lookup
+        commit = (self.isToken(IDENTIFIER) and self.it.textOf() == 'nb')
+        if(commit):
+            self._next()
+            pos = self.position()
+             
+            # mark
+            if(self.tok != IDENTIFIER and self.tok != OPERATER):
+                self.tokenError("In rule '{}' expected '{}' or '{}' but found '{}'".format(
+                    'Define Named Block',
+                    tokenToString[IDENTIFIER],
+                    tokenToString[OPERATER],
+                    tokenToString[self.tok]
+                    ))
+            markStr = self.textOf()
+            self._next()
+
+            # make node
+            # node    
+            t = mkUnboundContextDefine(self.position(), markStr)
+            lst.append(t)
+
+            # body
+            self.skipTokenOrError('Named Block', LCURLY)            
+            self.seqContents(t.body)
+            self.skipTokenOrError('Named Block', RCURLY)            
+        return commit
         
+## Namespace
+
+    #! don't call it this, its a nameSet, or something
+    #! Code lot like a function call but different (DRY). No return
+    #! cause it's assumed to be anamespace or Unit.... if anything.
+    def nameSpaceDefine(self, lst):
+        '''
+        'ns' ~ Identifier ~ ExplicitSeq
+        Definition of a namespace. Conceptually, a labeled set of 
+        expressions.
+        '''
+        #! this textOf is direct, but could be done by token lookup
+        commit = (self.isToken(IDENTIFIER) and self.it.textOf() == 'ns')
+        if(commit):        
+            self._next()
+            pos = self.position()
+             
+            # mark
+            if(self.tok != IDENTIFIER):
+                self.expectedTokenError(
+                    'NameSpace Action',
+                    IDENTIFIER
+                    )
+            markStr = self.textOf()
+            self._next()
+
+            # make node
+            # node    
+            t = mkNameSpaceDefine(self.position(), markStr)
+            lst.append(t)
+            
+            # params
+            self.parametersOption(t.params)
+                
+            # body
+            self.skipTokenOrError('Named Block', LCURLY)            
+            self.seqContents(t.body)
+            self.skipTokenOrError('Named Block', RCURLY)            
+        return commit
+
+    #def gteOperatorPrecidence(op1, op2):
+        #op1
+        #return
+    
+    def multiActionCall(self, lst):
+        # has no idea if calling within a nameSet, or container, but 
+        # does it matter?
+        out = []
+        opStack = []
+        commit = (           
+            self.isToken(INT_NUM) or
+            self.isToken(FLOAT_NUM)  or
+            self.isToken(STRING) or
+            self.isToken(MULTILINE_STRING) or
+            self.isToken(IDENTIFIER) or
+            self.isToken(MONO_OPERATER)
+            )
+        # print('multiActionCall1 {} {} {}'.format(
+            # tokenToString[self.tok], 
+            # self.textOf(),
+            # commit
+            # ))
+        while(
+            self.isToken(INT_NUM) or
+            self.isToken(FLOAT_NUM)  or
+            self.isToken(STRING) or
+            self.isToken(MULTILINE_STRING) or
+            self.isToken(IDENTIFIER) or
+            self.isToken(OPERATER) or
+            self.isToken(LBRACKET) or
+            self.isToken(RBRACKET) or
+            self.isToken(MONO_OPERATER)
+            ):
+            # #StringNamelessData
+            # #ContextCall
+            if (self.isToken(IDENTIFIER)):
+                t = mkContextCall(self.position(), self.textOf())
+                out.append(t)
+                # params
+                self._next()
+                #self.parametersOption(t.params)
+            
+            elif(
+                self.isToken(INT_NUM) or
+                self.isToken(FLOAT_NUM)  or
+                self.isToken(STRING) or
+                self.isToken(MULTILINE_STRING)
+                ):
+                self.namelessDataExpression(out)
+
+            elif (
+                self.isToken(OPERATER) or
+                self.isToken(MONO_OPERATER)
+                ):
+                t = mkOperatorCallMark(self.position(), self.textOf())
+                if (self.isToken(MONO_OPERATER)):
+                    #! should also be ultimate precidence
+                    t.paramCount = 1
+                    
+                # #! for now, assume equal
+                while (
+                    (len(opStack) > 0) and
+                    # #t.precidence >= opStack.top.precidence and
+                    opStack[-1] != LBRACKET
+                    ):
+                    out.append(opStack.pop())
+                opStack.append(t)
+                self._next()
+            if (self.isToken(LBRACKET)):
+                opStack.append(LBRACKET)
+                self._next()
+            if (self.isToken(RBRACKET)):
+                while(opStack[-1] != LBRACKET):
+                    out.append(opStack.pop())
+                opStack.pop()
+                self._next()
+            
+        #print('multiActionCall2')
+        # empty out
+        if (len(opStack) > 0):
+            out.append(opStack.pop())
+        print("str out: {}".format(out))
+        self._next()
+        return commit
+            
+                      
+    def lineFeed(self):
+        '''
+        'Nothing'
+        '''
+        commit = (self.isToken(LINEFEED))
+        if(commit): 
+            self._next()
+        return commit
+                                    
     def seqContents(self, lst):
         '''
         Used for body contents.
@@ -532,21 +726,177 @@ class Syntaxer:
         while(
             self.comment(lst)
             or self.multilineComment(lst)
-            or self.dataDefine(lst)
-            or self.functionDefine(lst)
+            #or self.namelessDataExpression(lst)
+            or self.seqAnon(lst)
+            or self.namedBlockDefine(lst)
+            or self.actionDefine(lst)
+            or self.nameSpaceDefine(lst)
+            or self.multiActionCall(lst) 
+            #or self.actionCall(lst)
+            #or self.dataDefine(lst)
+            #or self.functionDefine(lst)
             # calls must go after defines, which are more 
             # specialised in the first token
-            or self.expressionCall(lst)
+            #or self.expressionCall(lst)
+            or self.lineFeed()
             ):
+            #? what are we doing here at the end?
             if (len(lst) > 1):
                 lst[-1].prev = lst[-2]        
+
+## Construction parts
+    def parameter(self, lst):
+        '''
+        identifier ~ Option(':' ~ Kind)
+        Succeed or error
+        '''
+        # id
+        markStr = self.getTokenOrError('Define Parameter', IDENTIFIER) 
+        t = mkParameterDefinition(self.position(), markStr)
+        # type
+        if (self.isToken(COLON)):
+            self._next()
+            t.returnKind = self.getTokenOrError('Define Parameter', IDENTIFIER)
+        lst.append(t)
+        return True
         
+    def parametersOption(self, lst):
+        '''
+        option('(' ~ oneOrMore(parameter) ~')') 
+        Enforced bracketing.
+        '''
+        commit = self.isToken(LBRACKET)
+        #print(str(commit))
+        if (commit):
+            # One or more params
+            self._next()
+            self.oneOrMoreDelimited(lst, self.parameter, RBRACKET)        
+        return commit
+        
+## Actions
+    def actionDefine(self, lst):
+        '''
+        ('am' | 'ac') ~ 
+        (
+        (Identifier ~ Parameters)   |
+        (OperatorIdentifier ~ Parameter)
+        )
+         ~ Option(Kind) ~ '=' ~ Option(ExplicitSeq)
+        Definitions attached to code blocks
+        Used for both named and operater functions.
+        '''
+        #! this textOf is direct, but could be done by token lookup
+        commit = (
+            self.isToken(IDENTIFIER) and
+            (self.it.textOf() == 'am' or self.it.textOf() == 'ac')
+            )
+        if(commit): 
+            self._next()
+            pos = self.position()
+             
+            # mark
+            # currently. can't be dried out
+            if(
+                self.tok != IDENTIFIER and 
+                self.tok != OPERATER and 
+                self.tok != MONO_OPERATER
+                ):
+                self.expectedTokenError(
+                    'Define Action',
+                    IDENTIFIER
+                    )
+
+                # self.tokenError("In rule '{}' expected '{}' or '{}' but found '{}'".format(
+                    # 'Define Action',
+                    # tokenToString[IDENTIFIER],
+                    # tokenToString[OPERATER],
+                    # tokenToString[self.tok]
+                    # ))
+            markStr = self.textOf()
+            
+            if(self.tok == IDENTIFIER):
+                # make node
+                t = mkContextDefine(pos, markStr)
+                lst.append(t)
+            
+                # params
+                self._next()
+                self.parametersOption(t.params)
+
+            elif(self.tok == OPERATER):
+                # make node
+                t = mkOperatorContextDefine(pos, markStr)
+                lst.append(t)
+            
+                # params, one only.
+                self._next()
+                self.parameter(t.params)
+            
+            elif(self.tok == MONO_OPERATER):
+                # make node
+                t = mkMonoOperatorContextDefine(pos, markStr)
+                lst.append(t)
+            
+                # params, one only.
+                self._next()
+                self.parameter(t.params)
+            # Kind (return)
+            #self.optionalKindAnnotation(t)
+            
+            # Allocate
+            #! skipOp
+            if (not (self.isToken(OPERATER) and self.it.textOf() == '=')):
+                self.expectedTokenError('Define Action',  EQUALS)
+            self._next()
+
+            # body (exp seq)
+            self.oneOrError(t.body, self.seqAnon, 'Define Action', 'Anonymous Sequence')
+        return commit
+        
+
+    def actionCall(self, lst):
+        '''
+        (Identifier ~ oneOrMore(parameters) | ((Identifier | Operator) ~ parameter)
+        Definitions attached to code blocks
+        Used for both named and operater functions.
+        '''
+        #! this textOf is direct, but could be done by token lookup
+        commit = (
+                self.isToken(IDENTIFIER) or 
+                self.isToken(OPERATER) or 
+                self.isToken(MONO_OPERATER)
+                )
+        if (commit):
+            # node    
+            t = mkContextCall(self.position(), self.textOf())
+            lst.append(t)
+            
+            #! these need to be expressions, but not now...
+            if(self.tok == IDENTIFIER):
+                # params
+                self._next()
+                self.parametersOption(t.params)
+
+            elif(self.tok == OPERATER):
+                # params, one only.
+                self._next()
+                self.parameter(t.params)
+            
+            elif(self.tok == MONO_OPERATER):
+                # params, one only.
+                self._next()
+                self.parameter(t.params)
+                                
+        return commit
+        
+        
+## Root rule
     def root(self):
         try:
             # charge
             self._next()
             self.seqContents(self.ast.body)
-            # if we don't except on StopIteration...
+            # if we don't get StopIteration...
             self.error('Parsing did not complete: lastToken: {},'.format(
                 tokenToString[self.tok],                
                 ))

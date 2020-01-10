@@ -1,0 +1,20 @@
+from trees.Trees import *
+from Position import Position
+from gio.Sources import BuiltInSource
+src = BuiltInSource
+pos = Position(src, 54, 29)
+o = mkSingleLineComment(pos, "howdy")
+print(o)
+o = mkIntegerData(pos, 999666999)
+print(o)
+o = mkCodeSeqNameless(pos, 9)
+print(o)
+o = mkDataDefine(pos, "someVar")
+print(o)
+o = mkCodeSeqNamedDefine(pos, "someVar")
+print(o)
+o = mkCodeSeqUnnamedDefine(pos)
+print(o)
+o = mkCodeSeqContextDefine(pos, "bigAction", 9)
+print(o)
+

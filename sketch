@@ -158,6 +158,29 @@ name
 
 Does it matter? They both return....
 
+== Unambiguous
+# One param, nothing. 
+# solves Liskov (in reverse)
+am move = {}
+move
+
+# one param, delimited
+am walk(speed) = {}
+walk(speed)
+
+# two params, delimited
+am wriggle (speed width) = {}
+wriggle (speed width)
+
+# operator, fixed one param, no delimits
+# param 2 comes from 'self'?
+am > value = {}
+1 > count
+
+# mono operator, fixed one param, no delimits
+# illustrated by definition
+am -value = {}
+-count
 
 
 == returns
@@ -255,6 +278,7 @@ thing)? Note: should Maps only contain the
 connection ('map') between subjectID and the objectID, not the 
 subjects and objects themselves? What about references, or is that 
 cheating? 
+
 == abstract variables
 The compiler makes variables that that the programmer doesn't know.
 

@@ -1,6 +1,6 @@
 from Position import NoPosition
 from Kinds import *
-from TreeInfo import TreeInfo, UndefinedTreeInfo, NoTreeInfo
+#from TreeInfo import TreeInfo, UndefinedTreeInfo, NoTreeInfo
 
 
 #! needs rework
@@ -66,7 +66,7 @@ class Tree():
     Tree init() should be designed so the class will accept the 
     parsed and identifying data. The init should not contain 
     supplementary information. This is so toString() can print 
-    code which re[resents a working tree.
+    code which represents a working tree.
     Use a factory for other inits e.g. for tree builders.
     Note this base can be leaf or branch---it has no children.
     Both parsedData and parsedKind exist so later tree functionality can 
@@ -91,7 +91,6 @@ class Tree():
     
     def __init__(self):
         self.parsedData = None
-        self.treeInfo = UndefinedTreeInfo
         self.position = NoPosition
         self.isChained = False
 
@@ -102,76 +101,108 @@ class Tree():
         return self.toString()
 
 
-class BuiltinCall(Tree):
+## Replaces tree
+class CodeMark():
     '''
-    Represents a builtin call.
-    This tree will never appear in an AST, which cares not where the 
-    call is located.
-    It is useful in places where a tree is needed but can not be 
-    provided, for example as a reference for keywords in the name 
-    tables. 
-    '''
-    def toString(self):
-        return 'BuiltinCall()'    
+    Tree init() should be designed so the class will accept the 
+    parsed and identifying data. The init should not contain 
+    supplementary information. This is so toString() can print 
+    code which represents a working tree.
+    Use a factory for other inits e.g. for tree builders.
+    Note this base can be leaf or branch---it has no children.
+    Both parsedData and parsedKind exist so later tree functionality can 
+    change them to Python values, or, for example, test symbolic names 
+    against tables.
+    '''    
+    def __init__(self):
+        # paramcount of this expression
+        self.paramCount = 0
+        # has a body
+        self.hasBody = False
+        # for data which parses to a string.
+        self.parsedData = None
+        # position in source code
+        self.position = NoPosition
+        # is this a definition or usage of an expression 
+        self.isDef = False
+        # I thought this would be useful...
+        self.isName = False
+        # definition flags like inline, constant, etc.
+        self.flags = []
+        # Link to the owning namespace of this expression
+        self.owner = None
+        # The kind of this expression. For literals, a value, for an
+        # expression, the process of parameters to return
+        self.kind = Any
+        # carries a value for literals/atoms
+        self.value = None
+        
+    def __repr__(self):
+        return "Call on CodeMark, do not do this, use subtypes"
+            
+            
+# class BuiltinCall(Tree):
+    # '''
+    # Represents a builtin call.
+    # This tree will never appear in an AST, which cares not where the 
+    # call is located.
+    # It is useful in places where a tree is needed but can not be 
+    # provided, for example as a reference for keywords in the name 
+    # tables. 
+    # '''
+    # def toString(self):
+        # return 'BuiltinCall()'    
 
 
 
-class CommentBase(Tree):
-    typeStr = "Call on CommentBase, do not do this, use subtypes"
-    
-    def __init__(self, text):
-        super().__init__()
-        self.parsedData = text
+class CommentBase(CodeMark):
+    def __repr__(self):
+        return  "Call on CommentBase, do not do this, use subtypes"
 
-    def toString(self):
-        return '{}("{}")'.format(self.typeStr, self.parsedData)
 
 
 
 class SingleLineComment(CommentBase):
-    typeStr = "SingleLineComment"
+    def __repr__(self):
+        return 'SingleLineComment("{}")'.format(self.parsedData)
 
 def mkSingleLineComment(position, text): 
-    t = SingleLineComment(text)
+    t = SingleLineComment()
+    t.parsedData = text
     t.position = position   
     return t
     
     
     
 class MultiLineComment(CommentBase):
-    typeStr = "MultiLineComment"
+    def __repr__(self):
+        return 'MultiLineComment("{}")'.format(self.parsedData)
 
 def mkMultiLineComment(position, text): 
-    t = MultiLineComment(text)
+    t = MultiLineComment()
+    t.parsedData = text
     t.position = position   
     return t
     
 
     
-#? very like a NamelessData with a TreeInfo....
-class ParameterDefinition(Tree, NameMixin):
+class ParameterDefinition(CodeMark):
     '''
     A parameter definition.
     These nodes are distinctive, they
-    - have explicit treeInfoing of kind
-    - are tree leaves (no body) always???
-    They also print out with explicit kind??? (no)
+    - ? have explicit kind
+    - are leaves (no body) always
+    - no body
     '''
-    #! None, surely
-    parsedKind = ''
-    
-    def __init__(self, nameStr):
-        super().__init__()
-        self.isDefinition = True
-        self.isMark = True
-        self.parsedData = nameStr
-
-    def toString(self):
+    def __repr__(self):
         return "ParameterDefinition('{}')".format(self.parsedData)
         
 def mkParameterDefinition(position, name):
-    t = ParameterDefinition(name)
+    t = ParameterDefinition()
     t.position = position   
+    t.isDef = True
+    t.isName = True
+    t.parsedData = name
     return t
     
     
@@ -180,81 +211,67 @@ def mkParameterDefinition(position, name):
     
 #? Sort out some parsed types
 #! how to handle chains?
-class NamelessDataBase(Tree):
+class Data(CodeMark):
     '''
     A definition of data - a literal.
     In lisp terms, an ''atom'.
-    '''
-    parsedKind = ''
-    typeStr = "Call on base NamelessDataBase, do not do this, use subtypes"
+    '''        
+    def __repr__(self):
+        return  "Call on base class Data, do not do this, use subtypes"
+
+
+
+class IntegerData(Data):
+    def __repr__(self):
+        return 'IntegerData({})'.format(self.parsedData)
         
-    def __init__(self, valueStr):
-        super().__init__()
-        self.parsedData = valueStr
-        # old one
-        self.chain = []
-        # new one
-        self.nextExp = None
+def mkIntegerData(position, valueStr):
+    t = IntegerData()
+    t.parsedData = valueStr
+    t.position = position
+    return t
 
+
+
+class FloatData(Data):
+    def __repr__(self):
+        return 'FloatData({})'.format(self.parsedData)
         
-    def toString(self):      
-        #chainStr = '.'.join([e.toString for e in self.chain])
-        return "{}({})".format(self.typeStr, self.parsedData)
-
-
-
-class IntegerNamelessData(NamelessDataBase):
-    typeStr = 'IntegerNamelessData'
-
-def mkIntegerNamelessData(position, valueStr):
-    t = IntegerNamelessData(valueStr)
+def mkFloatData(position, valueStr):
+    t = FloatData()
+    t.parsedData = valueStr
     t.position = position
     return t
 
 
 
-class FloatNamelessData(NamelessDataBase):
-    typeStr = 'FloatNamelessData'
-
-def mkFloatNamelessData(position, valueStr):
-    t = FloatNamelessData(valueStr)
+class StringData(Data):
+    def __repr__(self):
+        return 'StringData("{}")'.format(self.parsedData)
+        
+def mkStringData(position, valueStr):
+    t = StringData()
+    t.parsedData = valueStr
     t.position = position
     return t
 
 
 
-class StringNamelessData(NamelessDataBase):
-    typeStr = 'StringNamelessData'
-
-    def toString(self):
-        return 'StringNamelessData("{}")'.format(self.parsedData)
-
-def mkStringNamelessData(position, valueStr):
-    t = StringNamelessData(valueStr)
-    t.position = position
-    return t
-
-
-
-class NamelessBody(Tree, BodyParameterMixin):
+class CodeSeqNameless(CodeMark):
     #? difference between this and NamelessFunc
     '''
     Body expression with no name or params.
     Has no name, so has no params.
-    Is both definition and call, rolled in one.
-    Used to break chain sequences into small units
-    1 + {2/3}
-    and as closures
+    Is a definition.
+    Used as closures
     '''
-    def __init__(self, body):
-        super().__init__()
-        self.body = body
-             
-    def toString(self):
-        return "NamelessBody({})".format(self.body)
+    def __repr__(self):
+        return "CodeSeqNameless({})".format(self.paramCount)
        
-def mkNamelessBody(position):
-    t = NamelessBody([])
+def mkCodeSeqNameless(position, paramCount):
+    t = CodeSeqNameless()
+    t.paramCount = paramCount
+    t.isDef = True
     t.position = position
     return t
 
@@ -266,33 +283,15 @@ def mkNamelessBody(position):
 #! is the definition hasParams = True?
 #x not necessary. Main/EntryPoint can be a context func. Namespace also.
 # Others are just a Seq (NamelessBody)?
-class Expression(Tree, NameMixin):
+class Action(CodeMark):
     '''
-    Join an action name and a list of NamelessData/Expression.
-    The list is ''params'.
-    e.g. +(3,2)
+    Define/call something to do with data.
     '''
-    parsedKind = ''
-    
-    def __init__(self, nameStr, params):
-        super().__init__()
-        self.parsedData = nameStr
-        # list of param data
-        #? explain
-        self.params = params
-        # old
-        # chain contains reviever-notated expressions. 
-        # ask the chain to be by instance, not classwide.
-        self.chain = []
-        # new
-        self.nextExp = None
-
-    def toString(self):
-        chainStr = '.'.join([e.toString for e in self.chain])
-        return "Expression('{}', {}){}".format(self.parsedData, self.params, chainStr)
+    def __repr__(self):
+        return  "Call on base class Action, do not do this, use subtypes"
 
 
-#class NamelessListCall(Tree, ParameterMixin):
+#class NamelessListCall(CodeMark, ParameterMixin):
     #'''
     #Has return value
     #'''
@@ -306,9 +305,9 @@ class Expression(Tree, NameMixin):
     #def toString(self):
         #return "NamelessListCall('{}', {})".format(self.parsedData, self.params)
 
-#class Assignment(Tree):
+#class Assignment(CodeMark):
     #'''
-    #Joins a treeInfo and a list of NamelessData/Expression.
+    #Joins a treeInfo and a list of NamelessData/Action.
     #The list is ''parameters'.
     #e.g. val e = 4
     #=(e, 4)
@@ -318,120 +317,100 @@ class Expression(Tree, NameMixin):
     #body = []
 
 
-
-
-
-class ExpressionWithBodyBase(Expression, BodyParameterMixin):
+class ActionWithBodyBase(Action):
     '''
-    Expression with a body.
+    Action with a body.
     The body is a list which will be handled in context of the params. 
     '''
-    def __init__(self, nameStr, params, body):
-        super().__init__(nameStr, params)
-        self.body = body
+    def __repr__(self):
+        return  "Call on base class ActionWithBodyBase, do not do this, use subtypes"
+
         
-        
-        
-class DataDefine(ExpressionWithBodyBase):
+#? intruiging. Are variables like this then?
+class DataDefine(ActionWithBodyBase):
     '''
-    Expression where the body is executed for data.
+    Action where the body is executed for data.
     Or, a ''val' or ''var' of some kind
     No params
-    e.g. val pi { 3.142 }
+    e.g. dc pi = { 3.142 }
     '''
-    def __init__(self, nameStr, body):
-        super().__init__(nameStr, [], body)
-        self.isDefinition = True
-        self.isMark = True
-
-    def toString(self):
-        return "DataDefine('{}', {})".format(self.parsedData, self.body)
+    def __repr__(self):
+        return "DataDefine('{}')".format(self.parsedData)
                 
 def mkDataDefine(position, nameStr):
-    t = DataDefine(nameStr, [])
+    t = DataDefine()
+    t.isDef = True
+    t.isName = True
+    t.parsedData = nameStr
     t.position = position
     return t
     
-#! can do better than these, OOP mad
-# redefs
-#! don't call it this, its a nameSet, or something
-class NameSpaceDefine(ExpressionWithBodyBase):
+    
+# NameSpaceDefine
+class CodeSeqNamedDefine(ActionWithBodyBase):
     '''
-    Expression where the body is executed in context of surrounding code.
+    Action where the body is executed in context of surrounding code.
     Or, a ''closure' or 'inline'.
     Special case
     e.g. def mult(x, y) { *(x, y) }
     '''
-    def __init__(self, nameStr, body):
-        super().__init__(nameStr, [], body)
-        self.isDefinition = True
-        self.isMark = True
-
-    def toString(self):
-        return "NameSpaceDefine('{}', {})".format(
-        self.parsedData, 
-        self.body
+    def __repr__(self):
+        return "CodeSeqNamedDefine('{}')".format(
+        self.parsedData
         )
 
-
-def mkNameSpaceDefine(position, nameStr):
-    t = NameSpaceDefine(nameStr, [])
+def mkCodeSeqNamedDefine(position, nameStr):
+    t = CodeSeqNamedDefine()
+    t.isDef = True
+    t.isName = True
+    t.parsedData = nameStr
     t.position = position
     return t
     
-    
-
-class UnboundContextDefine(ExpressionWithBodyBase):
+# UnboundContextDefine
+class CodeSeqUnnamedDefine(ActionWithBodyBase):
     '''
-    Expression where the body is executed in context of surrounding code.
+    Action where the body is executed in context of surrounding code.
     Or, a ''closure' or 'inline'.
     Special case
-    e.g. def mult(x, y) { *(x, y) }
+    e.g. { *(x, y) }
     '''
-    def __init__(self, nameStr, body):
-        super().__init__(nameStr, [], body)
-        self.isDefinition = True
-        self.isMark = True
+    def __repr__(self):
+        return "CodeSeqUnnamedDefine()"
 
-    def toString(self):
-        return "UnboundContextDefine('{}', {})".format(
-        self.parsedData, 
-        self.body
-        )
-
-def mkUnboundContextDefine(position, nameStr):
-    t = UnboundContextDefine(nameStr, [])
+def mkCodeSeqUnnamedDefine(position):
+    t = CodeSeqUnnamedDefine()
+    t.isDef = True
     t.position = position
     return t
                    
                    
-class ContextDefine(ExpressionWithBodyBase):
+class CodeSeqContextDefine(ActionWithBodyBase):
     '''
-    Expression where the body is executed in context of the params.
+    Action where the body is executed in context of the params.
     Or, a ''function' or ''proceedure' of some kind
     Special case
     e.g. def mult(x, y) { *(x, y) }
     '''
-    def __init__(self, nameStr, params, body):
-        super().__init__(nameStr, params, body)
-        self.isDefinition = True
-        self.isMark = True
-
-    def toString(self):
-        return "ContextDefine('{}', {}, {})".format(
+    def __repr__(self):
+        return "CodeSeqContextDefine('{}', {})".format(
             self.parsedData,
-            self.params,
-            self.body
+            self.paramCount
             )
                 
-def mkContextDefine(position, nameStr):
-    t = ContextDefine(nameStr, [], [])
+def mkCodeSeqContextDefine(position, nameStr, paramCount):
+    t = CodeSeqContextDefine()
+    t.isDef = True
+    t.isName = True
+    t.parsedData = nameStr
+    t.paramCount = paramCount
     t.position = position
     return t
     
-class OperatorContextDefine(ExpressionWithBodyBase):
+???    
+class OperatorContextDefine(ActionWithBodyBase):
     '''
-    Expression where the body is executed in context of the params.
+    Action where the body is executed in context of the params.
     Or, a ''function' or ''proceedure' of some kind
     Special case
     e.g. def mult(x, y) { *(x, y) }
@@ -453,9 +432,9 @@ def mkOperatorContextDefine(position, nameStr):
     t.position = position
     return t
 
-class MonoOperatorContextDefine(ExpressionWithBodyBase):
+class MonoOperatorContextDefine(ActionWithBodyBase):
     '''
-    Expression where the body is executed in context of the params.
+    Action where the body is executed in context of the params.
     Or, a ''function' or ''proceedure' of some kind
     Special case
     e.g. def mult(x, y) { *(x, y) }
@@ -478,7 +457,7 @@ def mkMonoOperatorContextDefine(position, nameStr):
     return t
     
     
-class ContextCall(ExpressionWithBodyBase):
+class ContextCall(ActionWithBodyBase):
     '''
     Call on a function/operator.
     Can take a name, parameters and a body (for closures).
@@ -496,7 +475,7 @@ def mkContextCall(position, nameStr):
     return t
         
 
-class OperatorCall(ExpressionWithBodyBase):
+class OperatorCall(ActionWithBodyBase):
     '''
     Call on a function/operator.
     Can take a name, parameters and a body (for closures).
@@ -539,9 +518,9 @@ def mkOperatorCallMark(position, opStr):
             
 # should this exist, or should we drop it?
 # was here for infixing, I recall
-class MonoOpExpressionCall(Expression):
+class MonoOpActionCall(Action):
     '''
-    Operator Expression with one parameter 
+    Operator Action with one parameter 
     Parameter can be a chain
     '''
     def __init__(self, nameStr, params):
@@ -550,19 +529,19 @@ class MonoOpExpressionCall(Expression):
 
     def toString(self):
         chainStr = '.'.join([e.toString for e in self.chain])
-        return "MonoOpExpression('{}', {}){}".format(self.parsedData, self.params, chainStr)
+        return "MonoOpAction('{}', {}){}".format(self.parsedData, self.params, chainStr)
 
             
-def mkMonoOpExpressionCall(position, nameStr):
-    t = MonoOpExpressionCall(nameStr, [])
+def mkMonoOpActionCall(position, nameStr):
+    t = MonoOpActionCall(nameStr, [])
     t.position = position
     return t
 
 #?
 
-class ConditionalCall(ExpressionWithBodyBase):
+class ConditionalCall(ActionWithBodyBase):
     '''
-    Expression where the body is executed conditional on the params.
+    Action where the body is executed conditional on the params.
     Special case
     e.g. if gt(x, y) { *(x, y) }
     '''
@@ -576,9 +555,9 @@ class ConditionalCall(ExpressionWithBodyBase):
 
                 
         
-class ConditionalContextCall(ExpressionWithBodyBase):
+class ConditionalContextCall(ActionWithBodyBase):
     '''
-    Expression where the body is executed conditionally in context of the params.
+    Action where the body is executed conditionally in context of the params.
     loops
     Special case
     e.g. def while(x, y) { *(x, y) }
@@ -592,7 +571,7 @@ class ConditionalContextCall(ExpressionWithBodyBase):
        
 
 
-class NamelessFunc(ExpressionWithBodyBase):
+class NamelessFunc(ActionWithBodyBase):
     '''
     Body expression with no name or params.
     Has no name, so has no params.
