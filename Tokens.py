@@ -7,7 +7,7 @@ Sometimes symbols do not exist where tokens exist e.g. '(' ')'.
 '''
 
 tokenBase = {
-    0 : ('empty' , 'EMPTY' ),
+    0 : ('empty' , 'EMPTY' ), # No token?
     1 : ('EOF' , 'EOF' ),
     2 : ('identifier' , 'IDENTIFIER' ),
     3 : ('operaterIdentifier' , 'OPERATER' ),

@@ -3,104 +3,6 @@ from Kinds import *
 #from TreeInfo import TreeInfo, UndefinedTreeInfo, NoTreeInfo
 
 
-#! needs rework
-#! probably replace with simple attributes, like isDefinition
-class BodyParameterMixin():
-    '''
-    Mixin for any Tree accepting a body as a parameter.
-    a body is a sequence of expressions, with the last expression
-    auto-returning a value (the value may be None).
-
-    Applied to both definitions and calls.
-    
-    As a parameter, a body will be loaded in an init,
-    and printed in a toString().
-    
-    There is usually but not always one body parameter only. Since they 
-    are used and consulted often, and shape much of the tree structure
-    in an AST, body parameters are placed on a seperate attribute to 
-    other parameters,
-    
-    This Mixin does little but establish that a tree node contains 
-    bodies.
-    '''
-    #self.body = body
-    pass
-     
-     
-        
-class NameMixin():
-    '''
-    Mixin for any Tree accepting a name.
-
-    Applied to both definitions and calls.
-    
-    As a parameter, a name will be loaded in an init,
-    and printed in a toString().
-        
-    There is one name per tree. Since they 
-    are used and consulted often, and have checks and references,
-    name are placed on a seperate attribute to 
-    other parameters,
-    
-    This Mixin does little but establish that tree node contains a name.
-    '''
-    #self.parsedData = nameStr
-    pass
-    
-
-#! may well need module defs etc. See,
-#! /home/rob/Downloads/scala-2.12.0/src/reflect/scala/reflect/api/Trees.scala
-#! assignment tree
-#! 
-# Now, we could do a LISP thing and make everything a list,
-# but future? typechecking may go easier if we model the common groups
-# of constructs.
-# NB: This looks like odd Python. It is. It is a little delicate.
-# In particular, do not put defaults on the inits. If you need
-# defaults, put them in the factories. Defaults on inits that match
-# classwide attribute values will not change classwide attributes to 
-# instance-specific values.
-class Tree():
-    '''
-    Tree init() should be designed so the class will accept the 
-    parsed and identifying data. The init should not contain 
-    supplementary information. This is so toString() can print 
-    code which represents a working tree.
-    Use a factory for other inits e.g. for tree builders.
-    Note this base can be leaf or branch---it has no children.
-    Both parsedData and parsedKind exist so later tree functionality can 
-    change them to Python values, or, for example, test symbolic names 
-    against tables.
-    '''
-    # For parsed data
-    #dataStr = None
-    # for final data
-    #data = None
-    #position = NoPosition
-    #* Would be a recusive definition, so None
-    #?
-    _in = None
-    _out = None
-    
-    _prev = None
-    _next = None
-    
-    isDefinition =  False
-    isMark =  False
-    
-    def __init__(self):
-        self.parsedData = None
-        self.position = NoPosition
-        self.isChained = False
-
-    def toString(self):
-        return 'Tree()'
-        
-    def __repr__(self):
-        return self.toString()
-
-
 ## Replaces tree
 class CodeMark():
     '''
@@ -121,6 +23,9 @@ class CodeMark():
         self.hasBody = False
         # for data which parses to a string.
         self.parsedData = None
+        # parsefd names of objects will be in parsedData. But some
+        # common names will be tokenised, and are stored here
+        self.token = 0
         # position in source code
         self.position = NoPosition
         # is this a definition or usage of an expression 
@@ -407,192 +312,142 @@ def mkCodeSeqContextDefine(position, nameStr, paramCount):
     t.position = position
     return t
     
-???    
+   
 class OperatorContextDefine(ActionWithBodyBase):
     '''
     Action where the body is executed in context of the params.
     Or, a ''function' or ''proceedure' of some kind
     Special case
+    The paramcount is always 2.
     e.g. def mult(x, y) { *(x, y) }
     '''
-    def __init__(self, nameStr, params, body):
-        super().__init__(nameStr, params, body)
-        self.isDefinition = True
-        self.isMark = True
-
-    def toString(self):
-        return "OperatorContextDefine('{}', {}, {})".format(
+    def __repr__(self):
+        return "OperatorContextDefine('{}')".format(
             self.parsedData,
-            self.params,
-            self.body
             )
-                
+                            
 def mkOperatorContextDefine(position, nameStr):
-    t = OperatorContextDefine(nameStr, [], [])
+    t = OperatorContextDefine()
+    t.isDef = True
+    t.isName = True
+    t.parsedData = nameStr
+    t.paramCount = 2
     t.position = position
     return t
+
 
 class MonoOperatorContextDefine(ActionWithBodyBase):
     '''
     Action where the body is executed in context of the params.
     Or, a ''function' or ''proceedure' of some kind
     Special case
-    e.g. def mult(x, y) { *(x, y) }
-    '''
-    def __init__(self, nameStr, params, body):
-        super().__init__(nameStr, params, body)
-        self.isDefinition = True
-        self.isMark = True
-
-    def toString(self):
-        return "MonoOperatorContextDefine('{}', {}, {})".format(
+    The paramcount is always 1.
+    e.g. def negate(x) { -x }
+    '''        
+    def __repr__(self):
+        return "MonoOperatorContextDefine('{}')".format(
             self.parsedData,
-            self.params,
-            self.body
             )
-                
+                        
 def mkMonoOperatorContextDefine(position, nameStr):
-    t = MonoOperatorContextDefine(nameStr, [], [])
+    t = MonoOperatorContextDefine()
+    t.isDef = True
+    t.isName = True
+    t.parsedData = nameStr
+    t.paramCount = 1
     t.position = position
     return t
     
-    
+
 class ContextCall(ActionWithBodyBase):
     '''
     Call on a function/operator.
     Can take a name, parameters and a body (for closures).
     '''
-    def __init__(self, nameStr, params, body):
-        super().__init__(nameStr, params, body)
-        self.isMark = True
-
-    def toString(self):
-        return "ContextCall('{}', {})".format(self.parsedData, self.params, self.body)
-            
-def mkContextCall(position, nameStr):
-    t = ContextCall(nameStr, [], [])
+    def __repr__(self):
+        return "ContextCall('{}', {})".format(
+            self.parsedData,
+            self.paramCount
+            )
+                
+def mkContextCall(position, nameStr, paramCount):
+    t = ContextCall()
+    t.isName = True
+    t.parsedData = nameStr
+    t.paramCount = paramCount
     t.position = position
-    return t
-        
+    return t                
+           
 
 class OperatorCall(ActionWithBodyBase):
     '''
     Call on a function/operator.
     Can take a name, parameters and a body (for closures).
     '''
-    def __init__(self, nameStr, params, body):
-        super().__init__(nameStr, params, body)
-        self.isMark = True
+    def __repr__(self):
+        return "OperatorCall('{}')".format(
+            self.parsedData
+            )            
 
-    def toString(self):
-        return "OperatorCall('{}', {})".format(self.parsedData, self.params, self.body)
-            
 def mkOperatorCall(position, nameStr):
-    t = OperatorCall(nameStr, [], [])
+    t = OperatorCall()
+    t.isName = True
+    t.parsedData = nameStr
+    t.paramCount = 2
     t.position = position
-    return t
+    return t  
 
 
-class OperatorCallMark():
+class MonoOperatorCall(ActionWithBodyBase):
     '''
     Call on a function/operator.
     Can take a name, parameters and a body (for closures).
     '''
-    def __init__(self, opStr, paramCount):
-        self.opStr = opStr
-        self.paramCount = paramCount
-        self.position = NoPosition
-
-
     def __repr__(self):
-        return "OperatorCallMark('{}', {})".format(
-            self.opStr, 
-            self.paramCount
-            )
-            
-def mkOperatorCallMark(position, opStr):
-    t = OperatorCallMark(opStr, 2)
+        return "MonoOperatorCall('{}')".format(
+            self.parsedData
+            )            
+
+def mkMonoOperatorCall(position, nameStr):
+    t = MonoOperatorCall()
+    t.isName = True
+    t.parsedData = nameStr
+    t.paramCount = 1
     t.position = position
-    return t                
-
-            
-# should this exist, or should we drop it?
-# was here for infixing, I recall
-class MonoOpActionCall(Action):
-    '''
-    Operator Action with one parameter 
-    Parameter can be a chain
-    '''
-    def __init__(self, nameStr, params):
-        super().__init__(nameStr, params)
-        self.isMark = True
-
-    def toString(self):
-        chainStr = '.'.join([e.toString for e in self.chain])
-        return "MonoOpAction('{}', {}){}".format(self.parsedData, self.params, chainStr)
-
-            
-def mkMonoOpActionCall(position, nameStr):
-    t = MonoOpActionCall(nameStr, [])
-    t.position = position
-    return t
-
+    return t  
+    
 #?
 
-class ConditionalCall(ActionWithBodyBase):
+class ConditionalStartCall(ActionWithBodyBase):
     '''
-    Action where the body is executed conditional on the params.
-    Special case
+    Action where the body is executed conditional on the param.
+    The two params are a condition and a body.
     e.g. if gt(x, y) { *(x, y) }
     '''
-    def __init__(self, nameStr, params, body):
-        super().__init__(nameStr, params, body)
-        self.isMark = True
-        
-    def toString(self):
-        return "ConditionalCall('{}', {})".format(self.parsedData, self.params, self.body)
+    def __repr__(self):
+        return "ConditionalStartCall()"
 
-
+def mkConditionalStartCall(position):
+    t = ConditionalStartCall()
+    t.paramCount = 2
+    t.position = position
+    return t  
                 
         
-class ConditionalContextCall(ActionWithBodyBase):
+class ConditionalEndCall(ActionWithBodyBase):
     '''
     Action where the body is executed conditionally in context of the params.
     loops
     Special case
-    e.g. def while(x, y) { *(x, y) }
+    e.g. while(x, y) { *(x, y) }
     ''' 
-    def __init__(self, nameStr, params, body):
-        super().__init__(nameStr, params, body)
-        self.isMark = True
+    def __repr__(self):
+        return "ConditionalEndCall()"
         
-    def toString(self):
-        return "ConditionalContextCall('{}', {})".format(self.parsedData, self.params, self.body)
-       
 
-
-class NamelessFunc(ActionWithBodyBase):
-    '''
-    Body expression with no name or params.
-    Has no name, so has no params.
-    Used to break chain sequences into small units
-    1 + {2/3}
-    and as closures
-    '''    
-    #? difference between this and NamelessBody
-    #! Currently serves as the base for a main() access point?? (which needs parameters, no?)
-    def __init__(self, body):
-        #! the name needs some thought
-        # diven a valid name because the attribute is tested, 
-        # here and there
-        super().__init__('namelessFunc', [], body)
-        self.body = body
-
-    def toString(self):
-        return "NamelessFunc({})".format(self.body)
-       
-def mkNamelessFunc(position):
-    t = NamelessFunc([])
+def mkConditionalEndCall(position):
+    t = ConditionalEndCall()
+    t.paramCount = 2
     t.position = position
-    return t
-
+    return t  
+    
