@@ -1,7 +1,7 @@
 # Gravel Syntax test
 
 {
-    238
+    #238
 }
 
 nb hereThere {
@@ -11,7 +11,7 @@ nb hereThere {
 
 ## Atom expressions
 #
-# Integer
+# Floating point
 67.5
 
 # The problem is the ambiguous second parameter.
@@ -19,28 +19,28 @@ nb hereThere {
 # x + 3 or x.3?
 # Not clear for
 # x + y or x.y
-am move = {}
-move
+#am move = {}
+#move
 
-am walk(speed) = {}
-walk(speed)
+am walk(speed: Int64) = {}
+#walk(speed)
 
-am wriggle (speed width) = {}
-wriggle (speed width)
+#am wriggle (speed width) = {}
+#wriggle (speed width)
 
 # Should fail
 #am move() = {}
 
 
-am > value = {}
-1 > count
+#am > value = {}
+#1 > count
 
-am -value = {}
--count
+#am -value = {}
+#-count
 
 # Should fail
 #am > (value) = {}
 
-ns Clutch (toad){
+#ns Clutch (toad){
     # Discs
-    }
+#    }

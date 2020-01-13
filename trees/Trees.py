@@ -303,12 +303,11 @@ class CodeSeqContextDefine(ActionWithBodyBase):
             self.paramCount
             )
                 
-def mkCodeSeqContextDefine(position, nameStr, paramCount):
+def mkCodeSeqContextDefine(position, nameStr):
     t = CodeSeqContextDefine()
     t.isDef = True
     t.isName = True
     t.parsedData = nameStr
-    t.paramCount = paramCount
     t.position = position
     return t
     

@@ -35,7 +35,7 @@ class Syntaxer:
         #self.it = source.tokenIterator(reporter)
         self.it = mkTokenIterator(source, reporter)
         self.tok = None
-        self.ast = mkNamelessFunc(NoPosition)
+        self.ast = []
         self.chainedItem = None
         # start me up
         self.root()
@@ -128,24 +128,30 @@ class Syntaxer:
             rule(lst)
         self._next()
 
-    def oneOrMoreDelimited(self, lst, rule, endToken):
+    def oneOrMoreDelimited(self, rule, endToken):
         '''
         Often easier and more human for list rules to match the 
         delimiter than to keep checking if contained rules match.
         Skips the delimiting token.
+        @rule nust be non-optional (throws error)
         '''
+        count = 0
         while(True):
-            rule(lst)
+            rule()
+            count += 1
             if (self.isToken(endToken)):
                 break
+        print("count {}".format(count))
+        #! no?
         self._next()
+        return count
         
-    def oneOrError(self, lst, rule, currentRule, expectedRule):
+    def oneOrError(self, ruleOption, currentRuleName, expectedRuleName):
         '''
         Match one rule or mark an error.
         '''
-        if(not rule(lst)):
-            self.expectedRuleError(currentRule, expectedRule)
+        if(not ruleOption()):
+            self.expectedRuleError(currentRuleName, expectedRuleName)
             
     ## Rules
     def optionalKindAnnotation(self, tree):
@@ -162,22 +168,27 @@ class Syntaxer:
         return coloned
         
     #? nmelessData?
-    def namelessDataExpression(self, lst):
+    def namelessDataExpression(self):
         '''
         (IntNum | FloatNum | String) ~ option(KindAnnotation)
         '''
-        commit = self.isToken(INT_NUM) or self.isToken(FLOAT_NUM)  or self.isToken(STRING) or self.isToken(MULTILINE_STRING)
+        commit = (
+            self.isToken(INT_NUM) or 
+            self.isToken(FLOAT_NUM) or 
+            self.isToken(STRING) or 
+            self.isToken(MULTILINE_STRING)
+            )
         if (commit):
             t = None
             if (self.isToken(INT_NUM)):
-                t = mkIntegerNamelessData(self.position(), self.textOf())       
+                t = mkIntegerData(self.position(), self.textOf())       
             if (self.isToken(FLOAT_NUM)):
-                t = mkFloatNamelessData(self.position(), self.textOf())       
+                t = mkFloatData(self.position(), self.textOf())       
             if (self.isToken(STRING)):
-                t = mkStringNamelessData(self.position(), self.textOf())       
+                t = mkStringData(self.position(), self.textOf())       
             if (self.isToken(MULTILINE_STRING)):
-                t = mkStringNamelessData(self.position(), self.textOf())       
-            lst.append(t)
+                t = mkStringData(self.position(), self.textOf())       
+            self.ast.append(t)
             self._next()
             self.optionalKindAnnotation(t)
         return commit
@@ -198,31 +209,31 @@ class Syntaxer:
         self.optionalKindAnnotation(t)
         return True
               
-    def defineParameter(self, lst):
-        '''
-        identifier ~ ':' ~ Kind
-        Enforced type declaration.
-        Succeed or error
-        '''
-        # id
-        markStr = self.getTokenOrError('Define Parameter', IDENTIFIER) 
-        # delimit
-        self.skipTokenOrError('Define Parameter', COLON)
-        # type
-        t = mkParameterDefinition(self.position(), markStr)
-        t.returnKind = self.getTokenOrError('Define Parameter', IDENTIFIER)
-        lst.append(t)
-        return True
+    # def defineParameter(self, lst):
+        # '''
+        # identifier ~ ':' ~ Kind
+        # Enforced type declaration.
+        # Succeed or error
+        # '''
+        # # id
+        # markStr = self.getTokenOrError('Define Parameter', IDENTIFIER) 
+        # # delimit
+        # self.skipTokenOrError('Define Parameter', COLON)
+        # # type
+        # t = mkParameterDefinition(self.position(), markStr)
+        # t.returnKind = self.getTokenOrError('Define Parameter', IDENTIFIER)
+        # self.ast.append(t)
+        # return True
 
-    def defineParameters(self, lst):
-        '''
-        '(' ~ zeroOrMore(defineParameter) ~')'
-        Enforced bracketing.
-        Suceed or error
-        '''
-        self.skipTokenOrError('Define Parameters', LBRACKET)
-        self.zeroOrMoreDelimited(lst, self.defineParameter, RBRACKET)        
-        return True
+    # def defineParameters(self, lst):
+        # '''
+        # '(' ~ zeroOrMore(defineParameter) ~')'
+        # Enforced bracketing.
+        # Suceed or error
+        # '''
+        # self.skipTokenOrError('Define Parameters', LBRACKET)
+        # self.zeroOrMoreDelimited(lst, self.defineParameter, RBRACKET)        
+        # return True
 
     def dataDefine(self, lst):
         '''
@@ -253,7 +264,7 @@ class Syntaxer:
             
             # make node
             t = mkDataDefine(pos, markStr)
-            lst.append(t)
+            self.ast.append(t)
             
             # Kind
             self.optionalKindAnnotation(t)
@@ -292,7 +303,7 @@ class Syntaxer:
 
             # make node
             t = mkContextDefine(pos, markStr)
-            lst.append(t)
+            self.ast.append(t)
             
             # params
             #! generic params
@@ -303,7 +314,7 @@ class Syntaxer:
             
             # body (exp seq)
             self.skipTokenOrError('Define Function', LCURLY)
-            self.seqContents(t.body)
+            self.seqContents()
             self.skipTokenOrError('Define Function', RCURLY)
         return commit
         
@@ -319,7 +330,7 @@ class Syntaxer:
         bracketted = self.optionallySkipToken(LBRACKET)
         if (bracketted):
             #if(self.chainedItem):
-                #lst.append(self.chainedItem)
+                #self.ast.append(self.chainedItem)
                 #self.chainedItem = None
             self.zeroOrMoreDelimited(lst, self.expressionCall, RBRACKET)          
         return True
@@ -352,7 +363,7 @@ class Syntaxer:
         ## get mark    
         #print ('binop operator:' +  self.textOf())
         #t = mkContextCall(self.position(), self.textOf())
-        #lst.append(t)
+        #self.ast.append(t)
         #self._next()
         ## generic params?
         #self.oneOrError(lst, 
@@ -395,7 +406,7 @@ class Syntaxer:
             if (isDotChained or isInfix(self.textOf())):
                 t.params.append(lst.pop()) 
                              
-            lst.append(t)
+            self.ast.append(t)
             self._next()
             
             # params
@@ -428,7 +439,7 @@ class Syntaxer:
             # get mark    
             #print ('MONO operator:' + self.textOf())
             t = mkMonoOpExpressionCall(self.position(), self.textOf())
-            lst.append(t)
+            self.ast.append(t)
             self._next()
             #! not expression, as another mono is not available, but otherwise ok
             self.oneOrError(lst, 
@@ -439,38 +450,20 @@ class Syntaxer:
             #self.optionalKindAnnotation(t)            
         return commit
                 
-    def comment(self, lst):
+    def comment(self):
         commit = self.isToken(COMMENT)
         if (commit):
-            t = mkSingleLineComment(self.position(), self.textOf())
-            lst.append(t)
+            t = mkSingleLineComment(self.position(), self.textOf().lstrip())
+            self.ast.append(t)
             self._next()
         return commit
 
-    def multilineComment(self, lst):
+    def multilineComment(self):
         commit = self.isToken(MULTILINE_COMMENT)
         if (commit):
-            t = mkMultiLineComment(self.position(), self.textOf())
-            lst.append(t)
+            t = mkMultiLineComment(self.position(), self.textOf().lstrip())
+            self.ast.append(t)
             self._next()
-        return commit
-            
-            
-            
-    def namelessBodyCall(self, lst):
-        '''
-        '{'~ oneOrMore(ExpressionCall) ~'}'
-        '''
-        commit = (self.isToken(LCURLY))
-        if(commit): 
-            self._next()
-            
-            # node    
-            t = mkNamelessBody(self.position())
-            lst.append(t)
-
-            # body
-            self.oneOrMoreDelimited(t.body, self.expressionCall, RCURLY)
         return commit
 
 
@@ -489,7 +482,7 @@ class Syntaxer:
             self.namelessDataExpression(lst) 
             or self.functionCall(lst, isDotChained)
             or self.operaterMonoFunctionCall(lst)
-            or self.namelessBodyCall(lst)
+            or self.codeSeqNameless()
             )
             
         # chaining
@@ -528,28 +521,33 @@ class Syntaxer:
 
 
 ## Seq
-    def seqAnon(self, lst):
-        #! too like namelessBodyCall(self, lst):
+#! Option
+    def codeSeqNameless(self):
         '''
         '{'~ oneOrMore(ExpressionCall) ~'}'
         '''
         commit = (self.isToken(LCURLY))
         if(commit): 
             self._next()
-            
-            # node    
-            t = mkNamelessBody(self.position())
-            lst.append(t)
 
+            startLen = len(self.ast)
+            
             # body
             #self.oneOrMoreDelimited(t.body, self.expressionCall, RCURLY)
-            self.seqContents(t.body)
-            self.skipTokenOrError('Anonymous Seq', RCURLY)
+            self.seqContents()
+            self.skipTokenOrError('CodeSeqNameless', RCURLY)
+
+            paramCount = len(self.ast) - startLen 
+            
+            # node    
+            t = mkCodeSeqNameless(self.position(), paramCount)
+            self.ast.append(t)
+            
         return commit
 
 
     #? No Kind option
-    def namedBlockDefine(self, lst):
+    def codeSeqNamed(self):
         '''
         'nb' ~ (Identifier | OperatorIdentifier) ~ Option(Kind) ~ ExplicitSeq
         Definitions attached to code blocks
@@ -564,7 +562,7 @@ class Syntaxer:
             # mark
             if(self.tok != IDENTIFIER and self.tok != OPERATER):
                 self.tokenError("In rule '{}' expected '{}' or '{}' but found '{}'".format(
-                    'Define Named Block',
+                    'CodeSeq Named',
                     tokenToString[IDENTIFIER],
                     tokenToString[OPERATER],
                     tokenToString[self.tok]
@@ -574,13 +572,13 @@ class Syntaxer:
 
             # make node
             # node    
-            t = mkUnboundContextDefine(self.position(), markStr)
-            lst.append(t)
+            t = mkCodeSeqNamedDefine(self.position(), markStr)
+            self.ast.append(t)
 
             # body
-            self.skipTokenOrError('Named Block', LCURLY)            
-            self.seqContents(t.body)
-            self.skipTokenOrError('Named Block', RCURLY)            
+            self.skipTokenOrError('CodeSeq Named', LCURLY)            
+            self.seqContents()
+            self.skipTokenOrError('CodeSeq Named', RCURLY)            
         return commit
         
 ## Namespace
@@ -612,7 +610,7 @@ class Syntaxer:
             # make node
             # node    
             t = mkNameSpaceDefine(self.position(), markStr)
-            lst.append(t)
+            self.ast.append(t)
             
             # params
             self.parametersOption(t.params)
@@ -718,63 +716,76 @@ class Syntaxer:
             self._next()
         return commit
                                     
-    def seqContents(self, lst):
+    def seqContents(self):
         '''
         Used for body contents.
         Allows definitions.
         '''
+        entryCount = len(self.ast)
         while(
-            self.comment(lst)
-            or self.multilineComment(lst)
-            #or self.namelessDataExpression(lst)
-            or self.seqAnon(lst)
-            or self.namedBlockDefine(lst)
-            or self.actionDefine(lst)
-            or self.nameSpaceDefine(lst)
-            or self.multiActionCall(lst) 
-            #or self.actionCall(lst)
-            #or self.dataDefine(lst)
-            #or self.functionDefine(lst)
+            self.comment()
+            or self.multilineComment()
+            or self.namelessDataExpression()
+            or self.codeSeqNameless()
+            or self.codeSeqNamed()
+            or self.actionDefine()
+            #or self.nameSpaceDefine()
+            #or self.multiActionCall() 
+            #or self.actionCall()
+            #or self.dataDefine()
+            #or self.functionDefine()
             # calls must go after defines, which are more 
             # specialised in the first token
-            #or self.expressionCall(lst)
+            #or self.expressionCall()
             or self.lineFeed()
             ):
+                pass
             #? what are we doing here at the end?
-            if (len(lst) > 1):
-                lst[-1].prev = lst[-2]        
+            #if (len(lst) > 1):
+            #    lst[-1].prev = lst[-2]
+        eCount = len(self.ast) - entryCount
+        mkCodeSeqNameless(self.position(), eCount)
+
 
 ## Construction parts
-    def parameter(self, lst):
+    def parameterDefine(self):
         '''
         identifier ~ Option(':' ~ Kind)
         Succeed or error
         '''
         # id
-        markStr = self.getTokenOrError('Define Parameter', IDENTIFIER) 
+        markStr = self.getTokenOrError('Parameter Define', IDENTIFIER) 
         t = mkParameterDefinition(self.position(), markStr)
         # type
-        if (self.isToken(COLON)):
-            self._next()
-            t.returnKind = self.getTokenOrError('Define Parameter', IDENTIFIER)
-        lst.append(t)
+        #! tmp. use type() ???
+        #! is this optional?
+        self.skipTokenOrError('Parameter Define', COLON)
+        #if (self.isToken(COLON)):
+        #    self._next()
+        t.kind = self.getTokenOrError('Parameter Define', IDENTIFIER)
+        self.ast.append(t)
         return True
         
-    def parametersOption(self, lst):
+    def parametersDefineOption(self):
         '''
         option('(' ~ oneOrMore(parameter) ~')') 
         Enforced bracketing.
         '''
         commit = self.isToken(LBRACKET)
         #print(str(commit))
+        count = 0
         if (commit):
             # One or more params
             self._next()
-            self.oneOrMoreDelimited(lst, self.parameter, RBRACKET)        
-        return commit
+            count = self.oneOrMoreDelimited(
+                self.parameterDefine,
+                RBRACKET
+                )   
+        return count
         
 ## Actions
-    def actionDefine(self, lst):
+    #! unify paramCount handling
+    def actionDefine(self):
         '''
         ('am' | 'ac') ~ 
         (
@@ -816,41 +827,51 @@ class Syntaxer:
             
             if(self.tok == IDENTIFIER):
                 # make node
-                t = mkContextDefine(pos, markStr)
-                lst.append(t)
-            
+                t = mkCodeSeqContextDefine(pos, markStr)
+                
                 # params
                 self._next()
-                self.parametersOption(t.params)
+                paramCount = self.parametersDefineOption()
+                t.paramCount = paramCount
+                t.paramCount += 1    
+                print("count {}".format(t.paramCount))
 
+
+                
             elif(self.tok == OPERATER):
                 # make node
                 t = mkOperatorContextDefine(pos, markStr)
-                lst.append(t)
-            
-                # params, one only.
+                
+                # params, two only.
                 self._next()
-                self.parameter(t.params)
-            
+                self.parameterDefine()
+                self._next()
+                self.parameterDefine()
+                                        
             elif(self.tok == MONO_OPERATER):
                 # make node
                 t = mkMonoOperatorContextDefine(pos, markStr)
-                lst.append(t)
             
                 # params, one only.
                 self._next()
-                self.parameter(t.params)
+                self.parameterDefine()
+
             # Kind (return)
             #self.optionalKindAnnotation(t)
             
             # Allocate
             #! skipOp
             if (not (self.isToken(OPERATER) and self.it.textOf() == '=')):
-                self.expectedTokenError('Define Action',  EQUALS)
+                self.expectedTokenError('Action Define',  EQUALS)
             self._next()
 
             # body (exp seq)
-            self.oneOrError(t.body, self.seqAnon, 'Define Action', 'Anonymous Sequence')
+            self.oneOrError(
+                self.codeSeqNameless, 
+                'Action Define', 
+                'CodeSeq Nameless'
+                )
+            self.ast.append(t)
         return commit
         
 
@@ -869,7 +890,7 @@ class Syntaxer:
         if (commit):
             # node    
             t = mkContextCall(self.position(), self.textOf())
-            lst.append(t)
+            self.ast.append(t)
             
             #! these need to be expressions, but not now...
             if(self.tok == IDENTIFIER):
@@ -895,7 +916,7 @@ class Syntaxer:
         try:
             # charge
             self._next()
-            self.seqContents(self.ast.body)
+            self.seqContents()
             # if we don't get StopIteration...
             self.error('Parsing did not complete: lastToken: {},'.format(
                 tokenToString[self.tok],                

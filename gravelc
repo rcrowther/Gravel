@@ -9,23 +9,23 @@ from reporters.ConsoleStreamReporter import ConsoleStreamReporter
 from gio.Sources import FileSource
 from CompilationUnit import CompilationUnit
 
-from phases.Basic import (
-    PrintTokensPhase, 
-    SyntaxPhase, 
-    TreePrint, 
-    TreePrintDisplay, 
-    StripComments,
-    #NamesValidate
-    )
+# from phases.Basic import (
+    # PrintTokensPhase, 
+    # SyntaxPhase, 
+    # TreePrint, 
+    # TreePrintDisplay, 
+    # StripComments,
+    # #NamesValidate
+    # )
 
-from phases.Parsers import (
-    MakeMarkTable,
-    MarkTableKindDetermine,
-    )
+# from phases.Parsers import (
+    # MakeMarkTable,
+    # MarkTableKindDetermine,
+    # )
 
-from phases.Checks import (    
-    MarkTableValidate
-    )
+# from phases.Checks import (    
+    # MarkTableValidate
+    # )
     
     
 """
@@ -168,9 +168,12 @@ if __name__ == "__main__":
     elif (lastP == 'syntax'):
         ## Treeprint
         from Syntaxer import Syntaxer
-        from trees.Visitors import RawPrint
+        from trees.Visitors import RawPrint, treeReverse
         s = Syntaxer(srcB[0], reporter)
         RawPrint(s.ast)
+        tree = treeReverse(s.ast)
+        print("so...")
+        RawPrint(tree)
 
     ## Stock pipe
     # cu = CompilationUnit(FileSource('test/syntax.gv'))

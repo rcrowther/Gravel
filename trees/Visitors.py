@@ -339,41 +339,126 @@ class VisitorWithDepth():
         #self._print(depth, chained, t)
 
 
-class RawPrint(VisitorWithDepth):
+# class RawPrint(VisitorWithDepth):
+    # '''    
+    # Print a representation of the data in a tree.
+    
+    # Designed for easy reading.
+    # '''
+    # indent = 2
+    # chainIndent = 4
+
+    # def __init__(self, tree, showParams=True):
+        # self.showParams = showParams
+        # self._dispatch(0, tree, False)
+      
+    # def _print(self, depth, t, isParam):
+        # indent = ' ' * depth            
+        # if (isParam):
+            # indent += 'param: '
+        # if (t.isChained):
+            # # U+2500 BOX DRAWINGS LIGHT HORIZONTAL
+            # # U+2514 BOX DRAWINGS LIGHT UP AND RIGHT
+            # # U+251C BOX DRAWINGS LIGHT VERTICAL AND RIGHT
+            # indent += '┌── '
+        # #print("{}[{}, {}]".format(indent, t._in, t._out))
+        # print("{}{}('{}')".format(indent, type(t).__name__, t.parsedData))
+
+    # def _dispatch(self, depth, t, isParam):
+        # self._print(depth, t, isParam)
+        # newDepth = depth + self.indent
+        # if (self.showParams and isinstance(t, Expression)):
+            # for e in t.params:
+                # self._dispatch(newDepth, e, True)                     
+        # if (isinstance(t, BodyParameterMixin)):           
+            # for e in t.body:
+                # self._dispatch(newDepth, e, False)
+
+def RPNToPN():
+    it = iter(tree)
+    paramStash = []
+    outParams = []
+    out = []
+    try:
+        while (True):
+            # gather params
+            while(True):
+                e = next(it)
+                if (e.paramCount > 0):
+                    break
+                paramStash.append(e)
+            # Append the element taking params
+            out.append(e)
+            # attach params in original order, popping paramStash as we go
+            paramStash = []
+            for i in range(0, e.paramCount):
+                outParams.append(paramStash.pop())
+            out.extend(outParams)
+    except StopIteration:
+        pass
+    return out
+    
+
+            
+      
+def RawPrint(tree, showParams=True):
     '''    
     Print a representation of the data in a tree.
     
     Designed for easy reading.
     '''
-    indent = 2
-    chainIndent = 4
+    for e in tree:
+        print(str(e))
 
-    def __init__(self, tree, showParams=True):
-        self.showParams = showParams
-        self._dispatch(0, tree, False)
-      
-    def _print(self, depth, t, isParam):
-        indent = ' ' * depth            
-        if (isParam):
-            indent += 'param: '
-        if (t.isChained):
-            # U+2500 BOX DRAWINGS LIGHT HORIZONTAL
-            # U+2514 BOX DRAWINGS LIGHT UP AND RIGHT
-            # U+251C BOX DRAWINGS LIGHT VERTICAL AND RIGHT
-            indent += '┌── '
-        #print("{}[{}, {}]".format(indent, t._in, t._out))
-        print("{}{}('{}')".format(indent, type(t).__name__, t.parsedData))
+# def rawElemPrint(e, depth):
+    # indent = " " * depth
+    # print("{}{}".format(indent, e))        
 
-    def _dispatch(self, depth, t, isParam):
-        self._print(depth, t, isParam)
-        newDepth = depth + self.indent
-        if (self.showParams and isinstance(t, Expression)):
-            for e in t.params:
-                self._dispatch(newDepth, e, True)                     
-        if (isinstance(t, BodyParameterMixin)):           
-            for e in t.body:
-                self._dispatch(newDepth, e, False)
-
+    # '''    
+    # Print a representation of the data in a tree.
+    
+    # Designed for easy reading.
+    # '''
+    # indentInc = 2
+    # depth = 0
+    # actionStack = []
+    # out = []
+    # it = tree.reverse()
+    
+        # paramCount = e.paramCount
+        # if (paramCount > 0):
+            # actionStack.append((i + actionStack, e))
+        # else:
+            # out.append(e)  
+            # paramsWritten += 1
+        
+def _elemReverse(paramedElem, it, out):
+        paramCount = paramedElem.paramCount
+        for i in range(0, paramCount):
+            e = next(it)
+            if (e.paramCount > 0):
+                _elemReverse(e, it, out)
+            else:
+                out.append(e)
+        out.append(paramedElem)
+                
+def treeReverse(tree):
+    #NB in Python, returns an iterator
+    it = reversed(tree)
+    out = []
+    try:
+        while(True):
+            e = next(it)
+            if (e.paramCount > 0):
+                _elemReverse(e, it, out)
+            else:
+                out.append(e)        
+    except StopIteration:
+         pass
+    out.reverse()
+    return out
+    
+    
 #? No point pluging into definitions unless called?
 #? but since we only have a name table, we need to allocate memory? Maybe.
 #class DepthFirstLRVisitor():
