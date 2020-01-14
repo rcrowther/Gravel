@@ -141,7 +141,7 @@ class Syntaxer:
             count += 1
             if (self.isToken(endToken)):
                 break
-        print("count {}".format(count))
+        #print("count {}".format(count))
         #! no?
         self._next()
         return count
@@ -168,7 +168,7 @@ class Syntaxer:
         return coloned
         
     #? nmelessData?
-    def namelessDataExpression(self):
+    def dataNameless(self):
         '''
         (IntNum | FloatNum | String) ~ option(KindAnnotation)
         '''
@@ -234,7 +234,7 @@ class Syntaxer:
         # self.skipTokenOrError('Define Parameters', LBRACKET)
         # self.zeroOrMoreDelimited(lst, self.defineParameter, RBRACKET)        
         # return True
-
+    #x
     def dataDefine(self, lst):
         '''
         'fnc' ~ (Identifier | OperatorIdentifier) ~ DefineParameters  ~ Option(Kind) ~ ExplicitSeq
@@ -273,7 +273,7 @@ class Syntaxer:
             #! Perhaps could take an expression
             #? close to namelessFuncCall but inly alowing one expression
             self.skipTokenOrError('Define Data', LCURLY)
-            self.namelessDataExpression(t.body)
+            self.dataNameless(t.body)
             self.skipTokenOrError('Define Data', RCURLY)
         return commit
         
@@ -429,26 +429,26 @@ class Syntaxer:
 
 
     #! maybe should be in function itself?
-    def operaterMonoFunctionCall(self, lst):
-        '''
-        MonoOperaterIdentifier ~ MonoOpCallParameter ~ Option(Kind)
-        Slightly, but strongly, different to namedFunctionCall.
-        '''
-        commit = (self.isToken(MONO_OPERATER))
-        if(commit):       
-            # get mark    
-            #print ('MONO operator:' + self.textOf())
-            t = mkMonoOpExpressionCall(self.position(), self.textOf())
-            self.ast.append(t)
-            self._next()
-            #! not expression, as another mono is not available, but otherwise ok
-            self.oneOrError(lst, 
-                self.expressionCall, 
-                'parameterForMonoOperaterCall', 
-                'expressionCall'
-                )
-            #self.optionalKindAnnotation(t)            
-        return commit
+    # def operaterMonoFunctionCall(self, lst):
+        # '''
+        # MonoOperaterIdentifier ~ MonoOpCallParameter ~ Option(Kind)
+        # Slightly, but strongly, different to namedFunctionCall.
+        # '''
+        # commit = (self.isToken(MONO_OPERATER))
+        # if(commit):       
+            # # get mark    
+            # #print ('MONO operator:' + self.textOf())
+            # t = mkMonoOpExpressionCall(self.position(), self.textOf())
+            # self.ast.append(t)
+            # self._next()
+            # #! not expression, as another mono is not available, but otherwise ok
+            # self.oneOrError(lst, 
+                # self.expressionCall, 
+                # 'parameterForMonoOperaterCall', 
+                # 'expressionCall'
+                # )
+            # #self.optionalKindAnnotation(t)            
+        # return commit
                 
     def comment(self):
         commit = self.isToken(COMMENT)
@@ -467,10 +467,10 @@ class Syntaxer:
         return commit
 
 
-
+    #x
     def expressionCall(self, lst):
         '''
-        namelessDataExpression | namedFunctionCall | operaterFunctionCall
+        dataNameless | namedFunctionCall | operaterFunctionCall
         Calls where they can be used nested (not as the target
         of allocation etc.?)
         '''
@@ -479,10 +479,10 @@ class Syntaxer:
         isDotChained = self.optionallySkipToken(PERIOD)
 
         commit = (
-            self.namelessDataExpression(lst) 
+            self.dataNameless(lst) 
             or self.functionCall(lst, isDotChained)
             or self.operaterMonoFunctionCall(lst)
-            or self.codeSeqNameless()
+            or self.seqNameless()
             )
             
         # chaining
@@ -522,7 +522,7 @@ class Syntaxer:
 
 ## Seq
 #! Option
-    def codeSeqNameless(self):
+    def seqNameless(self):
         '''
         '{'~ oneOrMore(ExpressionCall) ~'}'
         '''
@@ -547,7 +547,7 @@ class Syntaxer:
 
 
     #? No Kind option
-    def codeSeqNamed(self):
+    def seqNamedDefine(self):
         '''
         'nb' ~ (Identifier | OperatorIdentifier) ~ Option(Kind) ~ ExplicitSeq
         Definitions attached to code blocks
@@ -586,7 +586,7 @@ class Syntaxer:
     #! don't call it this, its a nameSet, or something
     #! Code lot like a function call but different (DRY). No return
     #! cause it's assumed to be anamespace or Unit.... if anything.
-    def nameSpaceDefine(self, lst):
+    def slotDefine(self, lst):
         '''
         'ns' ~ Identifier ~ ExplicitSeq
         Definition of a namespace. Conceptually, a labeled set of 
@@ -601,7 +601,7 @@ class Syntaxer:
             # mark
             if(self.tok != IDENTIFIER):
                 self.expectedTokenError(
-                    'NameSpace Action',
+                    'CodeSlot Define',
                     IDENTIFIER
                     )
             markStr = self.textOf()
@@ -609,28 +609,45 @@ class Syntaxer:
 
             # make node
             # node    
-            t = mkNameSpaceDefine(self.position(), markStr)
-            self.ast.append(t)
+            t = mkCodeSlotNamedDefine(self.position(), markStr)
             
             # params
-            self.parametersOption(t.params)
+            #self.parametersOption(t.params)
                 
             # body
-            self.skipTokenOrError('Named Block', LCURLY)            
+            self.skipTokenOrError('CodeSlot Define', LCURLY)            
             self.seqContents(t.body)
             self.skipTokenOrError('Named Block', RCURLY)            
+
+            self.ast.append(t)
         return commit
 
     #def gteOperatorPrecidence(op1, op2):
         #op1
         #return
-    
-    def multiActionCall(self, lst):
+
+    def operatorCall(self, opStack):
+        commit = self.isToken(OPERATER)
+        if (commit):
+            t = mkOperatorCall(self.position(), self.textOf())
+            # #! for now, assume equal precidence
+            while (
+                (len(opStack) > 0) and
+                # #t.precidence >= opStack.top.precidence and
+                opStack[-1] != LBRACKET
+                ):
+                self.ast.append(opStack.pop())
+            opStack.append(t)
+            self._next()
+        return commit
+                    
+    def multiActionCall(self):
         # has no idea if calling within a nameSet, or container, but 
         # does it matter?
-        out = []
+        #out = []
         opStack = []
         commit = (           
+            # these are the possibilities to open a call
             self.isToken(INT_NUM) or
             self.isToken(FLOAT_NUM)  or
             self.isToken(STRING) or
@@ -643,67 +660,77 @@ class Syntaxer:
             # self.textOf(),
             # commit
             # ))
-        while(
-            self.isToken(INT_NUM) or
-            self.isToken(FLOAT_NUM)  or
-            self.isToken(STRING) or
-            #self.isToken(MULTILINE_STRING) or
-            self.isToken(IDENTIFIER) or
-            self.isToken(OPERATER) or
-            self.isToken(LBRACKET) or
-            self.isToken(RBRACKET) or
-            self.isToken(MONO_OPERATER)
-            ):
-            # #StringNamelessData
-            # #ContextCall
-            if (self.isToken(IDENTIFIER)):
-                t = mkContextCall(self.position(), self.textOf())
-                out.append(t)
-                # params
-                self._next()
-                #self.parametersOption(t.params)
-            
-            elif(
+        if (commit):
+            prevWasData = False
+
+                #? or make list? multiActionCall()
+                # prev was op
+            while(
                 self.isToken(INT_NUM) or
                 self.isToken(FLOAT_NUM)  or
                 self.isToken(STRING) or
-                self.isToken(MULTILINE_STRING)
-                ):
-                self.namelessDataExpression(out)
-
-            elif (
+                #self.isToken(MULTILINE_STRING) or
+                self.isToken(IDENTIFIER) or
+                self.isToken(MONO_OPERATER) or
+                # in chained actions, also deal witth these,
+                # interspacing the chains
                 self.isToken(OPERATER) or
-                self.isToken(MONO_OPERATER)
+                self.isToken(LBRACKET) or
+                self.isToken(RBRACKET)
                 ):
-                t = mkOperatorCallMark(self.position(), self.textOf())
-                if (self.isToken(MONO_OPERATER)):
-                    #! should also be ultimate precidence
-                    t.paramCount = 1
+
+                if (prevWasData):
+                    commit = self.operatorCall(opStack)
+                    if (not commit):
+                        # something to do with EOL
+                        self.expectedTokenError(
+                            'Operator Call',
+                            OPERATER
+                            )                    
+                    if (self.isToken(LBRACKET)):
+                        opStack.append(LBRACKET)
+                        self._next()
+                    prevWasData = False
+                else:
+                    if (self.isToken(MONO_OPERATER)):
+                        #! should be ultimate precidence
+                        #? so no probs with a push?
+                        t = mkMonoOperatorCall(self.position(), self.textOf())
+                        opStack.append(t)
+                        self._next()
+
+                    # #StringNamelessData
+                    # #ContextCall
+                    if (self.isToken(IDENTIFIER)):
+                        t = mkContextCall(self.position(), self.textOf())
+                        self.ast.append(t)
+                        #? params
+                        # parametersCallOption
+                        self._next()
+                        #self.parametersOption(t.params)
                     
-                # #! for now, assume equal
-                while (
-                    (len(opStack) > 0) and
-                    # #t.precidence >= opStack.top.precidence and
-                    opStack[-1] != LBRACKET
-                    ):
-                    out.append(opStack.pop())
-                opStack.append(t)
-                self._next()
-            if (self.isToken(LBRACKET)):
-                opStack.append(LBRACKET)
-                self._next()
-            if (self.isToken(RBRACKET)):
-                while(opStack[-1] != LBRACKET):
-                    out.append(opStack.pop())
-                opStack.pop()
-                self._next()
-            
-        #print('multiActionCall2')
-        # empty out
-        if (len(opStack) > 0):
-            out.append(opStack.pop())
-        print("str out: {}".format(out))
-        self._next()
+                    elif(
+                        self.isToken(INT_NUM) or
+                        self.isToken(FLOAT_NUM)  or
+                        self.isToken(STRING) or
+                        self.isToken(MULTILINE_STRING)
+                        ):
+                        self.dataNameless()
+
+                    if (self.isToken(RBRACKET)):
+                        while(opStack[-1] != LBRACKET):
+                            self.ast.append(opStack.pop())
+                        opStack.pop()
+                        self._next()
+
+                    prevWasData = True
+                
+            #print('multiActionCall2')
+            # empty out
+            if (len(opStack) > 0):
+                self.ast.append(opStack.pop())
+            #print("str out: {}".format(out))
+            self._next()
         return commit
             
                       
@@ -725,12 +752,13 @@ class Syntaxer:
         while(
             self.comment()
             or self.multilineComment()
-            or self.namelessDataExpression()
-            or self.codeSeqNameless()
-            or self.codeSeqNamed()
+            # multiactioncall
+            #or self.dataNameless()
+            or self.seqNameless()
+            or self.seqNamedDefine()
             or self.actionDefine()
-            #or self.nameSpaceDefine()
-            #or self.multiActionCall() 
+            #or self.slotDefine()
+            or self.multiActionCall() 
             #or self.actionCall()
             #or self.dataDefine()
             #or self.functionDefine()
@@ -748,6 +776,8 @@ class Syntaxer:
 
 
 ## Construction parts
+
+
     def parameterDefine(self):
         '''
         identifier ~ Option(':' ~ Kind)
@@ -777,8 +807,27 @@ class Syntaxer:
         if (commit):
             # One or more params
             self._next()
+            #! tor now. Will be MultiActionCall
             count = self.oneOrMoreDelimited(
                 self.parameterDefine,
+                RBRACKET
+                )   
+        return count
+        
+    def parametersCallOption(self):
+        '''
+        option('(' ~ oneOrMore(parameter) ~')') 
+        Enforced bracketing.
+        '''
+        commit = self.isToken(LBRACKET)
+        #print(str(commit))
+        count = 0
+        if (commit):
+            # One or more params
+            #! multiActionCalls, but not yet
+            self._next()
+            count = self.oneOrMoreDelimited(
+                self.parameter,
                 RBRACKET
                 )   
         return count
@@ -831,28 +880,36 @@ class Syntaxer:
                 
                 # params
                 self._next()
+                # Need to use seperate code to the shunt algorithm to
+                # handle actioncalls. 
+                # label1 + label2
+                # is ok,
+                # label1 9 + label2
+                # will read as a missing operator (not a parameter)
+                # label1(8 + 4) + label2
+                # will read as missing an operator and as a bracketed
+                # sub-action 
                 paramCount = self.parametersDefineOption()
                 t.paramCount = paramCount
+                # because body to come
                 t.paramCount += 1    
-                print("count {}".format(t.paramCount))
+                #print("count {}".format(t.paramCount))
 
-
-                
             elif(self.tok == OPERATER):
                 # make node
                 t = mkOperatorContextDefine(pos, markStr)
                 
-                # params, two only.
+                # params, preset.count
+                # one only (other is 'self')
                 self._next()
                 self.parameterDefine()
-                self._next()
                 self.parameterDefine()
                                         
             elif(self.tok == MONO_OPERATER):
                 # make node
                 t = mkMonoOperatorContextDefine(pos, markStr)
             
-                # params, one only.
+                # params, Preset count, one only.
                 self._next()
                 self.parameterDefine()
 
@@ -867,49 +924,71 @@ class Syntaxer:
 
             # body (exp seq)
             self.oneOrError(
-                self.codeSeqNameless, 
+                self.seqNameless, 
                 'Action Define', 
                 'CodeSeq Nameless'
                 )
             self.ast.append(t)
         return commit
         
+    #? converrted, but not of use?
+    # def actionCall(self):
+        # '''
+        # (Identifier ~ oneOrMore(parameters) | ((Identifier | Operator) ~ parameter)
+        # Definitions attached to code blocks
+        # Used for both named and operater functions.
+        # '''
+        # #! this textOf is direct, but could be done by token lookup
+        # commit = (
+                # self.isToken(IDENTIFIER) or 
+                # self.isToken(OPERATER) or 
+                # self.isToken(MONO_OPERATER)
+                # )
+        # if (commit):
+            # # node    
+            # t = mkContextCall(self.position(), self.textOf())
+            
+            # #! these need to be expressions, but not now...
+            # if(self.tok == IDENTIFIER):
+                # # params
+                # self._next()
+                # self.parametersOption(t.params)
 
-    def actionCall(self, lst):
+            # elif(self.tok == OPERATER):
+                # # params, preset.count
+                # # one only (other is 'self')
+                # self._next()
+                # self.parameter(t.params)
+            
+            # elif(self.tok == MONO_OPERATER):
+                # # params, Preset count, one only.
+                # self._next()
+                # self.parameter(t.params)
+                        
+            # t.paramCount = paramCount        
+            # self.ast.append(t)
+        # return commit
+        
+    def actionCall(self):
         '''
         (Identifier ~ oneOrMore(parameters) | ((Identifier | Operator) ~ parameter)
         Definitions attached to code blocks
         Used for both named and operater functions.
         '''
         #! this textOf is direct, but could be done by token lookup
-        commit = (
-                self.isToken(IDENTIFIER) or 
-                self.isToken(OPERATER) or 
-                self.isToken(MONO_OPERATER)
-                )
+        commit = self.isToken(IDENTIFIER)
         if (commit):
             # node    
             t = mkContextCall(self.position(), self.textOf())
-            self.ast.append(t)
             
             #! these need to be expressions, but not now...
-            if(self.tok == IDENTIFIER):
-                # params
-                self._next()
-                self.parametersOption(t.params)
+            # params
+            self._next()
+            paramCount = self.parametersOption(t.params)
 
-            elif(self.tok == OPERATER):
-                # params, one only.
-                self._next()
-                self.parameter(t.params)
-            
-            elif(self.tok == MONO_OPERATER):
-                # params, one only.
-                self._next()
-                self.parameter(t.params)
-                                
+            t.paramCount = paramCount        
+            self.ast.append(t)
         return commit
-        
         
 ## Root rule
     def root(self):

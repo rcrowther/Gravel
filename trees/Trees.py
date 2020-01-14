@@ -252,6 +252,28 @@ def mkDataDefine(position, nameStr):
     
     
 # NameSpaceDefine
+class CodeSlotNamedDefine(ActionWithBodyBase):
+    '''
+    Action where the body is executed in context of surrounding code.
+    Or, a ''closure' or 'inline'.
+    Special case
+    e.g. sc log {  }
+    '''
+    def __repr__(self):
+        return "CodeSlotNamedDefine('{}' {})".format(
+        self.parsedData,
+        self.paramCount
+        )
+
+def mkCodeSlotNamedDefine(position, nameStr):
+    t = CodeSlotNamedDefine()
+    t.isDef = True
+    t.isName = True
+    t.parsedData = nameStr
+    t.position = position
+    return t
+    
+    
 class CodeSeqNamedDefine(ActionWithBodyBase):
     '''
     Action where the body is executed in context of surrounding code.
@@ -317,8 +339,8 @@ class OperatorContextDefine(ActionWithBodyBase):
     Action where the body is executed in context of the params.
     Or, a ''function' or ''proceedure' of some kind
     Special case
-    The paramcount is always 2.
-    e.g. def mult(x, y) { *(x, y) }
+    The paramcount is always 3.
+    e.g. ac > x, y { x > y }
     '''
     def __repr__(self):
         return "OperatorContextDefine('{}')".format(
@@ -330,7 +352,7 @@ def mkOperatorContextDefine(position, nameStr):
     t.isDef = True
     t.isName = True
     t.parsedData = nameStr
-    t.paramCount = 2
+    t.paramCount = 3
     t.position = position
     return t
 
@@ -340,8 +362,8 @@ class MonoOperatorContextDefine(ActionWithBodyBase):
     Action where the body is executed in context of the params.
     Or, a ''function' or ''proceedure' of some kind
     Special case
-    The paramcount is always 1.
-    e.g. def negate(x) { -x }
+    The paramcount is always 2.
+    e.g. def -x { -x }
     '''        
     def __repr__(self):
         return "MonoOperatorContextDefine('{}')".format(
@@ -353,7 +375,7 @@ def mkMonoOperatorContextDefine(position, nameStr):
     t.isDef = True
     t.isName = True
     t.parsedData = nameStr
-    t.paramCount = 1
+    t.paramCount = 2
     t.position = position
     return t
     
@@ -369,11 +391,10 @@ class ContextCall(ActionWithBodyBase):
             self.paramCount
             )
                 
-def mkContextCall(position, nameStr, paramCount):
+def mkContextCall(position, nameStr):
     t = ContextCall()
     t.isName = True
     t.parsedData = nameStr
-    t.paramCount = paramCount
     t.position = position
     return t                
            
@@ -396,7 +417,7 @@ def mkOperatorCall(position, nameStr):
     t.position = position
     return t  
 
-
+#? do we need?
 class MonoOperatorCall(ActionWithBodyBase):
     '''
     Call on a function/operator.

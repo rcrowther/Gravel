@@ -436,6 +436,9 @@ def _elemReverse(paramedElem, it, out):
         paramCount = paramedElem.paramCount
         for i in range(0, paramCount):
             e = next(it)
+            #! quick fix, remove (most) comments
+            while(isinstance(e, CommentBase)):
+                e = next(it)
             if (e.paramCount > 0):
                 _elemReverse(e, it, out)
             else:
@@ -449,6 +452,9 @@ def treeReverse(tree):
     try:
         while(True):
             e = next(it)
+            #! quick fix, remove (most) comments
+            while(isinstance(e, CommentBase)):
+                e = next(it)
             if (e.paramCount > 0):
                 _elemReverse(e, it, out)
             else:
