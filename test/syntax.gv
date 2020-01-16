@@ -23,7 +23,7 @@ am move = {}
 #move
 
 am walk(speed: int64) = {}
-walk(speed)
+walk(speed) walk(speed)
 
 am wriggle (speed: int64 width: int64) = {}
 #wriggle (speed width)

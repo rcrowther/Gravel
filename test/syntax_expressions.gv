@@ -1,9 +1,20 @@
-colors . RGB . blue 
-3 + (9 % 2)
->>>90
-xCoord = 5
-
+#colors . RGB . blue 
+#3 + (9 % 2)
+#>>>90
+#xCoord = 5
 # fail
-#4 5 + > 6
-#a = stun(speed direction)
-# goo
+#4 + > 6
+# ok as two rules
+#4 5
+#stun1 (4 76)
+#stun2(speed direction)
+#stun3(9 + 6)
+#stun4(7 > stun5(9 + 3))
+# dupe brackets
+#4 + (1 + 3))
+#4 + ((1 + 3)
+# lack of brackets
+#4 + (1 + 3
+#4 + 1 + 3)
+#goo
+

@@ -49,7 +49,12 @@ class Position:
             self.offset,
             )
 
-
+    def __repr__(self):
+        return "Position({}, {}, {})".format(
+            self.source,
+            self.lineNum,
+            self.offset,            
+            )
 
 
 class _NoPosition(Position):

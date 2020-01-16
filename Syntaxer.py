@@ -7,6 +7,9 @@ from Position import Position
 from reporters.Message import Message
 
 
+# All rules should set themselfs up to progross to next token if 
+# sucessful
+# All rules are optional. If not, name as  ''Fix'
 # We've got problems:
 # - Identifying by name alone does not split between '+' (monop) and
 # '+' (binop). Is this kind of issue what full names are for? It's
@@ -128,16 +131,16 @@ class Syntaxer:
             rule(lst)
         self._next()
 
-    def oneOrMoreDelimited(self, rule, endToken):
+    def oneOrMoreDelimited(self, ruleFixed, endToken):
         '''
         Often easier and more human for list rules to match the 
         delimiter than to keep checking if contained rules match.
         Skips the delimiting token.
-        @rule nust be non-optional (throws error)
+        @rule nust be non-optional 'fixed' (throws error)
         '''
         count = 0
         while(True):
-            rule()
+            ruleFixed()
             count += 1
             if (self.isToken(endToken)):
                 break
@@ -277,46 +280,46 @@ class Syntaxer:
             self.skipTokenOrError('Define Data', RCURLY)
         return commit
         
-    def functionDefine(self, lst):
-        '''
-        'fnc' ~ (Identifier | OperatorIdentifier) ~ DefineParameters  ~ Option(Kind) ~ ExplicitSeq
-        Definitions attached to code blocks
-        Used for both named and operater functions.
-        '''
-        #! this textOf is direct, but could be done by token lookup
-        commit = (self.isToken(IDENTIFIER) and self.it.textOf() == 'fnc')
-        if(commit):
-            self._next()
-            pos = self.position()
+    # def functionDefine(self, lst):
+        # '''
+        # 'fnc' ~ (Identifier | OperatorIdentifier) ~ DefineParameters  ~ Option(Kind) ~ ExplicitSeq
+        # Definitions attached to code blocks
+        # Used for both named and operater functions.
+        # '''
+        # #! this textOf is direct, but could be done by token lookup
+        # commit = (self.isToken(IDENTIFIER) and self.it.textOf() == 'fnc')
+        # if(commit):
+            # self._next()
+            # pos = self.position()
              
-            # mark
-            # currently. can't be dried out
-            if(self.tok != IDENTIFIER and self.tok != OPERATER):
-                self.tokenError("In rule '{}' expected '{}' or '{}' but found '{}'".format(
-                    'Define Function',
-                    tokenToString[IDENTIFIER],
-                    tokenToString[OPERATER],
-                    tokenToString[self.tok]
-                    ))
-            markStr = self.textOf()
-            self._next()
+            # # mark
+            # # currently. can't be dried out
+            # if(self.tok != IDENTIFIER and self.tok != OPERATER):
+                # self.tokenError("In rule '{}' expected '{}' or '{}' but found '{}'".format(
+                    # 'Define Function',
+                    # tokenToString[IDENTIFIER],
+                    # tokenToString[OPERATER],
+                    # tokenToString[self.tok]
+                    # ))
+            # markStr = self.textOf()
+            # self._next()
 
-            # make node
-            t = mkContextDefine(pos, markStr)
-            self.ast.append(t)
+            # # make node
+            # t = mkContextDefine(pos, markStr)
+            # self.ast.append(t)
             
-            # params
-            #! generic params
-            self.defineParameters(t.params)
+            # # params
+            # #! generic params
+            # self.defineParameters(t.params)
 
-            # Kind
-            self.optionalKindAnnotation(t)            
+            # # Kind
+            # self.optionalKindAnnotation(t)            
             
-            # body (exp seq)
-            self.skipTokenOrError('Define Function', LCURLY)
-            self.seqContents()
-            self.skipTokenOrError('Define Function', RCURLY)
-        return commit
+            # # body (exp seq)
+            # self.skipTokenOrError('Define Function', LCURLY)
+            # self.seqContents()
+            # self.skipTokenOrError('Define Function', RCURLY)
+        # return commit
         
 
                       
@@ -389,7 +392,7 @@ class Syntaxer:
                 #self.chainedOperaterBinOpCall(lst)
                 #continue
             #break
-        
+    #x
     def functionCall(self, lst, isDotChained):
         '''
         (Identifier | OPERATER) ~ Arguments ~ Option(Kind)
@@ -633,19 +636,140 @@ class Syntaxer:
             # #! for now, assume equal precidence
             while (
                 (len(opStack) > 0) and
-                # #t.precidence >= opStack.top.precidence and
+                # #t.precidence <= opStack.top.precidence
+                # this assumes equality and left assoc
                 opStack[-1] != LBRACKET
                 ):
                 self.ast.append(opStack.pop())
             opStack.append(t)
             self._next()
         return commit
-                    
+
+    def parametersCallOption(self):
+        '''
+        option('(' ~ oneOrMore(parameter) ~')') 
+        Enforced bracketing.
+        '''
+        commit = self.isToken(LBRACKET)
+        #print(str(commit))
+        count = 0
+        if (commit):
+            # One or more params
+            #! self.multiActionCall(), but not yet
+            
+            self._next()
+            count = self.oneOrMoreDelimited(
+                #self.parameterDefine,
+                self.multiActionCallFix,
+                RBRACKET
+                )   
+        return count
+    
+
+    def actionCall(self):
+        '''
+        (Identifier ~ oneOrMore(parameters) | ((Identifier | Operator) ~ parameter)
+        Definitions attached to code blocks
+        Used for both named and operater functions.
+        '''
+        commit = self.isToken(IDENTIFIER)
+        if (commit):
+            # node
+            t = mkContextCall(self.position(), self.textOf())
+            self._next()
+            
+            # params
+            paramCount = self.parametersCallOption()
+            t.paramCount = paramCount        
+            self.ast.append(t)
+        return commit
+        
+    def dataActionCall(self):
+        commit = False
+        if (self.actionCall()):
+            commit = True
+        elif(self.dataNameless()):
+            commit = True
+        return commit
+                   
+    #! but whats the difference between a list of parameter calls and a 
+    # list of instructions? None, bar execution time.
+    #? Think this can be simplified but do accept simplifications, like no curly brackets?
+    #! Not accepting dual parameter sets
+    def multiActionCallFix(self):
+        # has no idea if calling within a nameSet, or container, but 
+        # does it matter?
+        print("multiActionCallFix {} {}".format(self.position().toDisplayString(), self.textOf()))
+        opStack = []
+        # Must have data or monop to start
+        prevWasData = False
+        # if found op, can progress
+        doMore = True
+        while (doMore):
+            if (prevWasData):
+                # i.e if no operator, quit chaining
+                doMore = self.operatorCall(opStack)
+                
+                if (doMore and self.isToken(LBRACKET)):
+                    opStack.append(LBRACKET)
+                    self._next()
+                prevWasData = False
+            else:
+                if (self.isToken(MONO_OPERATER)):
+                    #! should be ultimate precidence
+                    #? so no probs with a push?
+                    t = mkMonoOperatorCall(self.position(), self.textOf())
+                    opStack.append(t)
+                    self._next()
+
+                # i.e if not found data, throw error
+                # With no test, this fails if no data or action there
+                # Also fails if there was an operator but no following 
+                # action/data
+                commit1 = self.dataActionCall()
+                if (not commit1):
+                    # something to do with EOL
+                    self.expectedRuleError(
+                        "Chained Action Call",
+                        "DataAction Call"
+                        ) 
+
+                #! need to protect against unbalanced brackets
+                    # if we reach a rbracket without corresponding 
+                    # lbracket, it is not a fail. It may be a parameter
+                    # delimiter.
+ 
+                if (self.isToken(RBRACKET)):
+                    print("opstack {}".format(opStack))
+                    while(
+                        (len(opStack) > 0) and 
+                        opStack[-1] != LBRACKET
+                        ):
+                        self.ast.append(opStack.pop())
+
+                    # Check if the stack is empty. This means 
+                    # no lbracket was matched here i.e. calling rules 
+                    # handle the token, or it is mismatched. 
+                    # Either way, doMove is false, and there is no
+                    # next() token
+                    if (len(opStack) == 0):
+                        doMore = False
+                    else:
+                        opStack.pop()
+                        self._next()
+
+                prevWasData = True
+            
+        # if not already, empty opStack
+        if (len(opStack) > 0):
+            self.ast.append(opStack.pop())
+        #print("multiActionCalFixl2 {}".format(commit))
+        #return commit
+
     def multiActionCall(self):
         # has no idea if calling within a nameSet, or container, but 
         # does it matter?
-        #out = []
-        opStack = []
+        print("multiActionCall {} {}".format(self.position().toDisplayString(), self.textOf()))
         commit = (           
             # these are the possibilities to open a call
             self.isToken(INT_NUM) or
@@ -655,82 +779,13 @@ class Syntaxer:
             self.isToken(IDENTIFIER) or
             self.isToken(MONO_OPERATER)
             )
-        # print('multiActionCall1 {} {} {}'.format(
-            # tokenToString[self.tok], 
-            # self.textOf(),
-            # commit
-            # ))
         if (commit):
-            prevWasData = False
+            # This works for the first case of 
+            # "simple call, no chain" because the first token is
+            # tested before commit, so should pass.
+            self.multiActionCallFix()
 
-                #? or make list? multiActionCall()
-                # prev was op
-            while(
-                self.isToken(INT_NUM) or
-                self.isToken(FLOAT_NUM)  or
-                self.isToken(STRING) or
-                #self.isToken(MULTILINE_STRING) or
-                self.isToken(IDENTIFIER) or
-                self.isToken(MONO_OPERATER) or
-                # in chained actions, also deal witth these,
-                # interspacing the chains
-                self.isToken(OPERATER) or
-                self.isToken(LBRACKET) or
-                self.isToken(RBRACKET)
-                ):
-
-                if (prevWasData):
-                    commit = self.operatorCall(opStack)
-                    if (not commit):
-                        # something to do with EOL
-                        self.expectedTokenError(
-                            'Operator Call',
-                            OPERATER
-                            )                    
-                    if (self.isToken(LBRACKET)):
-                        opStack.append(LBRACKET)
-                        self._next()
-                    prevWasData = False
-                else:
-                    if (self.isToken(MONO_OPERATER)):
-                        #! should be ultimate precidence
-                        #? so no probs with a push?
-                        t = mkMonoOperatorCall(self.position(), self.textOf())
-                        opStack.append(t)
-                        self._next()
-
-                    # #StringNamelessData
-                    # #ContextCall
-                    if (self.isToken(IDENTIFIER)):
-                        t = mkContextCall(self.position(), self.textOf())
-                        self.ast.append(t)
-                        #? params
-                        # parametersCallOption
-                        self._next()
-                        #self.parametersOption(t.params)
-                    
-                    elif(
-                        self.isToken(INT_NUM) or
-                        self.isToken(FLOAT_NUM)  or
-                        self.isToken(STRING) or
-                        self.isToken(MULTILINE_STRING)
-                        ):
-                        self.dataNameless()
-
-                    if (self.isToken(RBRACKET)):
-                        while(opStack[-1] != LBRACKET):
-                            self.ast.append(opStack.pop())
-                        opStack.pop()
-                        self._next()
-
-                    prevWasData = True
-                
-            #print('multiActionCall2')
-            # empty out
-            if (len(opStack) > 0):
-                self.ast.append(opStack.pop())
-            #print("str out: {}".format(out))
-            self._next()
+        print("multiActionCall2 {}".format(commit))
         return commit
             
                       
@@ -814,24 +869,7 @@ class Syntaxer:
                 )   
         return count
         
-    def parametersCallOption(self):
-        '''
-        option('(' ~ oneOrMore(parameter) ~')') 
-        Enforced bracketing.
-        '''
-        commit = self.isToken(LBRACKET)
-        #print(str(commit))
-        count = 0
-        if (commit):
-            # One or more params
-            #! multiActionCalls, but not yet
-            self._next()
-            count = self.oneOrMoreDelimited(
-                self.parameter,
-                RBRACKET
-                )   
-        return count
-        
+    
 ## Actions
     #! unify paramCount handling
     def actionDefine(self):
@@ -968,27 +1006,6 @@ class Syntaxer:
             # t.paramCount = paramCount        
             # self.ast.append(t)
         # return commit
-        
-    def actionCall(self):
-        '''
-        (Identifier ~ oneOrMore(parameters) | ((Identifier | Operator) ~ parameter)
-        Definitions attached to code blocks
-        Used for both named and operater functions.
-        '''
-        #! this textOf is direct, but could be done by token lookup
-        commit = self.isToken(IDENTIFIER)
-        if (commit):
-            # node    
-            t = mkContextCall(self.position(), self.textOf())
-            
-            #! these need to be expressions, but not now...
-            # params
-            self._next()
-            paramCount = self.parametersOption(t.params)
-
-            t.paramCount = paramCount        
-            self.ast.append(t)
-        return commit
         
 ## Root rule
     def root(self):
