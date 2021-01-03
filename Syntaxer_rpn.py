@@ -7,7 +7,7 @@ from Position import Position
 from reporters.Message import Message
 
 
-# All rules should progross to next token if 
+# All rules should set themselfs up to progross to next token if 
 # sucessful
 # All rules are optional. If not, name as  ''Fix'
 # We've got problems:
@@ -121,20 +121,15 @@ class Syntaxer:
             
     ## Rule helpers
     #! enable
-    # Could be more rigourous, what if delimiter is in rule
-    # and rule goes wrong?
-    def zeroOrMoreDelimited(self, ruleFixed, endToken):
+    def zeroOrMoreDelimited(self, lst, rule, endToken):
         '''
         Often easier and more human for list rules to match the 
         delimiter than to keep checking if contained rules match.
         Skips the delimiting token.
         '''
-        count = 0
         while(not self.isToken(endToken)):
-            ruleFixed()
-            count += 1
+            rule(lst)
         self._next()
-        return count
 
     def oneOrMoreDelimited(self, ruleFixed, endToken):
         '''
@@ -713,6 +708,7 @@ class Syntaxer:
         hasAssignment = False
         while (doMore):
             if (prevWasData):
+                
                 # Pre-empt test for doubled equality
                 if(self.isToken(OPERATER) and 
                     self.textOf() == "=" and 
@@ -1026,119 +1022,6 @@ class Syntaxer:
             # self.ast.append(t)
         # return commit
         
-###
-    def labelAssign(self):
-        '''
-        'fnc' ~ (Identifier | OperatorIdentifier) ~ DefineParameters  ~ Option(Kind) ~ ExplicitSeq
-        Definitions attached to code blocks
-        Used for both named and operater functions.
-        '''
-        #! this textOf is direct, but could be done by token lookup
-        commit = (
-            self.isToken(COLON)
-            )
-        if(commit):
-            self._next()
-            pos = self.position()
-            
-            # mark 
-            if(self.tok != IDENTIFIER):
-                self.tokenError("In rule '{}' expected '{}' but found '{}'".format(
-                    'Define Data',
-                    tokenToString[IDENTIFIER],
-                    tokenToString[self.tok]
-                    ))
-            markStr = self.textOf()
-            self._next()
-            
-            # make node
-            t = mkLabelAssign(pos, markStr)
-            
-            # Kind
-            self.optionalKindAnnotation(t)
-
-            #! skipOp
-            if (not (self.isToken(OPERATER) and self.it.textOf() == '=')):
-                self.expectedTokenError('Action Define',  EQUALS)
-            self._next()
-            
-            # body (namelessData)
-            #! Perhaps could take an expression
-            self.multiActionCallFix()
-            self.ast.append(t)
-        return commit
-
-###
-    def listConstruct(self):
-        commit = self.optionallySkipToken(LBRACKET)
-        if (commit):
-            t = mkActionApply(self.position(), 'list')
-            self.ast.append(t)
-            count = self.zeroOrMoreDelimited(
-                self.multiActionCallFix, 
-                RBRACKET
-                )        
-        return commit
-        
-    def listOfDefinitionsOption(self):
-        return self.parametersDefineOption()
-
-    def kindAnnotation(self, tree):
-        '''
-        option(':' ~ Kind)
-        Optionally match a Kind annotation.
-        '''
-        coloned = self.optionallySkipToken(COLON)
-        if (coloned):
-            #tree.kindStr = self.getTokenOrError('Kind Annotation', IDENTIFIER) 
-            tree.parsedKind = self.getTokenOrError('Kind Annotation', IDENTIFIER) 
-            # add contents
-            #self.optionalGenericParams(k)
-        return coloned     
-           
-    def label(self):
-        commit = (
-            self.isToken(IDENTIFIER)
-            )
-        if(commit):
-            markStr = self.textOf()
-            t = mkLabel(self.position(), markStr)
-            self._next()
-            self.kindAnnotation(t)
-            self.ast.append(t)
-        return commit
-
-    def labelFixed(self):
-        if(self.tok != IDENTIFIER):
-            self.expectedTokenError(
-                'Label Fixed',
-                IDENTIFIER
-                )
-        self.label()
-        
-    def seqContents(self):
-        '''
-        Used for body contents.
-        Allows definitions.
-        '''
-        entryCount = len(self.ast)
-        while(
-            self.comment()
-            #or self.multilineComment()
-            #or self.constant()
-            #or self.actionDefine()
-            #or self.labelAssign()
-            #or self.multiActionCall()
-            or self.listConstruct()
-            or self.labelFixed()
-            or self.lineFeed()
-            ):
-                pass
-            #? what are we doing here at the end?
-            #if (len(lst) > 1):
-            #    lst[-1].prev = lst[-2]
-        return len(self.ast) - entryCount
-    
 ## Root rule
     def root(self):
         try:

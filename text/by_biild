@@ -1,0 +1,20 @@
+== Mathematical/infix notation
+Let's take a mathematical notation,
+
+z = y + x
+
+Theres a lot to be said. Let's ignore deep mathematical theory about the basis of mathematics (about which your authot is not fluent), and look at syntax. First, there is the things computer people, and Gravel, call ''operators' i.e. ''=' and ''+'. These depend on what comes before them, and what comes after them. This is sometimes called ''infix' notation. And there can only be one ''=' sign. Actually, the ''=' sign could be used for other purposes, for example, what theorists call ''precidendence', but I've never seen it done.
+
+Useful to know, in Gravel,
+-- this notation can be parsed
+-- operators are anything beginning with non-alphabetic characters, and are not a literal/constant thing 
+-- operators can only take one parameter, perhaps an implicit parameter (whatever comes before them)
+
+More later.
+
+== function definition and calls
+A computer language can be constructed from nothing but operators and definitions, but it will be verbose and difficult to make efficient. See OCAML for a language that leans that way (not that OCAML is either verbose or inefficient). It is also possible to make a language out of the more common function call syntax, though that will be riddled with symbols and embedding, so hard to read. See the more fundamental LISPs for an example of language that leans that way. In practise, most industrial-strength (OCAML term) languages use a combination of the two. 
+
+
+
+

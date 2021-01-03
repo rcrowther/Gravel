@@ -1,0 +1,8 @@
+=What it should look like
+
+BusWidth = 64
+
+VolatileRegisterProtect {
+print('rax')
+
+}

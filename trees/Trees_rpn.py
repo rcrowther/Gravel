@@ -17,31 +17,21 @@ class CodeMark():
     against tables.
     '''    
     def __init__(self):
-        ## parseData
-        # carries a value for literals/atoms
-        self.value = None
-        #? carries data which parses to a string.
+        # paramcount of this expression
+        self.paramCount = 0
+        # has a body
+        self.hasBody = False
+        # for data which parses to a string.
         self.parsedData = None
-        # parsed names of objects will be in parsedData. But some
+        # parsefd names of objects will be in parsedData. But some
         # common names will be tokenised, and are stored here
         self.token = 0
         # position in source code
         self.position = NoPosition
-        
-        ## node classifiers main
-        # is this active code (or documentation)?
-        self.isCode = True
-        # literal/constant
-        self.isLiteral = False
         # is this a definition or usage of an expression 
         self.isDef = False
-        
-        ## Node classifiers other
         # I thought this would be useful...
-        self.hasLabel = False
-        # has a body param
-        self.hasBody = False
-                
+        self.isName = False
         # definition flags like inline, constant, etc.
         self.flags = []
         # Link to the owning namespace of this expression
@@ -49,10 +39,12 @@ class CodeMark():
         # The kind of this expression. For literals, a value, for an
         # expression, the process of parameters to return
         self.kind = Any
-        # paramcount of this expression
-        self.paramCount = 0
-
-
+        # carries a value for literals/atoms
+        # (and actionSeq/term for defs)
+        self.value = None
+        # NEW
+        # for lambda
+        self.paramLabel = None
         
     def __repr__(self):
         return "Call on CodeMark, do not do this, use subtypes"
@@ -118,7 +110,7 @@ def mkParameterDefinition(position, name):
     t = ParameterDefinition()
     t.position = position   
     t.isDef = True
-    t.hasLabel = True
+    t.isName = True
     t.parsedData = name
     return t
     
@@ -257,29 +249,12 @@ class DataDefine(ActionWithBodyBase):
 def mkDataDefine(position, nameStr):
     t = DataDefine()
     t.isDef = True
-    t.hasLabel = True
+    t.isName = True
     t.parsedData = nameStr
     t.position = position
     return t
     
-class LabelAssign(ActionWithBodyBase):
-    '''
-    Action where the body is executed for data.
-    Or, a ''val' or ''var' of some kind
-    No params
-    e.g. dc pi = { 3.142 }
-    '''
-    def __repr__(self):
-        return "LabelAssign('{}')".format(self.parsedData)
-                
-def mkLabelAssign(position, nameStr):
-    t = LabelAssign()
-    t.isDef = False
-    t.hasLabel = True
-    t.parsedData = nameStr
-    t.position = position
-    return t
-        
+    
 # NameSpaceDefine
 class CodeSlotNamedDefine(ActionWithBodyBase):
     '''
@@ -297,7 +272,7 @@ class CodeSlotNamedDefine(ActionWithBodyBase):
 def mkCodeSlotNamedDefine(position, nameStr):
     t = CodeSlotNamedDefine()
     t.isDef = True
-    t.hasLabel = True
+    t.isName = True
     t.parsedData = nameStr
     t.position = position
     return t
@@ -318,7 +293,7 @@ class CodeSeqNamedDefine(ActionWithBodyBase):
 def mkCodeSeqNamedDefine(position, nameStr):
     t = CodeSeqNamedDefine()
     t.isDef = True
-    t.hasLabel = True
+    t.isName = True
     t.parsedData = nameStr
     t.position = position
     return t
@@ -357,7 +332,7 @@ class CodeSeqContextDefine(ActionWithBodyBase):
 def mkCodeSeqContextDefine(position, nameStr):
     t = CodeSeqContextDefine()
     t.isDef = True
-    t.hasLabel = True
+    t.isName = True
     t.parsedData = nameStr
     t.position = position
     return t
@@ -379,7 +354,7 @@ class OperatorContextDefine(ActionWithBodyBase):
 def mkOperatorContextDefine(position, nameStr):
     t = OperatorContextDefine()
     t.isDef = True
-    t.hasLabel = True
+    t.isName = True
     t.parsedData = nameStr
     t.paramCount = 3
     t.position = position
@@ -402,7 +377,7 @@ class MonoOperatorContextDefine(ActionWithBodyBase):
 def mkMonoOperatorContextDefine(position, nameStr):
     t = MonoOperatorContextDefine()
     t.isDef = True
-    t.hasLabel = True
+    t.isName = True
     t.parsedData = nameStr
     t.paramCount = 2
     t.position = position
@@ -422,7 +397,7 @@ class ContextCall(ActionWithBodyBase):
                 
 def mkContextCall(position, nameStr):
     t = ContextCall()
-    t.hasLabel = True
+    t.isName = True
     t.parsedData = nameStr
     t.position = position
     return t                
@@ -440,7 +415,7 @@ class OperatorCall(ActionWithBodyBase):
 
 def mkOperatorCall(position, nameStr):
     t = OperatorCall()
-    t.hasLabel = True
+    t.isName = True
     t.parsedData = nameStr
     t.paramCount = 2
     t.position = position
@@ -459,7 +434,7 @@ class MonoOperatorCall(ActionWithBodyBase):
 
 def mkMonoOperatorCall(position, nameStr):
     t = MonoOperatorCall()
-    t.hasLabel = True
+    t.isName = True
     t.parsedData = nameStr
     t.paramCount = 1
     t.position = position
@@ -520,39 +495,39 @@ def mkLabel(position, text):
 class ActionDefinition(Action):
     '''
     Action define.
-    Parameter definition(s) preceed
     '''
     def __repr__(self):
-        return "ActionDefinition({})".format(self.parsedData)
+        return "ActionDefinition({}.{})".format(self.parsedData, self.paramLabel)
 
-def mkActionDefinition(position, actionLabel, action):
+def mkActionDefinition(position, actionLabel, paramLabel, action):
     '''
     @aSeq 
     '''
     t = ActionDefinition()
     t.isDef = True
-    t.hasLabel = True
+    t.isName = True
     t.parsedData = actionLabel
     t.value = action
     t.paramCount = 0
+    t.paramLabel = paramLabel
     t.position = position
     return t
 
 class ActionApply(Action):
     '''
     Action.
-    Parameter(s) preceed.
     '''
     def __repr__(self):
-        return "ActionApply({})".format(self.parsedData)
+        return "ActionApply({} {})".format(self.parsedData, self.value)
                             
-def mkActionApply(position, actionLabel):
+def mkActionApply(position, actionLabel, actionParamValue):
     '''
     @actionParamValue
     '''
     t = ActionApply()
-    t.hasLabel = True
+    t.isName = True
     t.parsedData = actionLabel
+    t.value = actionParamValue
     t.paramCount = 0
     t.position = position
     return t

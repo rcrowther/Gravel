@@ -431,30 +431,34 @@ def RawPrint(tree, showParams=True):
         # else:
             # out.append(e)  
             # paramsWritten += 1
-        
+
+def commentRemove(tree):
+    b = []
+    for e in tree:
+        if(not isinstance(e, CommentBase)):
+            b.append(e)
+    return b
+
+    
 def _elemReverse(paramedElem, it, out):
         paramCount = paramedElem.paramCount
         for i in range(0, paramCount):
             e = next(it)
-            #! quick fix, remove (most) comments
-            while(isinstance(e, CommentBase)):
-                e = next(it)
             if (e.paramCount > 0):
                 _elemReverse(e, it, out)
             else:
                 out.append(e)
         out.append(paramedElem)
-                
+           
+# This is the one...
 def treeReverse(tree):
+    # Must come after comments are removed
     #NB in Python, returns an iterator
     it = reversed(tree)
     out = []
     try:
         while(True):
             e = next(it)
-            #! quick fix, remove (most) comments
-            while(isinstance(e, CommentBase)):
-                e = next(it)
             if (e.paramCount > 0):
                 _elemReverse(e, it, out)
             else:
@@ -463,7 +467,130 @@ def treeReverse(tree):
          pass
     out.reverse()
     return out
+
+
+
+_id = -1
+
+def newName():
+    global _id
+
+    _id += 1
+    return "tease" + str(_id)
+
+ 
+#? This has to happen after inlining
+# Some calls don't need it. 
+# Any machine-code  ops can be handled in place without allocation
+# by the RPN notation and stack
+# but
+# all custom calls and ops must be handled
+
+def _callTease(it, teasedCalls, paramedElem, newName):
+    b = []
+    b.append(mkOperatorCall(NoPosition, '='))
+    b.append(mkContextCall(NoPosition, newName))
+    b.append(paramedElem)
+    paramCount = paramedElem.paramCount
+    for i in range(0, paramCount):
+        e = next(it)
+        if (e.paramCount > 0):
+            newName = newName()
+            b.append(newName)
+            _callTease(it, teasedCalls, e, newName)
+        else:
+            b.append(e)
+    teasedCalls.append(b)
     
+def _callScan(it, out, paramedElem):
+    # For root level. Does not tease bottom level calls, ccans them
+    # to initiate any teasing
+    out.append(paramedElem)
+    teasedCalls = []
+    paramCount = paramedElem.paramCount
+    for i in range(0, paramCount):
+        e = next(it)
+        if (e.paramCount > 0):
+            name = newName()
+            out.append(name)
+            _callTease(it, teasedCalls, e, name)
+        else:
+            out.append(e)
+    # went on depth first, pop off in reverse
+    for c in teasedCalls:
+        out.extend(c)
+
+                        
+def teaseCalls(tree):
+    _id = 0
+    it = reversed(tree)
+    out = []
+    try:
+        while(True):
+            e = next(it)
+            if (e.paramCount > 0):
+                _callScan(it, out, e)
+            else:
+                out.append(e)             
+    except StopIteration:
+         pass
+    out.reverse()
+    return out
+
+def _buildAction(it, b, actionCount):
+    # iterator must lie on the preceeding elem
+    # @actionCount number of actions to skip
+    for i in range(0, actionCount):
+        e = next(it)
+        b.append(e)
+        c = e.paramCount
+        if (c > 0):
+            _buildAction(it, b, c)
+        
+def _upendAssignment(it, out, e):
+    # place equality
+    out.append(e)
+    # read first arg, stash
+    b = []
+    _buildAction(it, b, 1)
+    
+    # read second arg, write
+    e = next(it)
+    out.append(e)    
+    
+    # write fisat arg
+    out.extend(b)
+    
+def upendAssignment(tree):
+    # Invert assignment paameters
+    # e.g. x = 1 + 2
+    #
+    # parses as:
+    # Label(x)
+    # Int(1)
+    # Int(2)
+    # Op(+)
+    # Op(=)
+    #
+    # becomes:
+    # Int(1)
+    # Int(2)
+    # Op(+)    
+    # Label(x)
+    # Op(=)
+    it = reversed(tree)
+    out = []
+    try:
+        while(True):
+            e = next(it)
+            if (isinstance(e, OperatorCall) and e.parsedData == "="):
+                _upendAssignment(it, out, e)
+            else:
+                out.append(e)             
+    except StopIteration:
+         pass
+    out.reverse()
+    return out        
     
 #? No point pluging into definitions unless called?
 #? but since we only have a name table, we need to allocate memory? Maybe.

@@ -1,0 +1,49 @@
+= REPL and homoiconicity
+Some people know all of this. But this is one way of looking at it,
+
+== What is a REPL?
+A Read-Eval-Prinr-Loop. You get a prompt, a thing waiting for input (usually typing), you type in a command in a computer language,
+?python
+>>> 7 + 5
+?
+The command is Read, Evaluated, then a result is Printed,
+?python
+>>> 7 + 5
+= 12
+?
+Then the input waits again to read (Loops)
+
+?python
+>>> 7 + 5
+= 12
+?
+If you've ever used a REPL, then you don't need me to tell you how great it is. You can try out part of a computer program, to either see if it works, or you can remember how to type that bit in. Sometimes it's handy for no more that wondering what the result of a calculation is.
+
+So far, you may know.
+
+== REPLs are not the same
+Nowadays, you can get a REPL for nearly all languages. Some tricky and hardcore languages, like C, hold out. But all REPLs are not the same.
+
+Take the Python REPL. As a scripted language, it supposedly has an interpreter, which should make things easy (go further down). But no, Python has two language design decisions that make the REPL awkward. First, delimiting-by-indents means you can't type streams of code, continual entry and indenting is required. Second, Python has a basic idea that each module is to some extent, compiled/evaluated once, then that is frozen. So if you make changes in code, that will not be reflected in what happens in the REPL.
+
+Compare that to a more LISP REPL. Most LISPs can be typed in as a stream, and do not rely on line terminations (which has advantages sometimes, but not here). And in some LISPs if you change source code, the changes are immediately visible for the REPL.
+
+There's another advantage in some LISPs and editors. LISPs are very consistent lanaguages in their form od syntax (which again has downsides, but not here). Place your cursor somewhere and the ''REPL', or editor, can evaluate from there. So you don't trust that expression in the middle of the function? Test it with some values. Another way of saying that is that LISPs allow an entry point for evaluation just about anywhere in the codebase---no need to type in code again to test.
+
+== Run/Evalute, compile/interpret
+So what is an interpreter? Every language compiler/interpreter, whatever, converts a more human or mathematical or higher level language into machine code, language a processir can run. But a compiler simply takes a bit of the source, and converts it. This results in different programs for each source. An interpreter knows there are at base only a few things that every high level language does. The interpreter is written to do thoose things. So you push the program in, it does it.
+
+There's ups and downs to both approaches. A compiled program is inevitably faster in execution, because it doesn't have to parse the code every time, and a little because it can optomise input. But it is slow to compile, a ttrade-off. Interpreted programs are much faster to return results---although they must parse every time and haave arguably slower processing, they are not trying to construct a whole ecosystem in one go, and don't need multiple commands to start.
+
+ 
+  
+
+
+
+== References
++dl
+~ REPL, Wikipedia,
+:{a(https://en.wikipedia.org/wiki/Read%E2%80%93eval%E2%80%93print_loop)}
+~ Online REPLs in a host of languages,
+:{a(https://repl.it/)}
++

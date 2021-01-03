@@ -168,10 +168,16 @@ if __name__ == "__main__":
     elif (lastP == 'syntax'):
         ## Treeprint
         from Syntaxer import Syntaxer
-        from trees.Visitors import RawPrint, treeReverse
+        from trees.Visitors import (
+        RawPrint, treeReverse, commentRemove, teaseCalls,
+        upendAssignment
+        )
         s = Syntaxer(srcB[0], reporter)
         RawPrint(s.ast)
-        tree = treeReverse(s.ast)
+        tree = commentRemove(s.ast)
+        #tree = treeReverse(tree)
+        #tree = teaseCalls(tree)
+        tree = upendAssignment(tree)
         print("so...")
         RawPrint(tree)
 

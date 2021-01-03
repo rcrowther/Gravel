@@ -86,9 +86,9 @@ from trees.Trees import CommentBase
 
 
 
-class CommentStripVisitor(VisitorForBodies):
-    def nodeWithBody(self, t):
-        t.body = [child for child in t.body if (not(isinstance(child, CommentBase)))]
+# class CommentStripVisitor(VisitorForBodies):
+    # def nodeWithBody(self, t):
+        # t.body = [child for child in t.body if (not(isinstance(child, CommentBase)))]
 
 
 
@@ -106,8 +106,12 @@ class StripComments(Phase):
         if (not compilationUnit.tree):
             reporter.warning('phases.Basic.StripComments was unable to load a tree. Does a tree exist at for this phase?')
             return
-        CommentStripVisitor(compilationUnit.tree)
-
+        #CommentStripVisitor(compilationUnit.tree)
+        b = []
+        for e in tree:
+            if(not isinstance(e, CommentBase)):
+                b.append(e)
+        compilationUnit.tree = b
 
 
 

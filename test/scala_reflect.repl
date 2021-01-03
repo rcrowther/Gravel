@@ -10,3 +10,8 @@ typeOf[Test].members
 val testMember = typeOf[Test].member("test":TermName).asMethod
 
 typeOf[List[_]].member(newTermName("map"))
+
+
+import scala.reflect.runtime.universe._
+val expr = reify { 4 + 2 }
+showRaw(expr.tree)
