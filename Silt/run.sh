@@ -31,6 +31,6 @@ if [ "$sysExit" -gt 0 ]; then
     exit $?;
 fi
 
-echo "done"
+printf "\ndone\n"
 
 rm test

@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+# Currently unused
 import nasmFrames
 
 externs = ""
