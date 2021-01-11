@@ -46,120 +46,7 @@ WidthInfoMap = {
 }
 alignedBitWidths = list(WidthInfoMap.keys())
 alignedByteWidths = [v.byteCount for k,v in WidthInfoMap.items()]
-bytesToASMName = { v.byteCount:v.ASMName for k,v in WidthInfoMap.items()}
-
-#from collections import namedtuple
-#namedtuple("Student", ["name", "age", "faculty"])
-class Encoding():
-    def __init__(self, name):
-        self.name = name
-        
-    def __repr__(self):
-        return 'Encoding(' + self.name + ')'
-        
-Signed = Encoding('signed')
-Unsigned = Encoding('unsigned')
-Float = Encoding('float')
-ASCII = Encoding('ascii')
-UTF8 = Encoding('UTF8')
-
-class Type():
-    encoding = None
-    elementType = None
-
-    def __init__(self):
-        pass
-            
-    def canEqual(self, other):
-        return isinstance(other, Type)
-        
-    def equals(self, other):
-        return self.canEqual(other) and self.elementType.equals(self, other)
-        
-   #def print(self):
-   #     raise UnimplementedError();
-    def __repr__(self):
-        return "{}".format(self.__class__.__name__)
-
-
-                
-class _Bit8(Type):
-    encoding = Signed
-    #def print(self):
-    #    pass
-Bit8 = _Bit8()
-
-class _Bit16(Type):
-    encoding = Signed
-
-Bit16 = _Bit16()
-
-class _Bit32(Type):
-    encoding = Signed
-Bit32 = _Bit32()
-
-class _Bit64(Type):
-    encoding = Signed
-Bit64 = _Bit64()    
-
-class _Bit32F(Type):
-    '''
-    A 32bit float
-    in C ''float'
-    '''
-    encoding = Float
-Bit32F = _Bit32F()
-
-class _Bit64F(Type):
-    '''
-    A 32bit float
-    in C ''double'
-    '''
-    encoding = Float
-bit64F = _Bit64F()
-
-class _StrASCII(Type):
-    encoding = ASCII
-StrASCII = _StrASCII() 
- 
-class _StrUTF8(Type):
-    encoding = UTF8
-StrUTF8 = _StrUTF8() 
-
-
-
-class TypeContainer(Type):
-    def __init__(self, elementType):
-        self.elementType = elementType
-        
-    def __repr__(self):
-        return "{}(elementType:{})".format(self.__class__.__name__, self.elementType)
-
-    def __str__(self):
-        return "{}[{}]".format(self.__class__.__name__, self.elementType)
-        
-        
-                
-class Array(TypeContainer):
-    def __init__(self, elementType):
-        if not(issubclass(type(elementType), Type)):
-            raise ValueError('Array elementType not a Type. elementType: {}'.format(type(elementType)))
-        super().__init__(elementType)
-        
-        
-class Clutch(TypeContainer):
-    def __init__(self, elementType):
-        if (type(elementType) != dict):
-            #! dict values should be types
-            raise ValueError('Clutch elementType not a dict. elementType: {}'.format(type(elementType)))
-        super().__init__(elementType)
-        
-##Pointer?b
-
-# Render data
-baseStyle = {
-    'indent': '    '
-}
+bytesToASMName = {v.byteCount:v.ASMName for k,v in WidthInfoMap.items()}
 
 
 # Aritecture data
@@ -184,6 +71,24 @@ registers = [
     "rdi"
     "rsp",
 ]
+GeneralPurposeRegisters = [
+    "rax", 
+    "rbx",
+    "rcx",
+    "rdx",
+    "rbp",
+    "rsi",
+    "rdi",
+    "rsp",
+    "r8",
+    "r9",
+    "r10",
+    "r11",
+    "r12",
+    "r13",
+    "r14",
+    "r15",
+]
 
 #   %ebp, %ebx, %edi and %esi must be preserved   
 # clobbers r10, r11 and any parameter registers 
@@ -198,7 +103,265 @@ cParemeterFloatRegister = [
 def byteSize(bitsize):
     return bitsize >> 3
 
+## Types
+'''
+# Rationale for types
+We were storing bit sizes anyway, because they are neceassary for 
+clutches That comes close to type info. To add an encoding more or 
+less defines a type. It also expands the system from perhaps 5 
+''types' (bit sizes) to perhaps sixteen ''types (with the addition
+of encoding). This is still managable. What it will do is give is
+many advantages of defining special instructions, for example, for
+float types, and for prints.
+What we will not do is introduce any feature that relies on the types,
+such as polymorphic functions.
+We will not type symbols???
+We will not store non coded data like string lengths.
+'''
+#from collections import namedtuple
+#namedtuple("Student", ["name", "age", "faculty"])
+class Encoding():
+    def __init__(self, name):
+        self.name = name
+        
+    def __repr__(self):
+        return 'Encoding(' + self.name + ')'
+        
+Signed = Encoding('signed')
+Unsigned = Encoding('unsigned')
+Float = Encoding('float')
+ASCII = Encoding('ascii')
+UTF8 = Encoding('UTF8')
 
+# class TypeMeta(type):
+    # def __repr__(self):
+        # return str(self.__name__)
+        
+#class Type(metaclass=TypeMeta):
+class Type():
+    encoding = None
+    elementType = None
+    '''
+    A bytesize of None means, don't know, or variable
+    '''
+    byteSize = None
+    
+    #def __init__(self):
+    #    raise NotImplementedError('A base Type can not be instanciated')
+            
+    # @property
+    # def byteSize(self):
+        # return self._byteSize
+        
+    def canEqual(self, other):
+        return isinstance(other, Type)
+        
+    def equals(self, other):
+        #return self.canEqual(other) and self.elementType.equals(other)
+        return (self == other)
+                
+    def valprint(self):
+        raise NotImplementedError('This type has no print representation');
+        
+    def __repr__(self):
+        raise NotImplementedError('This type has no __repr__ representation');
+        #return "{}".format(self.__class__.__name__) #+ ('instance')
+
+'''
+Far as I can see, we have two alternatives with types:
+Use Pythons facilities, replicated in many languages, to make a type as 
+a class,
+Con: 
+- Needs metaclasses from the off. 
+- To get the type of a constructed container, we must use type()
+- Can not autogenerate new types easily
+Or make types an instance,
+Con:
+- All types need a instance representation someplace. I make a 
+VarArray(Bit8). If type is needed, say for further construction, it 
+must construct an Array (type) instance with Bit8 instance embedded.
+- Will raise problems of equality between types 
+'''
+'''
+Types
+A type is the common, immutable aspeects of the basic data (so far, not
+fuctions). 
+Somettimes we need to refer to types themselves. For example, in an 
+array, we do not need to know the type of every element, only that 
+every element has a type of X. To do this, we refer to the class itself,
+which can in Python be passed about and compared.
+The base types do not exist as individual instances i.e. are not mapped 
+to data. Niether do they work if they are instances (they should not be 
+instanced). They onlyy refer to data when they are put in a container.
+One of the containers is a Literal/Constant container.
+Any type put in a containeer creates a new type, which take the name of  
+the container as type. Again, the class is used to refer to the type.
+Since the process is circular (type in type in type...), from these 
+elements, arbitary types can be built.
+'''
+# char
+class _Bit8(Type):
+    encoding = Signed
+    byteSize = 1
+    #def print(self):
+    #    pass
+    def __repr__(self):
+        return "Bit8"
+Bit8 = _Bit8()
+
+# short int
+class _Bit16(Type):
+    encoding = Signed
+    byteSize = 2
+    #def print(self):
+    #    pass
+    def __repr__(self):
+        return "Bit8"
+Bit16 = _Bit16()
+
+# int
+class _Bit32(Type):
+    encoding = Signed
+    byteSize = 4
+    #def print(self):
+    #    pass
+    def __repr__(self):
+        return "Bit32"
+Bit32 = _Bit32()
+
+# long int
+class _Bit64(Type):
+    encoding = Signed
+    byteSize = 8
+    #def print(self):
+    #    pass
+    def __repr__(self):
+        return "Bit64"
+Bit64 = _Bit64()    
+
+# long long int
+class _Bit128(Type):
+    encoding = Signed
+    byteSize = 8
+    #def print(self):
+    #    pass
+    def __repr__(self):
+        return "Bit128"
+Bit128 = _Bit128()    
+
+# float
+class _Bit32F(Type):
+    '''
+    A 32bit float
+    in C ''float'
+    '''
+    encoding = Float
+    byteSize = 4
+    #def print(self):
+    #    pass
+    def __repr__(self):
+        return "Bit8"
+Bit32F = _Bit32F()
+
+# double
+class _Bit64F(Type):
+    '''
+    A 32bit float
+    in C ''double'
+    '''
+    encoding = Float
+    byteSize = 8
+    #def print(self):
+    #    pass
+    def __repr__(self):
+        return "Bit8"
+Bit64F = _Bit64F()
+
+#! ignoring long double (128ish)
+
+class _StrASCII(Type):
+    encoding = ASCII
+    #def print(self):
+    #    pass
+    def __repr__(self):
+        return "Bit8"
+StrASCII = _StrASCII() 
+ 
+class _StrUTF8(Type):
+    encoding = UTF8
+    #def print(self):
+    #    pass
+    def __repr__(self):
+        return "Bit8"
+StrUTF8 = _StrUTF8() 
+
+
+# Containers must be instanciated to make a type
+class TypeContainer(Type):
+    def __init__(self, elementType):
+        self.elementType = elementType
+
+    def equals(self, other):
+        #return self.canEqual(other) and self.elementType.equals(other)
+        return (type(self) == type(other)) and self.elementType.equals(other.elementType)
+
+    def __repr__(self):
+        return "{}(elementType:{})".format(self.__class__.__name__, self.elementType)
+
+    def __str__(self):
+        return "{}[{}]".format(self.__class__.__name__, self.elementType)
+        
+class Literal(TypeContainer):
+    def __init__(self, elementType):
+        if not(isinstance(elementType, Type)):
+            raise ValueError('Literal elementType not a Type. elementType: {}'.format(type(elementType)))
+        super().__init__(elementType)
+        self.byteSize = self.elementType.byteSize
+            
+class Pointer(TypeContainer):
+    byteSize = architecture['bytesize']
+    def __init__(self, elementType):
+        if not(isinstance(elementType, Type)):
+            raise ValueError('Pointer elementType not a Type. elementType: {}'.format(type(elementType)))
+        super().__init__(elementType)
+                            
+class Array(TypeContainer):
+    def __init__(self, elementType):
+        if not(isinstance(elementType, Type)):
+            raise ValueError('Array elementType not a Type. elementType: {}'.format(type(elementType)))
+        super().__init__(elementType)
+        
+    # @property
+    # def byteSize(self):
+        # bz = self.elementType.byteSize
+        # if (bz):
+            # return self.size * self.elementType.byteSize
+        # return bz
+                
+#! There is situations when cluch data is aligned. Acccount for that
+class Clutch(TypeContainer):
+    def __init__(self, elementType):
+        super().__init__(elementType)
+        self.offsets = {}
+        byteSize = 0
+        #! what if the type bytesize is None
+        #? that should never be. Only applies to arrays, and no array should be raw in a clutch?
+        for k,tpe in elementType.items():
+            if not(isinstance(tpe, Type)):
+                raise ValueError('Clutch an element of elementType not instance of Type. elementType:{}, element: {}'.format(elementType, tpe))
+            self.offsets[k] = byteSize
+            byteSize += tpe.byteSize
+        self.byteSize = byteSize
+
+##Pointer?b
+
+# Render data
+baseStyle = {
+    'indent': '    '
+}
+
+
+## Builder
 class Builder():
     def __init__(self):
         self._externs = set()
@@ -282,75 +445,132 @@ def stringDefine(b, localStack, dataLabels, string):
     return Pointer(b, localStack, 'rax')        
         
         
-class Print():
-    def __init__(self, b):
-        self.b = b
+class Print64():
+    #def __init__(self, b):
+    #    self.b = b
         
+    def dispatch(self, b, tpe, source):
+        if(tpe == Bit8):
+            self.i8(b, source)
+        elif(tpe == Bit16):
+            self.i16(b, source)
+        elif(tpe == Bit32):
+            self.i32(b, source)
+        elif(tpe == Bit64):
+            self.i64(b, source)
+        elif(tpe == Bit128):
+            self.i128(b, source)
+        elif(tpe == Bit32F):
+            self.f32(b, source)
+        elif(tpe == Bit64F):
+            self.f64(b, source)
+        elif(tpe == StrASCII):
+            self.ascii(b, source)
+        #elif(tpe == StrUTF8):
+        #    self.utf8(b, source)
+        #elif(tpe == Pointer):
+        #    self.pointer(b, tpe, source)
+        #elif(tpe == Array):
+        #    self.array(b, tpe, source)
+        else:
+            raise NotImplementedError('Print: unrecognised type. tpe:()'.format(tpe));
+
+    def pointer(self, b, tpe, location):
+        self.dispatch(b, tpe, base + offset)
+        
+    def array(self, b, tpe, location):
+        byteSize = tpe.elementType.byteSize
+        base = location()
+        for offset in (0..tpe.size):
+            self.dispatch(b, tpe, base + offset)
+
+            
     def protect(self, source):
         if (source in ['rdi', 'rsi' ]):
             raise ValueError('Printing clobbers RDI and RSI. address: {}'.format(source))
 
-    def extern(self):
+    def extern(self, b):
         self.b.externsAdd("extern printf")
-
-    def flush(self):
-        self.b.externsAdd("extern fflush")
-        self.b += "mov rdi, 0"
-        self.b += "call fflush"
+ 
+    def flush(self, b):
+        b.externsAdd("extern fflush")
+        b += "mov rdi, 0"
+        b += "call fflush"
             
-    def generic(self, form, source):
+    def generic(self, b, form, source):
         self.protect(source)
-        self.extern()
-        self.b += "mov rdi, " + form
-        self.b += "mov rsi, " + source
-        self.b += "call printf"
+        self.extern(b)
+        b += "mov rdi, " + form
+        b += "mov rsi, " + source
+        b += "call printf"
 
-    def newline(self):
-        self.extern()
-        self.b.rodataAdd('printNewLine: db 10, 0')
-        self.b += "mov rdi, printNewLine"
-        self.b += "call printf"
+    def newline(self, b):
+        self.extern(b)
+        b.rodataAdd('printNewLine: db 10, 0')
+        b += "mov rdi, printNewLine"
+        b += "call printf"
 
-    def char(self, source):
-        self.b.rodataAdd('printCharFmt: db "%c", 0')
+    def char(self, b, source):
+        b.rodataAdd('printCharFmt: db "%c", 0')
         self.generic('printCharFmt', source)
             
-    def string(self, pointer):
+    def ascii(self, b, pointer):
         '''
         pointer
             an instance of a pointer
         '''
         self.protect(pointer.location.address)
-        self.extern()
-        self.b += "mov rdi, " + pointer.address()
-        self.b += "call printf"
-        
-    def i32(self, source):
-        self.b.rodataAdd('print32Fmt: db "%li", 0')
+        self.extern(b)
+        b += "mov rdi, " + pointer.address()
+        b += "call printf"
+
+    def i8(self, b, source):
+        b.rodataAdd('print8Fmt: db "%hhi", 0')
+        self.generic('print8Fmt', source) 
+
+    def i16(self, b, source):
+        b.rodataAdd('print16Fmt: db "%hi", 0')
+        self.generic('print16Fmt', source) 
+                        
+    def i32(self, b, source):
+        b.rodataAdd('print32Fmt: db "%i", 0')
         self.generic('print32Fmt', source) 
 
-    def i64(self, source):
-        self.b.rodataAdd('print64Fmt: db "%lli", 0')
+    def i64(self, b, source):
+        b.rodataAdd('print64Fmt: db "%li", 0')
         self.generic('print64Fmt', source)
 
-    def float(self, form, source):
+    def i128(self, b, source):
+        b.rodataAdd('print128Fmt: db "%lli", 0')
+        self.generic('print128Fmt', source)
+        
+    def f32(self, b, form, source):
         self.protect(source)
-        self.extern()
-        self.b.rodataAdd('printFloatFmt: db "%g", 0')
-        self.b += "movsd xmm0, printlnFloatFmt"
-        self.b += "mov rdi, " + source
-        self.b += "call printf"
-   
-    def stringln(self, pointer):
+        self.extern(b)
+        b.rodataAdd('printFloatFmt: db "%g", 0')
+        b += "movsd xmm0, printlnFloatFmt"
+        b += "mov rdi, " + source
+        b += "call printf"
+
+    # 32f usually promoted to 64f anyhow
+    def f64(self, b, form, source):
+        self.protect(source)
+        self.extern(b)
+        b.rodataAdd('printFloatFmt: db "%g", 0')
+        b += "movsd xmm0, printlnFloatFmt"
+        b += "mov rdi, " + source
+        b += "call printf"
+           
+    def stringln(self, b, pointer):
         '''
         pointer
             an instance of a pointer
         '''
         self.protect(pointer.location.address)
-        self.b.rodataAdd('printlnStrFmt: db "%s", 10, 0')
+        b.rodataAdd('printlnStrFmt: db "%s", 10, 0')
         self.generic('printlnStrFmt', pointer.address()) 
 
-
+Print = Print64()
 
 class Frame():
     '''
@@ -429,24 +649,84 @@ class DataLabels():
         return "DataLabels(idx: {})".format(self.idx)
     
 
-    
+class LocationRelative():
+    '''
+    Model of relative/effective addressing.
+    The model is,
+    Base + (Index * Scale) + Displacement
+    '''
+    def __init__(self, stackByteSize, address):
+        self.stackByteSize = stackByteSize
+        self.base = ''
+        self.index = ''
+        self.scale = ''
+        self.displacement = ''
+
+    def __call__(self):
+        '''
+        Code to represent the value at the location.
+        If a pointer, this is the pointer address
+        return
+            register name or stack offset in bytes e.g. 'rax' or 'rbp - 16'
+        '''
+        index = ''
+        if (self.index):
+            index = '+' + self.index
+        scale =''
+        if (self.scale):
+            scale = '*' + str(self.scale)
+        displacement = ''
+        if (self.displacement):
+            displacement = '+' + self.displacement 
+        return self.base + index + scale + displacement
+                
+    def set_base(self, base):
+        if (not base in GeneralPurposeRegisters):
+            raise ValueError('Base must be a general-purpose register. index:{}'.format(base))
+        self.base = base
+        
+    def set_index(self, index):
+        if (not (self.base or self.scale)):
+            raise ValueError('No index without base or scale. index:{}'.format(index))
+        if (not index in GeneralPurposeRegisters):
+            raise ValueError('Index must be a general-purpose register. index:{}'.format(index))
+        self.index = index
+        
+    def set_scale(self, scale):
+        if (not self.index):
+            raise ValueError('No scale without index. scale:{}'.format(scale))
+        if (not (scale in [1, 2, 4, 8])):
+            raise ValueError('Scale must be one of [1, 2, 4, 8]. scale:{}'.format(scale))
+        self.scale = scale
+                      
+    def set_displacement(self, displacement):
+        #? just a number - 32bit. test?
+        self.displacement = displacement 
+        
+        
+            
 class LocationBase():
-    # location is either a register name or a stack offset
+    '''
+    Location of some data
+    Location is a register name, a stack offset, or label to segment data
     # It can be used as a source of values, or as source of adresses to
-    # values (a pointer) 
+    # values (a pointer)
+    ''' 
     def __init__(self, stackByteSize, address):
         self.stackByteSize = stackByteSize
         self.address = address
 
     def __call__(self):
         '''
-        Code to retrive the value at the location.
+        Code to represent the value at the location.
         If a pointer, this is the pointer address
         return
             register name or stack offset in bytes e.g. 'rax' or 'rbp - 16'
         '''
         pass
-            
+
+
+        
     def __repr__(self):
         return "Location(address: {})".format(self.address)
         
@@ -499,13 +779,37 @@ class LocationROData(LocationBase):
 #! absolute address 
 #! alloca 
 #! etc.
-class Pointer:
+
+#? do we need this? Perhaps for making width sizes perhaps for 
+# rodata numbers etc.
+class Literal():
+    def __init__(self, b, tpe, value):
+        self.tpe = tpe
+        self.b = b  
+        self.value = value  
+        
+    def valprint(self):
+        #? Widthwords?
+        b += value
+
+    def __repr__(self):
+        return value
+  
+class Var():
+    def valprint(self):
+        raise NotImplementedError('This var has no valprint representation');
+
+    def __repr__(self):
+        raise NotImplementedError('This var has no __repr__ representation');
+        
+class VarPointer:
     # Treat a location as an address of a value
     # Can free stash-allocated pointer data, but not allocate. This is 
     # because an allocation could be to a section header, a stack,
     # a stack block, or stash.
     #? is this mutable or immutable on update?
     def __init__(self, b, localStack, rawLocation):
+        self.tpe = Pointer(Bit64)
         self.b = b
         self.localStack = localStack
         self.stackByteSize = localStack.stackByteSize
@@ -558,6 +862,7 @@ class Pointer:
         '''
         if (type(self.location) == LocationStack):
             raise NotImplementedError('address already in stack. Pointer:{}'.format(self))
+        #! this push not working
         self.b += "push {}".format(self.location())
         self.location = LocationStack(self.stackByteSize, self.localStack.newOffset())
         
@@ -577,21 +882,51 @@ class Pointer:
     def free(self):
         self.b += "mov {}, {}".format(cParameterRegister[0], self.location())
         self.b += "call free"
-            
+
+    #! somwhere this logic needs to be captured, but not in the 
+    # current Print()
+    def addrprint(self):
+        self.b.externsAdd("extern printf")
+        self.b.rodataAdd('print64Fmt: db "%lli", 0')
+        self.b += "mov rdi, print64Fmt"
+        #? Can we do this for labels?
+        #! Works for registers but not other addresses?
+        if (type(self.location) == LocationStack):
+            self.b += "lea rsi, [" + self.location() + "]"
+        if (type(self.location) != LocationStack):
+            self.b += "mov rsi, " + self.location()
+        self.b += "call printf"   
+        
+    def valprint(self):
+        # self.b.externsAdd("extern printf")
+        # # surely this needs to come from the type?
+        # self.b.rodataAbdd('print64Fmt: db "%lli", 0')
+        # self.b += "mov rdi, print64Fmt"
+        # #if (type(self.location) != LocationRegister):
+        # #    self.b += "mov rsi,  [" + self.location() + "]"
+        # #if (type(self.location) == LocationRegister):
+        # #?? Can we do this for labels?
+        # self.b += "mov rsi, [" + self.location() + "]"        
+        # self.b += "call printf" 
+        Print(self.tpe, self.location)
+                            
     def __repr__(self):
-        return "Pointer(localStack: {}, location: {})".format(
+        return "VarPointer(localStack: {}, location: {})".format(
             self.localStack,
             self.location
         )
         
       
-class ArrayPointer(Pointer):
+class VarArrayPointer(VarPointer):
     '''
     A Pointer with some extensions for basic handling.
     The displacement is varisized up to 32bit.
     (except freeing) All The location must be RAX or a subregister.
     The retrieval is 64bit (???) 
     '''
+    def __init__(self, b, tpe, localStack, rawLocation):
+        self.tpe = Array(Bit64)
+
     def __call__(self, index, dst):
         #? movxsd
         #if (self.location.address != 'rax'):
@@ -616,10 +951,10 @@ def arrayPointerAllocate(b, localStack, size):
     byteSize = architecture['bytesize'] * size
     b +=  "mov {}, {}".format(cParameterRegister[0], byteSize)
     b += "call malloc"
-    return ArrayPointer(b, localStack, 'rax')        
+    return VarArrayPointer(b, localStack, 'rax')        
 
       
-class ClutchPointer(Pointer):
+class VarClutchPointer(VarPointer):
     '''
     A Pointer with some extensions for basic handling.
     The displacement is varisized up to 32bit.
@@ -687,7 +1022,7 @@ def clutchAllocate(b,  localStack, elements):
         byteSize += size
     b +=  "mov {}, {}".format(cParameterRegister[0], byteSize)
     b += "call malloc"
-    return ClutchPointer(b, localStack, 'rax', keyData)        
+    return VarClutchPointer(b, localStack, 'rax', keyData)        
 
 # read reference from array (place where?)
 # update array reference
