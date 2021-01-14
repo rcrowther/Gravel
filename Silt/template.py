@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 import nasmFrames
-
+import architecture
 '''
 A language that captures some of the common nature of
 opcodes.
@@ -50,55 +50,7 @@ bytesToASMName = {v.byteCount:v.ASMName for k,v in WidthInfoMap.items()}
 
 
 # Aritecture data
-architectureX64 = {
-    # bitsize of the architecture
-    'bitsize' : 64,
-}
-
-def architectureResolve(architecture):
-    architecture['bytesize'] = architecture['bitsize'] >> 3
-    return architecture
-    
-architecture = architectureResolve(architectureX64)
-
-registers = [
-    "rax", 
-    "rbx",
-    "rcx",
-    "rdx",
-    "rbp",
-    "rsi",
-    "rdi"
-    "rsp",
-]
-GeneralPurposeRegisters = [
-    "rax", 
-    "rbx",
-    "rcx",
-    "rdx",
-    "rbp",
-    "rsi",
-    "rdi",
-    "rsp",
-    "r8",
-    "r9",
-    "r10",
-    "r11",
-    "r12",
-    "r13",
-    "r14",
-    "r15",
-]
-
-#   %ebp, %ebx, %edi and %esi must be preserved   
-# clobbers r10, r11 and any parameter registers 
-cParameterRegister = [
-    "rdi", "rsi", "rdx", "rcx", "r8", "r9"
-    ]
-cParemeterFloatRegister = [
-    "xmm0", "xmm1", "xmm2", "xmm3", "xmm4", "xmm5", "xmm6"
-    ]
-    
+arch = architecture.architectureSolve(architecture.x64)
     
 def byteSize(bitsize):
     return bitsize >> 3
@@ -159,6 +111,24 @@ class Type():
     def equals(self, other):
         #return self.canEqual(other) and self.elementType.equals(other)
         return (self == other)
+
+    def foreach(self, f):
+        tpe = self
+        while(tpe):
+            f(tpe)
+            tpe = tpe.elementType
+    
+    def list(self):
+        '''
+        List the types outer-in.
+        To go inner-out, can be reversed(list())
+        '''
+        tpe = self
+        b = []
+        while(tpe):
+            b.append(tpe)
+            tpe = tpe.elementType
+        return b
                 
     def valprint(self):
         raise NotImplementedError('This type has no print representation');
@@ -319,7 +289,7 @@ class Literal(TypeContainer):
         self.byteSize = self.elementType.byteSize
             
 class Pointer(TypeContainer):
-    byteSize = architecture['bytesize']
+    byteSize = arch['bytesize']
     def __init__(self, elementType):
         if not(isinstance(elementType, Type)):
             raise ValueError('Pointer elementType not a Type. elementType: {}'.format(type(elementType)))
@@ -337,7 +307,7 @@ class Array(TypeContainer):
         # if (bz):
             # return self.size * self.elementType.byteSize
         # return bz
-                
+        
 #! There is situations when cluch data is aligned. Acccount for that
 class Clutch(TypeContainer):
     def __init__(self, elementType):
@@ -428,13 +398,13 @@ def stringROdefine(b, localStack, dataLabels, string):
     A Bytestring.
     Is placed in the ROData section.
     '''
-    label = dataLabels.newLabel()
+    label = dataLabels()
     rodata = label + ': db "' + string + '", 0'
     b.rodataAdd(rodata)
     return Pointer(b, localStack, label)
 
 
-def stringDefine(b, localStack, dataLabels, string):
+def stringDefine(b, localStack, string):
     '''
     Allocate and define a malloced string
     UTF-8
@@ -572,6 +542,8 @@ class Print64():
 
 Print = Print64()
 
+
+## builders
 class Frame():
     '''
     Write a basic frame.
@@ -630,25 +602,82 @@ class LocalStack():
     
 
                         
-class DataLabels():
+class Labels():
     '''
     Generate data labels
     '''
     def __init__(self):
         self.idx = - 1
 
-    def newLabel(self):
+    def __call__(self):
         '''
         return 
             a new label
         '''
         self.idx += 1
-        return 'ROData' + str(self.idx)
+        return self.prefix + str(self.idx)
 
     def __repr__(self):
-        return "DataLabels(idx: {})".format(self.idx)
+        return "Labels(self.prefix:'{}', idx: {})".format(self.prefix , self.idx)
     
+    
+class LabelsROData(Labels):
+    prefix = 'ROData'
+    
+class LabelsLoop(Labels):
+    prefix = '.loop'
+ 
+    def exit(self):
+        '''
+        return 
+            an 'exit' label for the current id.
+        '''
+        return self.prefix + str(self.idx) + 'Exit'
+        
+        
+        
+# foreaches
+#? Multi-dimentional
+class ForEach():
+    def clutch(b, clutchData, f):
+        '''
+        foreach a clutch
+        Passes the element offset to the supplied function.
+        Code is constructed statically, the loop is unrolled, creating
+        multiple functions calls.
+        f
+            a function, given parameter is the element offset in bytes
+        '''
+        stepNum = clutchData.stepCount
+        stepByteSize = clutchData.byteSize
+        while stepNum > 0:
+            f(stepByteSize)
+            stepByteSize -= clutchData.step[stepNum]
+            stepNum -= 1
+            
+    #! isn't this a utility loop function, not array specific?
+    def array(b, ptrRegister, countRegister, stepCount, stepSize, f):
+        '''
+        foreach an array
+        Makes no attempt at access, but passes the correct offset to the 
+        supplied function.
+        Code is constructed dynamically, the loop written to code, 
+        creating one function call
+        f
+            a function, given parameter is the element offset in bytes
+        '''
+        b += "mov " + countRegister + ", " + str(stepCount * stepSize)
+        b += ".loop1"
+        b += "cmp "	+ countRegister + ", 0"
+        b += "jle "	+ ".loop1Exit"
+        f(countRegister)
+        # could be a shift?
+        b += "sub "  + countRegister + ", " + stepSize
+        b += "jmp" +  ".loop1"
+        b += ".loop1Exit"
 
+
+    
 class LocationRelative():
     '''
     Model of relative/effective addressing.
@@ -662,6 +691,12 @@ class LocationRelative():
         self.scale = ''
         self.displacement = ''
 
+    def canRelativeAddress(self, pointerCount, arrayCount, structCount):
+        return (
+            pointerCount <= 1 and arrayCount <= 1 and structCount <=1 and
+            (arrayCount == 0 or structCount == 0)
+        )
+        
     def __call__(self):
         '''
         Code to represent the value at the location.
@@ -703,9 +738,9 @@ class LocationRelative():
         #? just a number - 32bit. test?
         self.displacement = displacement 
         
-        
+
             
-class LocationBase():
+class LocationRoot():
     '''
     Location of some data
     Location is a register name, a stack offset, or label to segment data
@@ -735,7 +770,7 @@ class LocationBase():
 
 
             
-class LocationStack(LocationBase):
+class LocationStack(LocationRoot):
     def __init__(self, stackByteSize, address):
         if (not (type(address) == int)):
             raise TypeError('Parameter must be class int. address: {}'.format(type(address)))
@@ -746,9 +781,9 @@ class LocationStack(LocationBase):
 
 
 
-class LocationRegister(LocationBase):
+class LocationRegister(LocationRoot):
     def __init__(self, stackByteSize, address):
-        if (not (address in registers)):
+        if (not (address in arch['registers'])):
             raise ValueError('Parameter must be in registers. address: {} registers:"{}"'.format(
             type(address),
             ", ".join(registers)
@@ -760,7 +795,7 @@ class LocationRegister(LocationBase):
 
 
 
-class LocationROData(LocationBase):
+class LocationROData(LocationRoot):
     def __init__(self, stackByteSize, address):
         if (address in registers):
             raise ValueError('Parameter must not be in registers. address: {} registers:"{}"'.format(
@@ -813,7 +848,7 @@ class VarPointer:
         self.b = b
         self.localStack = localStack
         self.stackByteSize = localStack.stackByteSize
-        if (rawLocation in registers):
+        if (rawLocation in arch['registers']):
             self.location = LocationRegister(self.stackByteSize, rawLocation)
         elif(type(rawLocation) == str):
             self.location = LocationROData(self.stackByteSize, rawLocation)

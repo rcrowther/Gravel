@@ -4,7 +4,7 @@ from template import *
 
         
 stackByteSize = 8
-dataLabels = DataLabels()
+dataLabelsRO = LabelsROData()
 # start a localstack
 localStack = LocalStack(stackByteSize, 1)
 b = Builder()
@@ -14,7 +14,7 @@ raw(b, 'mov rax, 99')
 vp = VarPointer(b, localStack, 'rax')
 vp.toStack()
 vp.addrprint()
-#strP = stringROdefine(b, localStack, dataLabels, "The value in register RAX is:")
+#strP = stringROdefine(b, localStack, dataLabelsRO, "The value in register RAX is:")
 #strP.toRegister('rax')
 #callFrame = Frame(b)
 #callFrame = VolatileProtectFrame(b)
