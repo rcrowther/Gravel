@@ -380,6 +380,90 @@ def builderPrint(frame, b, style):
      
      
      
+
+## Builder Utilities
+class Labels():
+    '''
+    Generate data labels
+    '''
+    def __init__(self):
+        self.idx = - 1
+
+    def __call__(self):
+        '''
+        return 
+            a new label
+        '''
+        self.idx += 1
+        return self.prefix + str(self.idx)
+
+    def __repr__(self):
+        return "Labels(self.prefix:'{}', idx: {})".format(self.prefix , self.idx)
+    
+    
+class LabelsROData(Labels):
+    prefix = 'ROData'
+    
+class LabelsLoop(Labels):
+    prefix = '.loop'
+ 
+    def exit(self):
+        '''
+        return 
+            an 'exit' label for the current id.
+        '''
+        return self.prefix + str(self.idx) + 'Exit'
+
+class LabelGen():
+    '''
+    Generate data labels
+    '''
+    # Not for globals?
+    def __init__(self):
+        self.prefixes = {}
+
+    def __call__(self, prefix):
+        '''
+        return 
+            a new label
+        '''
+        if (prefix in self.prefixes):
+            idx = self.prefixes[prefix]
+            idx += 1
+        else:
+            idx = 0
+        self.prefixes[prefix] = idx
+        return prefix + str(idx)
+
+    def __repr__(self):
+        return "LabelGen(self.prefixs:'{}')".format(self.prefixs)
+        
+def writeLable(b, label):
+    b += label + ':'
+    
+## Model utilities
+class StackIndex():
+    '''
+    A stack for local indexes
+    Works in whole stackwidths. Relative, not absolute. Can provide an 
+    offset generated from an index. 
+    initialOffset
+        provide an initial offset. 
+    '''
+    def __init__(self, initialOffset):
+        self.stackByteSize = arch['bitsize']
+        self.idx = initialOffset - 1
+
+    def __call__(self):
+        # return a new offset on the stack
+        self.idx += 1
+        #b += "push {}".format(addressLocation))
+        return self.idx
+    
+    def __repr__(self):
+        return "StackIndex(idx: {})".format(self.idx)
+    
+    
 ## Builder handlers
 def raw(b, content):
     '''
@@ -392,7 +476,7 @@ def sysExit(b, code=0):
     b += "mov rdi, " + str(code)
     b += "syscall"
     
-def stringROdefine(b, localStack, dataLabels, string):
+def stringROdefine(b, stackIndex, dataLabels, string):
     '''
     Define a static string
     A Bytestring.
@@ -401,10 +485,10 @@ def stringROdefine(b, localStack, dataLabels, string):
     label = dataLabels()
     rodata = label + ': db "' + string + '", 0'
     b.rodataAdd(rodata)
-    return Pointer(b, localStack, label)
+    return Pointer(b, stackIndex, label)
 
 
-def stringDefine(b, localStack, string):
+def stringDefine(b, stackIndex, string):
     '''
     Allocate and define a malloced string
     UTF-8
@@ -412,7 +496,7 @@ def stringDefine(b, localStack, string):
     byteSize = byteSize(elemByteSize) * size
     b +=  "mov {}, {}".format(cParameterRegister[0], byteSize)
     b += "call malloc"
-    return Pointer(b, localStack, 'rax')        
+    return Pointer(b, stackIndex, 'rax')        
         
         
 class Print64():
@@ -543,6 +627,8 @@ class Print64():
 Print = Print64()
 
 
+
+
 ## builders
 class Frame():
     '''
@@ -551,12 +637,14 @@ class Frame():
     def __init__(self, b):
         b += "push rbp"
         b += "mov rbp, rsp"
-
+        self.stackIndex = StackIndex(0)
     
     def close(self, b):
         b += "mov rsp, rbp"
         b += "pop rbp"
 
+    def __repr__(self):
+        return "Frame(stackIndex:{})".format(self.stackIndex)
 
 
 class RegistersProtect():
@@ -581,61 +669,211 @@ class RegistersVolatileProtect(RegistersProtect):
     '''
     def __init__(self, b):
         super().__init__(b, cParameterRegister.copy()) 
-        
 
-                           
-class LocalStack():
-    # A stack for local positions
-    # provides offsets and carries the stackByteSize
-    def __init__(self, stackByteSize, initialOffset):
-        self.stackByteSize = stackByteSize
-        self.idx = initialOffset - 1
 
-    def newOffset(self):
-        # return a new offset on the stack
-        self.idx += 1
-        #b += "push {}".format(addressLocation))
-        return self.idx
-    
-    def __repr__(self):
-        return "LocalStack(stackByteSize: {})".format(self.stackByteSize)
-    
 
-                        
-class Labels():
-    '''
-    Generate data labels
-    '''
-    def __init__(self):
-        self.idx = - 1
+from collections import namedtuple
+JumpLabels = namedtuple('JumpLabels', ['codeblock', 'end'])
 
-    def __call__(self):
-        '''
-        return 
-            a new label
-        '''
-        self.idx += 1
-        return self.prefix + str(self.idx)
+class BooleanOp():
+    def backBuild(self, b, jumpToEnd, jumpLabels):          
+        raise NotImplementedError('BooleanOp:  backBuild func class:{}'.format(self.__class__.__name__))
+
+    def build(self, b, jumpToEnd, jumpLabels):
+        raise NotImplementedError('BooleanOp:  build func class:{}'.format(self.__class__.__name__))
 
     def __repr__(self):
-        return "Labels(self.prefix:'{}', idx: {})".format(self.prefix , self.idx)
+        return self.__class__.__name__
+        
+class BooleanCondition(BooleanOp):
+    def __init__(self, a, b):
+        self.a = a
+        self.b = b
+        
+    def negate(self):
+        pass
+
+    def backBuild(self, b, jumpToEnd, jumpLabels):          
+        self.build(b, jumpToEnd, jumpLabels);
+            
+    def build(self, b, jumpToEnd, jumpLabels):          
+        b += "cmp {}, {}".format(self.a, self.b)
+        jmp = self.jumpCommand + " "
+        if(jumpToEnd):
+            jmp += jumpLabels.end 
+        else:
+            jmp += jumpLabels.codeblock
+        b += jmp
+
+    def __repr__(self):
+        return "{}({}, {})".format(
+            self.__class__.__name__,
+            self.a,
+            self.b
+        )
+                
+class GT(BooleanCondition):
+    jumpCommand = "jg"
+
+    def negate(self):
+        return LTE(self.a, self.b)
+        
+class GTE(BooleanCondition):
+    jumpCommand = "jge"
+
+    def negate(self):
+        return LT(self.a, self.b)
+        
+class LT(BooleanCondition):
+    jumpCommand = "jl"
+
+    def negate(self):
+        return GTE(self.a, self.b)
+        
+class LTE(BooleanCondition):
+    jumpCommand = "le"
+
+    def negate(self):
+        return GT(self.a, self.b)
+        
+class EQ(BooleanCondition):
+    jumpCommand = "je"
     
-    
-class LabelsROData(Labels):
-    prefix = 'ROData'
-    
-class LabelsLoop(Labels):
-    prefix = '.loop'
- 
-    def exit(self):
-        '''
-        return 
-            an 'exit' label for the current id.
-        '''
-        return self.prefix + str(self.idx) + 'Exit'
+    def negate(self):
+        return NEQ(self.a, self.b)
+        
+class NEQ(BooleanCondition):
+    jumpCommand = "jne"
+
+    def negate(self):
+        return EQ(self.a, self.b)
         
         
         
+class BooleanLogic(BooleanOp):
+    def __init__(self, args):
+        self.args = args
+
+    def negate(self):
+        pass
+        
+            
+# jumpLabels = {
+# "jl",
+# "je",
+# "jg",
+# "jne",
+# "je",
+# "NOT"
+# }
+class AND(BooleanLogic):
+    def negate(self):
+        # De Morgans law
+        return AND([arg.negate() for arg in self.args])
+        
+    def backBuild(self, b, jumpToEnd, jumpLabels):
+        tailArg = self.args.pop()
+        print(self.args)
+        for arg in self.args:
+            arg1 = arg.negate()
+            arg1.build(b, True, jumpLabels)
+        tailArg.build(b, False, jumpLabels)
+                
+    def build(self, b, jumpToEnd, jumpLabels):
+        for arg in self.args:
+            arg1 = arg.negate()
+            arg1.build(b, True, jumpLabels)
+
+    def __repr__(self):
+        return "AND({})".format(
+          ", ".join(self.args)
+        )            
+        
+class OR(BooleanLogic):
+    def negate(self):
+        # De Morgans law
+        return OR([arg.negate() for arg in self.args])
+
+    def backBuild(self, b, jumpToEnd, jumpLabels):
+        for arg in self.args:
+            arg.build(b, False, jumpLabels)
+                    
+    def build(self, b, jumpToEnd, jumpLabels):
+        tailArg = self.args.pop()
+        for arg in self.args:
+            arg.build(b, False, jumpLabels)
+        tailArg.negate().build(b, True, jumpLabels)
+            
+    def __repr__(self):
+        return "OR({})".format(
+          ", ".join(self.args)
+        ) 
+
+class NOT(BooleanLogic):    
+    def __init__(self, arg):
+        self.arg = arg
+
+    def negate(self):
+        return self.arg
+
+    def backBuild(self, b, jumpToEnd, jumpLabels):
+        negated = self.arg.negate()
+        negated.build(b, jumpToEnd, jumpLabels)
+        
+    def build(self, b, jumpToEnd, jumpLabels):
+        negated = self.arg.negate()
+        negated.build(b, jumpToEnd, jumpLabels)
+
+    def __repr__(self):
+        return "NOT({})".format(
+          ", ".join(self.arg)
+        ) 
+
+# To do a comparison assignment, we start with var = false, put true in the if block
+# Or can it be simpler?
+
+# This I think is not how to do it. What we should do is flatten the 
+# structure first, resolve the equation, to make it linear.
+# Then can run builder through it? But does it make any difference, 
+# besides optimisation?
+class If():
+    def __init__(self, b, labels, comparison):
+        trueLabel = labels('true')
+        self.failLabel = labels('endif')
+        # BooleanLogic will look after itself, but BooleanCondition
+        # needs negating and a jump to the end
+        c = comparison
+        if (isinstance(comparison, BooleanCondition) or isinstance(comparison, NOT)):
+            #print('init negate')
+            # Any BooleanLogic will do, they all negate then direct to 
+            # end. NOT is simply convenient.
+            c = NOT(comparison)
+        c.build(b, True, JumpLabels(trueLabel, self.failLabel))
+        b += trueLabel + ":"
+    
+    def close(self, b):
+        b += self.failLabel + ":"
+
+class While():
+    def __init__(self, b, labels, comparison):
+        self.startLabel = labels('codeblock')
+        self.exitLabel = labels('endwhile')
+        self.entryLabel = labels('entry')
+        self.comparison = comparison
+        b += "jmp " + self.entryLabel
+        b += self.startLabel + ":"
+    
+    def close(self, b):
+        b += self.entryLabel + ":"
+        c = self.comparison
+        #if (isinstance(c, BooleanCondition) or isinstance(c, NOT)):
+            #print('init negate')
+            # Any BooleanLogic will do, they all negate then direct to 
+            # end. NOT is simply convenient.
+        #    c = NOT(c)
+        c.backBuild(b, None, JumpLabels(self.startLabel, self.exitLabel))        
+        b += self.exitLabel + ":"
+
 # foreaches
 #? Multi-dimentional
 class ForEach():
@@ -843,11 +1081,11 @@ class VarPointer:
     # because an allocation could be to a section header, a stack,
     # a stack block, or stash.
     #? is this mutable or immutable on update?
-    def __init__(self, b, localStack, rawLocation):
+    def __init__(self, b, stackIndex, rawLocation):
         self.tpe = Pointer(Bit64)
         self.b = b
-        self.localStack = localStack
-        self.stackByteSize = localStack.stackByteSize
+        self.stackIndex = stackIndex
+        self.stackByteSize = stackIndex.stackByteSize
         if (rawLocation in arch['registers']):
             self.location = LocationRegister(self.stackByteSize, rawLocation)
         elif(type(rawLocation) == str):
@@ -899,7 +1137,7 @@ class VarPointer:
             raise NotImplementedError('address already in stack. Pointer:{}'.format(self))
         #! this push not working
         self.b += "push {}".format(self.location())
-        self.location = LocationStack(self.stackByteSize, self.localStack.newOffset())
+        self.location = LocationStack(self.stackByteSize, self.stackIndex())
         
     def toRegister(self, targetRegisterName):
         '''
@@ -946,8 +1184,8 @@ class VarPointer:
         Print(self.tpe, self.location)
                             
     def __repr__(self):
-        return "VarPointer(localStack: {}, location: {})".format(
-            self.localStack,
+        return "VarPointer(stackIndex: {}, location: {})".format(
+            self.stackIndex,
             self.location
         )
         
@@ -959,7 +1197,7 @@ class VarArrayPointer(VarPointer):
     (except freeing) All The location must be RAX or a subregister.
     The retrieval is 64bit (???) 
     '''
-    def __init__(self, b, tpe, localStack, rawLocation):
+    def __init__(self, b, tpe, stackIndex, rawLocation):
         self.tpe = Array(Bit64)
 
     def __call__(self, index, dst):
@@ -978,7 +1216,7 @@ class VarArrayPointer(VarPointer):
 
 
 
-def arrayPointerAllocate(b, localStack, size):
+def arrayPointerAllocate(b, stackIndex, size):
     '''
     Allocate an array of pointers.
     The size is of elemByteSize
@@ -986,7 +1224,7 @@ def arrayPointerAllocate(b, localStack, size):
     byteSize = architecture['bytesize'] * size
     b +=  "mov {}, {}".format(cParameterRegister[0], byteSize)
     b += "call malloc"
-    return VarArrayPointer(b, localStack, 'rax')        
+    return VarArrayPointer(b, stackIndex, 'rax')        
 
       
 class VarClutchPointer(VarPointer):
@@ -996,8 +1234,8 @@ class VarClutchPointer(VarPointer):
     (except freeing) All The location must be RAX or a subregister.
     The retrieval is 64bit (???) 
     '''
-    def __init__(self, b, localStack, rawLocation, keyData):
-        super().__init__(b, localStack, rawLocation)
+    def __init__(self, b, stackIndex, rawLocation, keyData):
+        super().__init__(b, stackIndex, rawLocation)
         self.keyData = keyData
         
     def get(self, key, dst):
@@ -1037,7 +1275,7 @@ class VarClutchPointer(VarPointer):
 
 
                 
-def clutchAllocate(b,  localStack, elements):
+def clutchAllocate(b,  stackIndex, elements):
     '''
     Allocate a clutch in heap.
     elements 
@@ -1057,7 +1295,7 @@ def clutchAllocate(b,  localStack, elements):
         byteSize += size
     b +=  "mov {}, {}".format(cParameterRegister[0], byteSize)
     b += "call malloc"
-    return VarClutchPointer(b, localStack, 'rax', keyData)        
+    return VarClutchPointer(b, stackIndex, 'rax', keyData)        
 
 # read reference from array (place where?)
 # update array reference
@@ -1120,19 +1358,4 @@ def write(b, style):
     with open('build/out.asm', 'w') as f:
         f.write(o)
         
-# stackByteSize = 8
-# # start a localstack
-# localStack = LocalStack(stackByteSize, 1)
-# b = Builder()
-# a1 = Array(b, 32, 7)
-# #Pointer(b, localStack, 'rax').moveToRegister('rbx')
-# p = Pointer(b, localStack, 'rax')
-# p.moveToStack()
-# #print(p.value())
-# Print().i64(b, 'rax')
-# p.free()
-# o = b.code
-
-# print(b.rodata)
-# print(o)
 

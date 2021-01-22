@@ -1,0 +1,7 @@
+#!/bin/bash
+# Run some C code, stock
+
+gcc -Wall test.c
+./a.out
+
+rm a.out

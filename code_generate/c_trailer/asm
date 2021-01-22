@@ -1,0 +1,8 @@
+#!/bin/bash
+# Make assembly of some C code, stock
+
+gcc -masm=intel -S test.c -o test.asm
+
+cat test.asm
+
+rm test.asm

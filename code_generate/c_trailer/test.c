@@ -41,15 +41,15 @@
     //printf("%s\n", "block called!");
 //}
 
-static const size_t str_builder_min_size = 32;
+//static const size_t str_builder_min_size = 32;
 
-struct str_builder {
-    char   *str;
-    size_t  alloced;
-    size_t  len;
-};
+//struct str_builder {
+    //char   *str;
+    //size_t  alloced;
+    //size_t  len;
+//};
 
-typedef struct str_builder str_builder_t;
+//typedef struct str_builder str_builder_t;
 
 int main()
 {
@@ -69,13 +69,21 @@ int main()
       //default :
          //printf("Default\n" );
    //}
-    str_builder_t *sb;
+   // str_builder_t *sb;
 
-    sb          = calloc(1, sizeof(*sb));
-    sb->str     = malloc(str_builder_min_size);
-    *sb->str    = '\0';
-    sb->alloced = str_builder_min_size;
-    sb->len     = 0;
-
+   // sb          = calloc(1, sizeof(*sb));
+   // sb->str     = malloc(str_builder_min_size);
+   // *sb->str    = '\0';
+   // sb->alloced = str_builder_min_size;
+   // sb->len     = 0;
+    int a = 3;
+    int b = 5;
+    int c = 7;
+    //if ((a < 3) || ((b < 9) && (c < 5))) {
+    //     printf("True\n" );
+    //};
+    while(!(a < 3)) {
+        a++;
+    }
     return 0;
 }

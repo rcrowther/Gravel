@@ -1,0 +1,7 @@
+#!/bin/bash
+# Dump some C code, stock
+gcc -Wall test.c
+objdump -Mintel -d a.out
+
+rm a.out
+
