@@ -2,6 +2,8 @@
 
 import nasmFrames
 import architecture
+from tpl_types import *
+
 '''
 A language that captures some of the common nature of
 opcodes.
@@ -26,6 +28,7 @@ function calls, and, if possible deallocation
 ''' 
 
 # general compiling data
+# independant of architecture
 #https://stackoverflow.com/questions/12063840/what-are-the-sizes-of-tword-oword-and-yword-operands
 #BYTE, WORD, DWORD, QWORD, TWORD, OWORD, YWORD or ZWORD
 class WidthInfo():
@@ -55,279 +58,12 @@ arch = architecture.architectureSolve(architecture.x64)
 def byteSize(bitsize):
     return bitsize >> 3
 
-## Types
-'''
-# Rationale for types
-We were storing bit sizes anyway, because they are neceassary for 
-clutches That comes close to type info. To add an encoding more or 
-less defines a type. It also expands the system from perhaps 5 
-''types' (bit sizes) to perhaps sixteen ''types (with the addition
-of encoding). This is still managable. What it will do is give is
-many advantages of defining special instructions, for example, for
-float types, and for prints.
-What we will not do is introduce any feature that relies on the types,
-such as polymorphic functions.
-We will not type symbols???
-We will not store non coded data like string lengths.
-'''
-#from collections import namedtuple
-#namedtuple("Student", ["name", "age", "faculty"])
-class Encoding():
-    def __init__(self, name):
-        self.name = name
-        
-    def __repr__(self):
-        return 'Encoding(' + self.name + ')'
-        
-Signed = Encoding('signed')
-Unsigned = Encoding('unsigned')
-Float = Encoding('float')
-ASCII = Encoding('ascii')
-UTF8 = Encoding('UTF8')
 
-# class TypeMeta(type):
-    # def __repr__(self):
-        # return str(self.__name__)
-        
-#class Type(metaclass=TypeMeta):
-class Type():
-    encoding = None
-    elementType = None
-    '''
-    A bytesize of None means, don't know, or variable
-    '''
-    byteSize = None
-    
-    #def __init__(self):
-    #    raise NotImplementedError('A base Type can not be instanciated')
-            
-    # @property
-    # def byteSize(self):
-        # return self._byteSize
-        
-    def canEqual(self, other):
-        return isinstance(other, Type)
-        
-    def equals(self, other):
-        #return self.canEqual(other) and self.elementType.equals(other)
-        return (self == other)
-
-    def foreach(self, f):
-        tpe = self
-        while(tpe):
-            f(tpe)
-            tpe = tpe.elementType
-    
-    def list(self):
-        '''
-        List the types outer-in.
-        To go inner-out, can be reversed(list())
-        '''
-        tpe = self
-        b = []
-        while(tpe):
-            b.append(tpe)
-            tpe = tpe.elementType
-        return b
-                
-    def valprint(self):
-        raise NotImplementedError('This type has no print representation');
-        
-    def __repr__(self):
-        raise NotImplementedError('This type has no __repr__ representation');
-        #return "{}".format(self.__class__.__name__) #+ ('instance')
-
-'''
-Far as I can see, we have two alternatives with types:
-Use Pythons facilities, replicated in many languages, to make a type as 
-a class,
-Con: 
-- Needs metaclasses from the off. 
-- To get the type of a constructed container, we must use type()
-- Can not autogenerate new types easily
-Or make types an instance,
-Con:
-- All types need a instance representation someplace. I make a 
-VarArray(Bit8). If type is needed, say for further construction, it 
-must construct an Array (type) instance with Bit8 instance embedded.
-- Will raise problems of equality between types 
-'''
-'''
-Types
-A type is the common, immutable aspeects of the basic data (so far, not
-fuctions). 
-Somettimes we need to refer to types themselves. For example, in an 
-array, we do not need to know the type of every element, only that 
-every element has a type of X. To do this, we refer to the class itself,
-which can in Python be passed about and compared.
-The base types do not exist as individual instances i.e. are not mapped 
-to data. Niether do they work if they are instances (they should not be 
-instanced). They onlyy refer to data when they are put in a container.
-One of the containers is a Literal/Constant container.
-Any type put in a containeer creates a new type, which take the name of  
-the container as type. Again, the class is used to refer to the type.
-Since the process is circular (type in type in type...), from these 
-elements, arbitary types can be built.
-'''
-# char
-class _Bit8(Type):
-    encoding = Signed
-    byteSize = 1
-    #def print(self):
-    #    pass
-    def __repr__(self):
-        return "Bit8"
-Bit8 = _Bit8()
-
-# short int
-class _Bit16(Type):
-    encoding = Signed
-    byteSize = 2
-    #def print(self):
-    #    pass
-    def __repr__(self):
-        return "Bit8"
-Bit16 = _Bit16()
-
-# int
-class _Bit32(Type):
-    encoding = Signed
-    byteSize = 4
-    #def print(self):
-    #    pass
-    def __repr__(self):
-        return "Bit32"
-Bit32 = _Bit32()
-
-# long int
-class _Bit64(Type):
-    encoding = Signed
-    byteSize = 8
-    #def print(self):
-    #    pass
-    def __repr__(self):
-        return "Bit64"
-Bit64 = _Bit64()    
-
-# long long int
-class _Bit128(Type):
-    encoding = Signed
-    byteSize = 8
-    #def print(self):
-    #    pass
-    def __repr__(self):
-        return "Bit128"
-Bit128 = _Bit128()    
-
-# float
-class _Bit32F(Type):
-    '''
-    A 32bit float
-    in C ''float'
-    '''
-    encoding = Float
-    byteSize = 4
-    #def print(self):
-    #    pass
-    def __repr__(self):
-        return "Bit8"
-Bit32F = _Bit32F()
-
-# double
-class _Bit64F(Type):
-    '''
-    A 32bit float
-    in C ''double'
-    '''
-    encoding = Float
-    byteSize = 8
-    #def print(self):
-    #    pass
-    def __repr__(self):
-        return "Bit8"
-Bit64F = _Bit64F()
-
-#! ignoring long double (128ish)
-
-class _StrASCII(Type):
-    encoding = ASCII
-    #def print(self):
-    #    pass
-    def __repr__(self):
-        return "Bit8"
-StrASCII = _StrASCII() 
- 
-class _StrUTF8(Type):
-    encoding = UTF8
-    #def print(self):
-    #    pass
-    def __repr__(self):
-        return "Bit8"
-StrUTF8 = _StrUTF8() 
-
-
-# Containers must be instanciated to make a type
-class TypeContainer(Type):
-    def __init__(self, elementType):
-        self.elementType = elementType
-
-    def equals(self, other):
-        #return self.canEqual(other) and self.elementType.equals(other)
-        return (type(self) == type(other)) and self.elementType.equals(other.elementType)
-
-    def __repr__(self):
-        return "{}(elementType:{})".format(self.__class__.__name__, self.elementType)
-
-    def __str__(self):
-        return "{}[{}]".format(self.__class__.__name__, self.elementType)
-        
-class Literal(TypeContainer):
-    def __init__(self, elementType):
-        if not(isinstance(elementType, Type)):
-            raise ValueError('Literal elementType not a Type. elementType: {}'.format(type(elementType)))
-        super().__init__(elementType)
-        self.byteSize = self.elementType.byteSize
-            
-class Pointer(TypeContainer):
-    byteSize = arch['bytesize']
-    def __init__(self, elementType):
-        if not(isinstance(elementType, Type)):
-            raise ValueError('Pointer elementType not a Type. elementType: {}'.format(type(elementType)))
-        super().__init__(elementType)
-                            
-class Array(TypeContainer):
-    def __init__(self, elementType):
-        if not(isinstance(elementType, Type)):
-            raise ValueError('Array elementType not a Type. elementType: {}'.format(type(elementType)))
-        super().__init__(elementType)
-        
-    # @property
-    # def byteSize(self):
-        # bz = self.elementType.byteSize
-        # if (bz):
-            # return self.size * self.elementType.byteSize
-        # return bz
-        
-#! There is situations when cluch data is aligned. Acccount for that
-class Clutch(TypeContainer):
-    def __init__(self, elementType):
-        super().__init__(elementType)
-        self.offsets = {}
-        byteSize = 0
-        #! what if the type bytesize is None
-        #? that should never be. Only applies to arrays, and no array should be raw in a clutch?
-        for k,tpe in elementType.items():
-            if not(isinstance(tpe, Type)):
-                raise ValueError('Clutch an element of elementType not instance of Type. elementType:{}, element: {}'.format(elementType, tpe))
-            self.offsets[k] = byteSize
-            byteSize += tpe.byteSize
-        self.byteSize = byteSize
-
-##Pointer?b
-
-# Render data
+# Render data style
+#! should be e.g. 'codeblock' : {'indent_step': 2} etc.
 baseStyle = {
-    'indent': '    '
+    'indent': 4,
+    'indent_step'  : 2,
 }
 
 
@@ -364,17 +100,46 @@ class Builder():
     def __repr__(self):
         return "Builder()"
 
-
+def indent_inc(indent_step, current_indent):
+    current_indent += indent_step    
+    return current_indent
+    
+def indent_dec(indent_base, indent_step, current_indent):
+    current_indent -= indent_step
+    if(current_indent < indent_base):
+        current_indent = indent_base
+    return current_indent
+         
+def builderCode(style, code):
+    '''
+    Return a string of code data, inflected by style
+    '''
+    indent_base = style['indent']
+    indent_step = style['indent_step']
+    current_indent = indent_base
+    b = []
+    for line in code:
+        #indent + joinIndent.join(b._code)
+        if line.startswith('codeblock'):
+            current_indent = indent_inc(indent_step, current_indent)
+        if line.startswith('end'):
+            current_indent = indent_dec(indent_base, indent_step, current_indent)
+        b.append('\n') 
+        b.append(" " * current_indent) 
+        b.append(line) 
+    return ''.join(b)
+    
 def builderPrint(frame, b, style):
     indent = style['indent']
-    joinIndent = '\n' + indent
+    indent_str = " " * indent
+    joinIndent = '\n' + indent_str
     styledBuilder = {
         'externs' : '\n'.join(b._externs), 
-        'data' : indent + joinIndent.join(b._data), 
-        'rodata'  : indent + joinIndent.join(b._rodata), 
-        'bss'  : indent + joinIndent.join(b._bss), 
+        'data' : indent_str + joinIndent.join(b._data), 
+        'rodata'  : indent_str + joinIndent.join(b._rodata), 
+        'bss'  : indent_str + joinIndent.join(b._bss), 
         'text' : '\n'.join(b._text),
-        'code' : indent + joinIndent.join(b._code),
+        'code' : builderCode(style, b._code),
     }
     return frame(**styledBuilder)
      
@@ -455,7 +220,9 @@ class StackIndex():
         self.idx = initialOffset - 1
 
     def __call__(self):
-        # return a new offset on the stack
+        '''
+        return a new index on the stack
+        '''
         self.idx += 1
         #b += "push {}".format(addressLocation))
         return self.idx
@@ -463,7 +230,36 @@ class StackIndex():
     def __repr__(self):
         return "StackIndex(idx: {})".format(self.idx)
     
+class StackIndexAllocated():
+    '''
+    A stack for local indexes
+    Works in whole stackwidths. Relative, not absolute. Can provide an 
+    offset generated from an index. 
+    initialOffset
+        provide an initial offset. 
+    '''
+    def __init__(self, b, elemByteSize, size):
+        self.elemByteSize = elemByteSize
+        self.size = size
+        self.byteSize = elemByteSize * size
+        b += "sub rsp - " + self.byteSize
+        
+        #b += "push {}".format(addressLocation))
+        self.idxSum = - 1
+
+    def __call__(self, idx):
+        '''
+        Offset of given index
+        '''
+        if (idx >= self.size):
+            raise  ValueError('StackIndexAllocated: Given index too large for space. size:{}, index: {}'.format(self.size, index))
+        return idx * self.elemByteSize
     
+    def __repr__(self):
+        return "StackIndexAlloc(size: {})".format(self.size)
+
+
+            
 ## Builder handlers
 def raw(b, content):
     '''
@@ -676,11 +472,11 @@ from collections import namedtuple
 JumpLabels = namedtuple('JumpLabels', ['codeblock', 'end'])
 
 class BooleanOp():
-    def backBuild(self, b, jumpToEnd, jumpLabels):          
-        raise NotImplementedError('BooleanOp:  backBuild func class:{}'.format(self.__class__.__name__))
+    def buildAft(self, b, jumpToEnd, jumpLabels):          
+        raise NotImplementedError('BooleanOp:  buildAft func class:{}'.format(self.__class__.__name__))
 
-    def build(self, b, jumpToEnd, jumpLabels):
-        raise NotImplementedError('BooleanOp:  build func class:{}'.format(self.__class__.__name__))
+    def buildFore(self, b, jumpToEnd, jumpLabels):
+        raise NotImplementedError('BooleanOp:  buildFore func class:{}'.format(self.__class__.__name__))
 
     def __repr__(self):
         return self.__class__.__name__
@@ -693,10 +489,10 @@ class BooleanCondition(BooleanOp):
     def negate(self):
         pass
 
-    def backBuild(self, b, jumpToEnd, jumpLabels):          
-        self.build(b, jumpToEnd, jumpLabels);
+    def buildAft(self, b, jumpToEnd, jumpLabels):          
+        self.buildFore(b, jumpToEnd, jumpLabels);
             
-    def build(self, b, jumpToEnd, jumpLabels):          
+    def buildFore(self, b, jumpToEnd, jumpLabels):          
         b += "cmp {}, {}".format(self.a, self.b)
         jmp = self.jumpCommand + " "
         if(jumpToEnd):
@@ -771,18 +567,18 @@ class AND(BooleanLogic):
         # De Morgans law
         return AND([arg.negate() for arg in self.args])
         
-    def backBuild(self, b, jumpToEnd, jumpLabels):
+    def buildAft(self, b, jumpToEnd, jumpLabels):
         tailArg = self.args.pop()
         print(self.args)
         for arg in self.args:
             arg1 = arg.negate()
-            arg1.build(b, True, jumpLabels)
-        tailArg.build(b, False, jumpLabels)
+            arg1.buildAft(b, True, jumpLabels)
+        tailArg.buildAft(b, False, jumpLabels)
                 
-    def build(self, b, jumpToEnd, jumpLabels):
+    def buildFore(self, b, jumpToEnd, jumpLabels):
         for arg in self.args:
             arg1 = arg.negate()
-            arg1.build(b, True, jumpLabels)
+            arg1.buildFore(b, True, jumpLabels)
 
     def __repr__(self):
         return "AND({})".format(
@@ -794,15 +590,15 @@ class OR(BooleanLogic):
         # De Morgans law
         return OR([arg.negate() for arg in self.args])
 
-    def backBuild(self, b, jumpToEnd, jumpLabels):
+    def buildAft(self, b, jumpToEnd, jumpLabels):
         for arg in self.args:
-            arg.build(b, False, jumpLabels)
+            arg.buildAft(b, False, jumpLabels)
                     
-    def build(self, b, jumpToEnd, jumpLabels):
+    def buildFore(self, b, jumpToEnd, jumpLabels):
         tailArg = self.args.pop()
         for arg in self.args:
-            arg.build(b, False, jumpLabels)
-        tailArg.negate().build(b, True, jumpLabels)
+            arg.buildFore(b, False, jumpLabels)
+        tailArg.negate().buildFore(b, True, jumpLabels)
             
     def __repr__(self):
         return "OR({})".format(
@@ -816,13 +612,13 @@ class NOT(BooleanLogic):
     def negate(self):
         return self.arg
 
-    def backBuild(self, b, jumpToEnd, jumpLabels):
+    def buildAft(self, b, jumpToEnd, jumpLabels):
         negated = self.arg.negate()
-        negated.build(b, jumpToEnd, jumpLabels)
+        negated.buildAft(b, jumpToEnd, jumpLabels)
         
-    def build(self, b, jumpToEnd, jumpLabels):
+    def buildFore(self, b, jumpToEnd, jumpLabels):
         negated = self.arg.negate()
-        negated.build(b, jumpToEnd, jumpLabels)
+        negated.buildFore(b, jumpToEnd, jumpLabels)
 
     def __repr__(self):
         return "NOT({})".format(
@@ -838,7 +634,7 @@ class NOT(BooleanLogic):
 # besides optimisation?
 class If():
     def __init__(self, b, labels, comparison):
-        trueLabel = labels('true')
+        trueLabel = labels('codeblock')
         self.failLabel = labels('endif')
         # BooleanLogic will look after itself, but BooleanCondition
         # needs negating and a jump to the end
@@ -848,7 +644,7 @@ class If():
             # Any BooleanLogic will do, they all negate then direct to 
             # end. NOT is simply convenient.
             c = NOT(comparison)
-        c.build(b, True, JumpLabels(trueLabel, self.failLabel))
+        c.buildFore(b, True, JumpLabels(trueLabel, self.failLabel))
         b += trueLabel + ":"
     
     def close(self, b):
@@ -866,12 +662,7 @@ class While():
     def close(self, b):
         b += self.entryLabel + ":"
         c = self.comparison
-        #if (isinstance(c, BooleanCondition) or isinstance(c, NOT)):
-            #print('init negate')
-            # Any BooleanLogic will do, they all negate then direct to 
-            # end. NOT is simply convenient.
-        #    c = NOT(c)
-        c.backBuild(b, None, JumpLabels(self.startLabel, self.exitLabel))        
+        c.buildAft(b, None, JumpLabels(self.startLabel, self.exitLabel))        
         b += self.exitLabel + ":"
 
 # foreaches
@@ -921,7 +712,11 @@ class LocationRelative():
     Model of relative/effective addressing.
     The model is,
     Base + (Index * Scale) + Displacement
+    Base is any register used as address
+    Index - second register for offset
+    Displacement - a small offset (32Bit)
     '''
+    # see https://blog.yossarian.net/2020/06/13/How-x86_64-addresses-memory
     def __init__(self, stackByteSize, address):
         self.stackByteSize = stackByteSize
         self.base = ''
@@ -929,6 +724,7 @@ class LocationRelative():
         self.scale = ''
         self.displacement = ''
 
+    #! deprecate this, see funcs below
     def canRelativeAddress(self, pointerCount, arrayCount, structCount):
         return (
             pointerCount <= 1 and arrayCount <= 1 and structCount <=1 and
@@ -976,8 +772,28 @@ class LocationRelative():
         #? just a number - 32bit. test?
         self.displacement = displacement 
         
+def isRelativeGettable(tpe):
+    # Base + (Index * Scale) + Displacement
+    #! relative addresses can manage more than this, they can do
+    # Base + Index = Array[] 
+    # The clutch is not traversable
+    # Base + Index + Displacement = Array[Clutch[]]
+    # 
+    # Base + (Index * Scale) = Array[Pointer[]]
+    # Base + (Index * Scale) + Displacement = Array[Array[]]
+    # It can go down three Pointers. The second can be an array/struct
+    r = False
+    if isinstance(tpe, TypeContainer):
+        r = ((tpe.countType() <= 3) and (tpe.countTypesOffset() < 1))
+    return r
 
-            
+def isRelativeTraversable(tpe):
+    r = False
+    if isinstance(tpe, TypeContainer):
+        # can only traverse two indirections with relative addresses
+        r = ((tpe.countType() <= 2) and (tpe.countTypesOffset() < 2))
+    return r
+                
 class LocationRoot():
     '''
     Location of some data

@@ -1,0 +1,28 @@
+from template import *
+# Types
+Bit64.encoding == Signed
+Bit64.byteSize == 8
+
+t1 = Pointer(Bit64)
+t2 = Pointer(Bit32)
+# False
+t1.equals(t2)
+t3 = Pointer(Bit64)
+# True
+t1.equals(t3)
+
+t1 = Pointer(Bit64)
+t1.typeDepth() == 2
+
+t1 = Array(Bit64)
+t1.typeDepth() == 2
+
+t1 = Clutch({'x': Bit32, 'y': Bit32})
+t1.byteSize == 8
+# {'x': 0, 'y': 4}
+t1.offsets
+t1.typeDepth() == 2
+
+t1 = Array(Bit64)
+
+2 == t1.countTypes()
