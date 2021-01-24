@@ -717,8 +717,7 @@ class LocationRelative():
     Displacement - a small offset (32Bit)
     '''
     # see https://blog.yossarian.net/2020/06/13/How-x86_64-addresses-memory
-    def __init__(self, stackByteSize, address):
-        self.stackByteSize = stackByteSize
+    def __init__(self):
         self.base = ''
         self.index = ''
         self.scale = ''
@@ -746,11 +745,11 @@ class LocationRelative():
             scale = '*' + str(self.scale)
         displacement = ''
         if (self.displacement):
-            displacement = '+' + self.displacement 
+            displacement = '{:+}'.format(self.displacement) 
         return self.base + index + scale + displacement
                 
     def set_base(self, base):
-        if (not base in GeneralPurposeRegisters):
+        if (not base in arch['registers']):
             raise ValueError('Base must be a general-purpose register. index:{}'.format(base))
         self.base = base
         
@@ -770,7 +769,10 @@ class LocationRelative():
                       
     def set_displacement(self, displacement):
         #? just a number - 32bit. test?
+        if (not isinstance(displacement, int)):
+            raise ValueError('Displacement must be integer. displacement:{}'.format(displacement))
         self.displacement = displacement 
+        
         
 def isRelativeGettable(tpe):
     # Base + (Index * Scale) + Displacement
@@ -787,6 +789,7 @@ def isRelativeGettable(tpe):
         r = ((tpe.countType() <= 3) and (tpe.countTypesOffset() < 1))
     return r
 
+
 def isRelativeTraversable(tpe):
     r = False
     if isinstance(tpe, TypeContainer):
@@ -794,16 +797,19 @@ def isRelativeTraversable(tpe):
         r = ((tpe.countType() <= 2) and (tpe.countTypesOffset() < 2))
     return r
                 
+
+                
 class LocationRoot():
     '''
-    Location of some data
+    Location of root of some data.
+    This implies a pointer.
     Location is a register name, a stack offset, or label to segment data
     # It can be used as a source of values, or as source of adresses to
     # values (a pointer)
     ''' 
-    def __init__(self, stackByteSize, address):
-        self.stackByteSize = stackByteSize
-        self.address = address
+    def __init__(self, lid):
+        self.stackByteSize = arch['bytesize']
+        self.lid = lid
 
     def __call__(self):
         '''
@@ -814,52 +820,71 @@ class LocationRoot():
         '''
         pass
 
+    def mkRelative(self):
+        raise NotImplementedError('LocationRoot:  mkRelative. class:{}'.format(self.__class__.__name__))
 
-        
     def __repr__(self):
-        return "Location(address: {})".format(self.address)
+        return "Location(lid: {})".format(self.lid)
         
     def __str__(self):
-        return str(self.address)
-
-
-            
-class LocationStack(LocationRoot):
-    def __init__(self, stackByteSize, address):
-        if (not (type(address) == int)):
-            raise TypeError('Parameter must be class int. address: {}'.format(type(address)))
-        super().__init__( stackByteSize, address)    
-
-    def __call__(self):
-        return 'rbp - {}'.format(self.address * self.stackByteSize)
-
-
-
-class LocationRegister(LocationRoot):
-    def __init__(self, stackByteSize, address):
-        if (not (address in arch['registers'])):
-            raise ValueError('Parameter must be in registers. address: {} registers:"{}"'.format(
-            type(address),
-            ", ".join(registers)
-            ))
-        super().__init__(stackByteSize, address)    
-
-    def __call__(self):
-        return self.address
+        return str(self.lid)
 
 
 
 class LocationROData(LocationRoot):
-    def __init__(self, stackByteSize, address):
-        if (address in registers):
-            raise ValueError('Parameter must not be in registers. address: {} registers:"{}"'.format(
-            type(address),
+    def __init__(self, lid):
+        if (lid in arch['registers']):
+            raise ValueError('Label id must not be in registers. lid: {} registers:"{}"'.format(
+            type(lid),
             ", ".join(registers)
             ))
-        super().__init__(stackByteSize, address)
+        super().__init__(lid)
+
+    def mkRelative(self):
+        raise NotImplementedError('LocationROData:  label can not be in relative address???. class:{}'.format(self.__class__.__name__))
 
     def __call__(self):
-        return self.address        
+        return self.lid  
+
+
+
+class LocationRegister(LocationRoot):
+    def __init__(self, lid):
+        if (not (lid in arch['registers'])):
+            raise ValueError('Parameter must be in registers. lid: {} registers:"{}"'.format(
+            lid,
+            ", ".join(arch['registers'])
+            ))
+        super().__init__(lid)    
+
+    def mkRelative(self):
+        l = LocationRelative()
+        l.set_base(self.lid)
+        return l
+        
+    def __call__(self):
+        return self.lid
+        
+        
+                    
+class LocationStack(LocationRoot):
+    def __init__(self, lid):
+        if (not (type(lid) == int)):
+            raise TypeError('Parameter must be class int. lid: {}'.format(type(lid)))
+        super().__init__(lid)    
+
+
+    def mkRelative(self):
+        l = LocationRelative()
+        l.set_base('rbp')
+        l.set_displacement(-(self.lid * self.stackByteSize))
+        return l
+        
+    def __call__(self):
+        return 'rbp - {}'.format(self.lid * self.stackByteSize)
+
+    
+      
                 
                 
 
