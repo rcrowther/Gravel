@@ -1,0 +1,33 @@
+== Sybtax
+Silt has a base syntax usually described as Algol-like. Functions are named then followed by brackets containing data,
+
+if()
+
+Codeblocks are treated as a parameter, but with a special syntax. This is commonly known from Ruby, though the syntax is closer to Ada,
+
+if()
+
+endif
+
+== Type
+Silt is a typed language. 
+(Type can be abandoned, in a Scala-like way, by the use of Any???)
+
+Silt types data and functions, but not metadata (as a LISP, for example, might type it's own symbols)
+
+== Inlining
+Silt functions can be inlined, but not automatically.
+
+
+== General features
+Silt is not a language with a paradigm to sell. However, the Silt language contains several concepts that are part of the language, Some of them are unusual. Here are the most obvious in order roughly of annoyance,
+++
+- Functions only accept one parameter (and return one parameter)
+- The ''if..' construct does not accept an ''else'
+- No implicit action or defaulting is available anywhere. The exception is that Literal data has builtin defaults (""string" is implicitly Literal(UTF8, ""string"))
+- All data is passed by reference
+- There is a collection called ''clutch' (it's a C ''struct', or ''tuple')
+- Clutches can be traversed
+- Clutches can be built by buffer
+- Silt has a weird conditional multi-loop construct
++ 

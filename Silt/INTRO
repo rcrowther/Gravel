@@ -1,0 +1,46 @@
+= Intro
+Silt is a computer language.
+
+== Why you may not want to use Silt
++dl
+~ x64 architectures only
+: And only some x64 architectures. Silt is intended eventually to cover all of x64, and/then maybe x32, but other architectures are a long-range target with no commitment
+~ It's made by someone who doesn't know what they are doing
+: The author has no books on assembly programming, and does not work as a programmer
+~ It's not supported by any comforting expertese or community
+: The author is not famous, and knows how important authority is to computing. And the author has no weight of Google/Mozilla/finance/government behind him
++
+
+== What kind of language is Silt?
+Attempts to provide teasers for languages are usually inaccurate, but one description of Silt might be, ""To generate prodictable, plain machine code using high-level means".
+
+== Machine code! Silt must be fast? Is Silt one of those super-tuned specialist-purpose languages?
+No. Read the above. Silt generates plain machine code. It does not use it's involvement in machine code to do tricks or obscure actions.
+
+One result of aiming for predictable machine code is thatt Silt avoids optimisation. That's correctt---it avoids them. The only ''optimisations' in Silt are when a feature/abstraction within CPU architectures forces Silt to make a choice. This might include, for example, where to store data (stack, executable section allocation, heap etc.). Even then, Silt will work to offer these choices in a plain way, rather than by automatic choice. Here and there features/abstractions within the language can force Silt to make decisions. But Silt tries to avoid such abstractions, and where it soes not, usually offers the choice to the programmer.
+  
+== What is similar to Silt?
+Not an easy question to answer. The BCPL language, the precursor to C, was designed to be a base for writing compilers. As a small language, easily implemented over many architectures, with a distillation of general computer concepts, and intended as a basis for other languages, it has some of the same aims, and/or perhaps occupies some of the saame expressive territory, as Silt.
+
+Silt is not like a bytecode. Bytecodes are designed to be near-one-to-one representations of assembly instructions with enough abstraction to become portable. Silt allows gathering of instructions into small concepts. Bytecodes are designed to be small (''byte'-code). Silt has a small syntex, but is a parsed language. Bytecodes are designed as one-off instructions. Silt enables codeblocks and other concepts where instructions can interact and influence each other. Bytecodes are written/executed in steady streams. Silt needs to be interpreted/compiled in some way. However, it would be true that writing in bytecode needs a similar level of conceptual knowlege as Silt.
+ 
+Silt is also similar, in it's use of high level means to produce predictable low level instruction, and a vagues atmosphere of transparency, to a Hardware Description Language, especially the Ada-based ???. But Silt generates assembly language, not logic-gate, models.
+
+Most languages,  whatever their claims of generality, tend to have usage areas established by their capability and culture. In this way, Silt is similar to hardcore languages like Go, Rust, or Ada. These languages are wildly different, but share the feature of acccess to lower level detail computing detail like pointers, memory-management etc. This is true of Silt.
+
+Aside from BCPL, which is very different to Silt, the only language I've come across similar to Silt in aim, is HSL, of which was written,
+>>
+Creates a language that generates assembly language. Now defunct, it seems to be unecessary nowadays.
+>
+
+== Why would I use it?
+Given the insecure premises, you should probably not use it.
+
+The author wanted something predictable and plain, as the basis for other projects.
+
+
+==  Why not use LLVM?
+Most people would be better with LLVM. But LLVM does not support the stated aim of Silt. LLVM is packed with optimisations, so is not predictable. It is layered, pipelined, flexible and written in C++, so is not plain.
+
+ 
+

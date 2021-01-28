@@ -74,7 +74,7 @@ class Type():
 
     
     '''
-    The type containeed by this type.
+    The type contained by this type.
     return
         The contained type. If the type is not a container, None 
     '''
@@ -89,6 +89,7 @@ class Type():
     encoding = None
     
     #def __init__(self):
+    #    self.children = []
     #    raise NotImplementedError('A base Type can not be instanciated')
             
     # @property
@@ -102,28 +103,71 @@ class Type():
         #return self.canEqual(other) and self.elementType.equals(other)
         return (self == other)
 
-    def foreach(self, f):
-        '''
-        Do some action f for the type and subtypes.
-        '''
-        tpe = self
-        while(tpe):
-            f(tpe)
-            tpe = tpe.elementType
+    #! Not work on clutch, or clutch renders a bit useless
+    # def foreach(self, f):
+        # '''
+        # Do some action f for the type and subtypes.
+        # '''
+        # tpe = self
+        # while(tpe):
+            # f(tpe)
+            # tpe = tpe.elementType
+
     
-    def list(self):
+    # def list(self):
+        # '''
+        # List the type and subtypes.
+        # Order is outer-in. To go inner-out, can be reversed(list())
+        # '''
+        # tpe = self
+        # b = []
+        # while(tpe):
+            # b.append(tpe)
+            # tpe = tpe.elementType
+        # return b
+    def children(self, offsetIndexAndLabels):
         '''
-        List the type and subtypes.
-        Order is outer-in. To go inner-out, can be reversed(list())
+        List the children/contained types.
+        offsetIndextAndLabels
+            [] of indexes and labels for arrays and clutches. Only 
+            labeles are used, to trace types contained in a clutch.
         '''
+        typeMem = []
         tpe = self
-        b = []
+        olIdx = 0
         while(tpe):
-            b.append(tpe)
-            tpe = tpe.elementType
-        return b
-                
+            if (not isinstance(tpe, TypeContainerOffset)):
+                typeMem.append(tpe)
+                tpe = tpe.elementType
+            else:
+                if (olIdx >= len(offsetIndexAndLabels)):
+                    raise ValueError('Not enough data in path. tpe:{}, offsetIndexAndLabels:{}'.format(
+                        tpe,
+                        offsetIndexAndLabels
+                    ))
+                offsetOrLabel = offsetIndexAndLabels[olIdx]
+                olIdx += 1
+                if (isinstance(tpe, Array)):
+                    typeMem.append(tpe)
+                    tpe = tpe.elementType
+                elif (isinstance(tpe, Clutch)):
+                    typeMem.append(tpe)
+                    if (not (offsetOrLabel in tpe.elementType)):
+                        raise ValueError('Given label not in Clutch. label:"{}", clutch:{}'.format(
+                            offsetOrLabel,
+                            tpe
+                        ))
+                    tpe = tpe.elementType[offsetOrLabel]
+                    typeMem.append(tpe)
+        return typeMem
+                    
+                    
     def typeDepth(self):
+        '''
+        Return the depth of this type i,e, number of subtypes
+        When this function encounters a clutch, it chooses the maximum
+        depth from the available types.
+        '''
         raise NotImplementedError('This type has no typeDepth implementation');
         
     def __repr__(self):
@@ -132,11 +176,11 @@ class Type():
 
 
 class TypeSingular(Type):
-    def foreach(self, f):
-        f(self)
+    #def foreach(self, f):
+    #    f(self)
     
-    def list(self):
-        return [self]
+    #def list(self):
+    #    return [self]
         
     def typeDepth(self):
         return 1
@@ -256,12 +300,12 @@ class TypeContainer(Type):
         '''
         raise NotImplementedError('This type has no __repr__ representation');
         
-    def countTypesOffset(self):
-        i = 0
-        for tpe in self.list():
-            if (isinstance(tpe, TypeContainerOffset)):
-                i += 1
-        return i
+    # def countTypesOffset(self):
+        # i = 0
+        # for tpe in self.list():
+            # if (isinstance(tpe, TypeContainerOffset)):
+                # i += 1
+        # return i
         
     def __repr__(self):
         return "{}(elementType:{})".format(self.__class__.__name__, self.elementType)
@@ -342,18 +386,28 @@ class Clutch(TypeContainerOffset):
             if not(isinstance(tpe, Type)):
                 raise ValueError('Clutch: an element of elementType not instance of Type. elementType:{}, element: {}'.format(elementType, tpe))
             self.offsets[k] = byteSize
-            #??? Humm, This can be zero
-            byteSize += tpe.byteSize
+            # Humm, This can be none, if it's an array
+            if (tpe.byteSize):
+                byteSize += tpe.byteSize
+            else:
+                byteSize = None
+                break
         self.byteSize = byteSize
 
+    def subTypes(self):
+        return self.elementType.values()
+        
+    def labels(self):
+        return self.elementType.keys()
+
     def containsTypeSingular(self):
-        for k,tpe in self.elementType.items():
+        for tpe in self.subTypes():
             if (not isinstance(tpe, TypeSingular)):
                 return False 
         return True
 
     def typeDepth(self):
         maxDepth = 0
-        for k,tpe in self.elementType.items():
+        for tpe in self.subTypes():
             maxDepth = max(maxDepth, tpe.typeDepth())
         return maxDepth + 1

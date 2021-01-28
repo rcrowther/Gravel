@@ -706,8 +706,8 @@ class ForEach():
         b += ".loop1Exit"
 
 
-    
-class LocationRelative():
+# Needs arch
+class AddressRelative():
     '''
     Model of relative/effective addressing.
     The model is,
@@ -718,17 +718,17 @@ class LocationRelative():
     '''
     # see https://blog.yossarian.net/2020/06/13/How-x86_64-addresses-memory
     def __init__(self):
-        self.base = ''
-        self.index = ''
-        self.scale = ''
-        self.displacement = ''
+        self._base = ''
+        self._index = ''
+        self._scale = ''
+        self._displacement = ''
 
     #! deprecate this, see funcs below
-    def canRelativeAddress(self, pointerCount, arrayCount, structCount):
-        return (
-            pointerCount <= 1 and arrayCount <= 1 and structCount <=1 and
-            (arrayCount == 0 or structCount == 0)
-        )
+    # def canRelativeAddress(self, pointerCount, arrayCount, structCount):
+        # return (
+            # pointerCount <= 1 and arrayCount <= 1 and structCount <=1 and
+            # (arrayCount == 0 or structCount == 0)
+        # )
         
     def __call__(self):
         '''
@@ -738,42 +738,50 @@ class LocationRelative():
             register name or stack offset in bytes e.g. 'rax' or 'rbp - 16'
         '''
         index = ''
-        if (self.index):
-            index = '+' + self.index
+        if (self._index):
+            index = '+' + self._index
         scale =''
-        if (self.scale):
-            scale = '*' + str(self.scale)
+        if (self._scale):
+            scale = '*' + str(self._scale)
         displacement = ''
         if (self.displacement):
-            displacement = '{:+}'.format(self.displacement) 
-        return self.base + index + scale + displacement
+            displacement = '{:+}'.format(self._displacement) 
+        return self._base + index + scale + displacement
                 
-    def set_base(self, base):
+    def base(self, base):
         if (not base in arch['registers']):
             raise ValueError('Base must be a general-purpose register. index:{}'.format(base))
-        self.base = base
+        self._base = base
         
-    def set_index(self, index):
+    def index(self, index):
         if (not (self.base or self.scale)):
             raise ValueError('No index without base or scale. index:{}'.format(index))
-        if (not index in GeneralPurposeRegisters):
+        if (not index in arch['generalPurposeRegisters']):
             raise ValueError('Index must be a general-purpose register. index:{}'.format(index))
-        self.index = index
+        self._index = index
         
-    def set_scale(self, scale):
-        if (not self.index):
+    def scale(self, scale):
+        if (not self._index):
             raise ValueError('No scale without index. scale:{}'.format(scale))
         if (not (scale in [1, 2, 4, 8])):
             raise ValueError('Scale must be one of [1, 2, 4, 8]. scale:{}'.format(scale))
-        self.scale = scale
+        self._scale = scale
                       
-    def set_displacement(self, displacement):
+    def displacement(self, displacement):
         #? just a number - 32bit. test?
         if (not isinstance(displacement, int)):
             raise ValueError('Displacement must be integer. displacement:{}'.format(displacement))
-        self.displacement = displacement 
+        self._displacement = displacement 
+
+    def __str__(self):
+        return "{}{}{}{}".format(
+            self._base,
+            self._index,
+            self._scale,
+            self._displacement
+        )
         
-        
+# Needs types
 def isRelativeGettable(tpe):
     # Base + (Index * Scale) + Displacement
     #! relative addresses can manage more than this, they can do
@@ -796,7 +804,82 @@ def isRelativeTraversable(tpe):
         # can only traverse two indirections with relative addresses
         r = ((tpe.countType() <= 2) and (tpe.countTypesOffset() < 2))
     return r
-                
+
+
+from collections import namedtuple
+TypeHeirachySplit = namedtuple('TypeHeirachySplit', ['loadable', 'relative'])
+
+def relativeGettableSplit(tpe, offsetIndextAndLabels):
+    typeMem = []
+    while(tpe):
+        if (not isinstance(tpe, TypeContainerOffset)):
+            typeMem.append(tpe)
+            tpe = tpe.elementType
+        else:
+            if (not offsetIndextAndLabels):
+                raise ValueError('Not enough data in path. tpe:{}, offsetIndextAndLabels:{}'.format(
+                    tpe,
+                    offsetIndextAndLabels
+                ))
+            offsetOrLabel = offsetIndextAndLabels.pop()
+            if (isinstance(tpe, Array)):
+                typeMem.append(tpe)
+                tpe = tpe.elementType
+            if (isinstance(tpe, Clutch)):
+                typeMem.append(tpe)
+                tpe = tpe.elementType(offsetOrLabel)
+                typeMem.append(tpe)
+    inOut = typeMem.reverse()
+    print('typeMem')
+    print(typeMem)
+    typesRelative = []
+    # allowed three pointer or Array/Clutchs. But only two Array/clutches
+    pointerCount = 0
+    containerOffsetType = 0
+    while(inOut):
+        e = inOut.pop()
+        if (isinstance(tpe, TypeContainerOffset)):
+            containerOffsetType += 0
+            if (containerOffsetType >= 2):
+                break
+        if (isinstance(tpe, Pointer)):
+            pointerCount += 1   
+            if (containerOffsetType >= 3):
+                break
+    typesRelative.append(tpe)
+    return TypeHeirachySplit(inOut, typesRelative)
+    
+    
+class AddressRelativeBuilder():
+    def __init__(self):
+        self.r = AddressRelative()
+        self.registerCount = 0
+        self.offsetCount = 0
+        
+    def register(self, register):
+        if(self.registerCount >= 2):
+            raise ValueError('RelaiveAdressBuilder: register count > 2. addr: {} register:"{}"'.format(
+                self.r,
+                register,
+            ))
+        if(self.registerCount == 0):
+            self.r.base(register)
+        if(self.registerCount == 1):
+            self.r.index(register)
+        self.registerCount += 1
+
+    def offset(self, offset):
+        if(self.offsetCount >= 1):
+            raise ValueError('RelaiveAdressBuilder: offset count > 2. addr: {} offset:"{}"'.format(
+                self.r,
+                offset,
+            ))
+        self.r.displacement(offset)
+        self.offsetCount += 1
+        
+    def result(self):
+        return self.r()
+
 
                 
 class LocationRoot():
@@ -832,13 +915,13 @@ class LocationRoot():
 
 
 class LocationROData(LocationRoot):
-    def __init__(self, lid):
-        if (lid in arch['registers']):
+    def __init__(self, label):
+        if (label in arch['registers']):
             raise ValueError('Label id must not be in registers. lid: {} registers:"{}"'.format(
-            type(lid),
-            ", ".join(registers)
+                type(label),
+                ", ".join(registers)
             ))
-        super().__init__(lid)
+        super().__init__(label)
 
     def mkRelative(self):
         raise NotImplementedError('LocationROData:  label can not be in relative address???. class:{}'.format(self.__class__.__name__))
@@ -849,17 +932,17 @@ class LocationROData(LocationRoot):
 
 
 class LocationRegister(LocationRoot):
-    def __init__(self, lid):
-        if (not (lid in arch['registers'])):
+    def __init__(self, register):
+        if (not (register in arch['registers'])):
             raise ValueError('Parameter must be in registers. lid: {} registers:"{}"'.format(
-            lid,
-            ", ".join(arch['registers'])
+                register,
+                ", ".join(arch['registers'])
             ))
-        super().__init__(lid)    
+        super().__init__(register)    
 
     def mkRelative(self):
-        l = LocationRelative()
-        l.set_base(self.lid)
+        l = AddressRelative()
+        l.base(self.lid)
         return l
         
     def __call__(self):
@@ -868,26 +951,33 @@ class LocationRegister(LocationRoot):
         
                     
 class LocationStack(LocationRoot):
-    def __init__(self, lid):
-        if (not (type(lid) == int)):
-            raise TypeError('Parameter must be class int. lid: {}'.format(type(lid)))
-        super().__init__(lid)    
+    def __init__(self, index):
+        if (not (type(index) == int)):
+            raise TypeError('Parameter must be class int. lid: {}'.format(type(index)))
+        super().__init__(index)    
 
 
     def mkRelative(self):
-        l = LocationRelative()
-        l.set_base('rbp')
-        l.set_displacement(-(self.lid * self.stackByteSize))
+        l = AddressRelative()
+        l.base('rbp')
+        l.displacement(-(self.lid * self.stackByteSize))
         return l
         
     def __call__(self):
         return 'rbp - {}'.format(self.lid * self.stackByteSize)
 
-    
-      
-                
-                
-
+def mkLocation(self, rawLocation):
+    l = None
+    if (rawLocation in arch['registers']):
+        l = LocationRegister(rawLocation)
+    elif(type(rawLocation) == str):
+        l = LocationROData(rawLocation)
+    elif(type(rawLocation) == int):
+        l = LocationStack(rawLocation)
+    else:
+        raise NotImplementedError('Parameter must be class int or str. rawLocation: {}'.format(type(address)))
+    return l
+        
 #! how are we going to keep track of stacks?
 #! by depth from pointer? Which requires a global to local trace.
 #! absolute address 
@@ -897,21 +987,61 @@ class LocationStack(LocationRoot):
 #? do we need this? Perhaps for making width sizes perhaps for 
 # rodata numbers etc.
 class Literal():
-    def __init__(self, b, tpe, value):
+    '''
+    Define a literal
+    Can be replaced with a raw description, but has 
+    extra convenienes.
+    '''
+    def __init__(self, tpe, value):
         self.tpe = tpe
-        self.b = b  
         self.value = value  
         
-    def valprint(self):
+    def __call__(self):
         #? Widthwords?
-        b += value
+        return str(self.value)
 
+    def withAnnot(self):
+        asmName = bytesToASMName[self.tpe.byteSize]
+        return asmName + ' ' + str(self.value)
+                
     def __repr__(self):
         return value
   
+class Value():
+    '''
+    Value assembles the setting and getting of a value, plus a type. 
+    '''
+    def __init__(self, tpe, refs):
+        '''
+        refs
+            indexes or labels for collections. In order of appearence.
+        '''
+        self.tpe = tpe
+    #def merge(self):    
+    def get(self):
+        # No, split type into mustLoad/relative addressable
+        if (isRelativeGettable(self.tpe)):
+            location = AddressRelative()
+            #while (not isinstance(tpe, TypeSingular)):
+            #if isinstance(tpe, TypeSingular):
+            #    r = Location()
+            #    break:
+            # if (tpe, Pointer):
+                # r = 
+            # if (tpe, Array):
+            # if (tpe, Clutch):
+        
+            return'[' + location() + ']'
+        else:
+            # Bury down until can use relaive address
+            return None
+        
+    #def delete(self): 
+    
 class Var():
-    def valprint(self):
-        raise NotImplementedError('This var has no valprint representation');
+    # A var assembles a type, value and location.
+    #def valprint(self):
+    #    raise NotImplementedError('This var has no valprint representation');
 
     def __repr__(self):
         raise NotImplementedError('This var has no __repr__ representation');
@@ -922,20 +1052,10 @@ class VarPointer:
     # because an allocation could be to a section header, a stack,
     # a stack block, or stash.
     #? is this mutable or immutable on update?
-    def __init__(self, b, stackIndex, rawLocation):
+    def __init__(self, tpe, rawLocation):
         self.tpe = Pointer(Bit64)
-        self.b = b
-        self.stackIndex = stackIndex
-        self.stackByteSize = stackIndex.stackByteSize
-        if (rawLocation in arch['registers']):
-            self.location = LocationRegister(self.stackByteSize, rawLocation)
-        elif(type(rawLocation) == str):
-            self.location = LocationROData(self.stackByteSize, rawLocation)
-        elif(type(rawLocation) == int):
-            self.location = LocationStack(self.stackByteSize, rawLocation)
-        else:
-            raise NotImplementedError('Parameter must be class int or str. rawLocation: {}'.format(type(address)))
-    
+        self.location = mkLocation(rawLocation)
+
     def address(self):
         '''
         A snippet for accessing the address
@@ -969,7 +1089,7 @@ class VarPointer:
         self.b += 'mov {}, {}'.format(pointer.addressIndex(index), self.location()) 
         #?? what do we do about location?             
         
-    def toStack(self):
+    def toStack(self, index):
         '''
         Push the address to the stack. 
         records the offset
@@ -978,7 +1098,7 @@ class VarPointer:
             raise NotImplementedError('address already in stack. Pointer:{}'.format(self))
         #! this push not working
         self.b += "push {}".format(self.location())
-        self.location = LocationStack(self.stackByteSize, self.stackIndex())
+        self.location = LocationStack(index)
         
     def toRegister(self, targetRegisterName):
         '''
@@ -991,7 +1111,7 @@ class VarPointer:
         if (self.location.address == targetRegisterName):
             raise NotImplementedError('address already in given register. Pointer:{}'.format(self))
         self.b += 'mov {}, {}'.format(targetRegisterName, self.location())              
-        self.location = LocationRegister(self.stackByteSize, targetRegisterName)
+        self.location = LocationRegister(targetRegisterName)
 
     def free(self):
         self.b += "mov {}, {}".format(cParameterRegister[0], self.location())
@@ -999,19 +1119,19 @@ class VarPointer:
 
     #! somwhere this logic needs to be captured, but not in the 
     # current Print()
-    def addrprint(self):
-        self.b.externsAdd("extern printf")
-        self.b.rodataAdd('print64Fmt: db "%lli", 0')
-        self.b += "mov rdi, print64Fmt"
-        #? Can we do this for labels?
-        #! Works for registers but not other addresses?
-        if (type(self.location) == LocationStack):
-            self.b += "lea rsi, [" + self.location() + "]"
-        if (type(self.location) != LocationStack):
-            self.b += "mov rsi, " + self.location()
-        self.b += "call printf"   
+    # def addrprint(self):
+        # self.b.externsAdd("extern printf")
+        # self.b.rodataAdd('print64Fmt: db "%lli", 0')
+        # self.b += "mov rdi, print64Fmt"
+        # #? Can we do this for labels?
+        # #! Works for registers but not other addresses?
+        # if (type(self.location) == LocationStack):
+            # self.b += "lea rsi, [" + self.location() + "]"
+        # if (type(self.location) != LocationStack):
+            # self.b += "mov rsi, " + self.location()
+        # self.b += "call printf"   
         
-    def valprint(self):
+    #def valprint(self):
         # self.b.externsAdd("extern printf")
         # # surely this needs to come from the type?
         # self.b.rodataAbdd('print64Fmt: db "%lli", 0')
@@ -1022,11 +1142,10 @@ class VarPointer:
         # #?? Can we do this for labels?
         # self.b += "mov rsi, [" + self.location() + "]"        
         # self.b += "call printf" 
-        Print(self.tpe, self.location)
+        #Print(self.tpe, self.location)
                             
     def __repr__(self):
-        return "VarPointer(stackIndex: {}, location: {})".format(
-            self.stackIndex,
+        return "VarPointer(location: {})".format(
             self.location
         )
         
@@ -1038,7 +1157,7 @@ class VarArrayPointer(VarPointer):
     (except freeing) All The location must be RAX or a subregister.
     The retrieval is 64bit (???) 
     '''
-    def __init__(self, b, tpe, stackIndex, rawLocation):
+    def __init__(self, b, rawLocation):
         self.tpe = Array(Bit64)
 
     def __call__(self, index, dst):
@@ -1057,7 +1176,7 @@ class VarArrayPointer(VarPointer):
 
 
 
-def arrayPointerAllocate(b, stackIndex, size):
+def arrayPointerAllocateStack(b, size, index):
     '''
     Allocate an array of pointers.
     The size is of elemByteSize
@@ -1065,7 +1184,7 @@ def arrayPointerAllocate(b, stackIndex, size):
     byteSize = architecture['bytesize'] * size
     b +=  "mov {}, {}".format(cParameterRegister[0], byteSize)
     b += "call malloc"
-    return VarArrayPointer(b, stackIndex, 'rax')        
+    return VarArrayPointer(b, index, 'rax')        
 
       
 class VarClutchPointer(VarPointer):
