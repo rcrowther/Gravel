@@ -33,15 +33,26 @@ class TestTypes(unittest.TestCase):
         self.assertTrue(self.ary.containsTypeSingular()) 
         self.assertTrue(self.clh.containsTypeSingular()) 
 
-    #def test_children_ptr(self):
-    #    self.assertTrue(self.ptr.children([]), [Pointer, Bit64])
+    def test_children_ptr(self):
+        self.assertEqual(len(self.ptr.children(['x'])), 2)
+        self.assertEqual(self.ptr.children([]), [self.ptr, Bit64])
         
-   # def test_children_clh(self):
-   #     self.assertTrue(self.clh.children(['x']), [Clutch, Bit64])
+    def test_children_clh(self):
+        self.assertEqual(len(self.clh.children(['x'])), 2)
+        self.assertEqual(self.clh.children(['x']), [self.clh, Bit32])
 
     def test_children_complex(self):
         tpe = Pointer(Array(Clutch({'velocity': Bit32, 'direction': Pointer(Bit32)})))
-        self.assertTrue(tpe.children([5, 'direction']), [Pointer, Array, Clutch, Bit64])
+        self.assertEqual(len(tpe.children([5, 'direction'])), 5)
+        self.assertEqual(tpe.children([5, 'direction'])[0], tpe)
+        self.assertEqual(tpe.children([5, 'direction'])[4], Bit32)
+        # self.assertEqual(tpe.children([5, 'direction']), [
+            # Pointer(Array(Clutch({'velocity': Bit32, 'direction': Pointer(Bit32)}))), 
+            # Array(Clutch({'velocity': Bit32, 'direction': Pointer(Bit32)})), 
+            # Clutch({'velocity': Bit32, 'direction': Pointer(Bit32)}), 
+            # Pointer(Bit32), 
+            # Bit32
+        # ])
 
 
 # class TestLocationStack(unittest.TestCase):

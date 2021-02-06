@@ -30,29 +30,53 @@ class TestRelativeAddress(unittest.TestCase):
 class TestAddressRelative(unittest.TestCase):
     def test_build(self):
         b = AddressRelativeBuilder()
-        b.register('rax')
-        b.register('rcx')
-        b.offset(42)
+        b.registerAdd('rax')
+        b.registerAdd('rcx')
+        b.offsetAdd(42)
         self.assertEqual(b.result(), 'rax+rcx+42')    
 
     def test_build_throws_register(self):
         b = AddressRelativeBuilder()
-        b.register('rax')
-        b.register('rcx')
+        b.registerAdd('rax')
+        b.registerAdd('rcx')
         with self.assertRaises(ValueError):
-            b.register('rbx')
+            b.registerAdd('rbx')
 
-    def test_build_throws_offset(self):
-        b = AddressRelativeBuilder()
-        b.offset(64)
-        with self.assertRaises(ValueError):
-            b.offset(32)
+    # def test_build_throws_offset(self):
+        # b = AddressRelativeBuilder()
+        # b.offsetAdd(64)
+        # with self.assertRaises(ValueError):
+            # b.offset(32)
 
-    def test_type_split(self):
-        tpe = Pointer(Array(Pointer(Bit64)))
-        split = relativeGettableSplit(tpe, [4])
+    def test_type_split_relative(self):
+        tpe = Pointer(Array(Clutch({'velocity': Bit32, 'direction': Pointer(Bit32)})))
+        split = relativeGettableSplit(tpe, [4, 'direction'])
+        self.assertEqual(len(split), 2)
+        self.assertEqual(split[0][0], TypepathItem(Bit32, None))
+        self.assertEqual(split[1][-1], TypepathItem(tpe, None))
+
+    def test_type_get_relative_tail(self):
+        tpe = Pointer(Array(Clutch({'velocity': Bit32, 'direction': Pointer(Bit32)})))
+        split = relativeGettableSplit(tpe, [4, 'direction'])
+        rel0 = split[0]
+        r = getRelative(rel0)
+        self.assertEqual(r, "rax")
+        
+    def test_type_get_relative(self):
+        tpe = Pointer(Array(Clutch({'velocity': Bit32, 'direction': Pointer(Bit32)})))
+        split = relativeGettableSplit(tpe, [3, 'direction'])
+        rel1 = split[1]
+        r = getRelative(rel1)
+        self.assertEqual(r, "rax+4+36")
+                
         #self.assertEqual(split.loadable, [Pointer, Array, Pointer, Bit64])    
-        self.assertEqual(split.relative, [Pointer, Array, Pointer, Bit64])    
+        #self.assertEqual(split.relative, [Pointer, Array, Pointer, Bit64])    
+   # def test_builder_relative(self):
+    #    tpe = Pointer(Array(Clutch({'velocity': Bit32, 'direction': Pointer(Bit32)})))
+     #   split = relativeGettableSplit(tpe, [4, 'direction'])
+        #r = getRelative(split.relative, [4, 'direction'])
+      #  r = getRelative(len(split), 2)
+        #self.assertEqual(r, "4 + 32 + 96")
         
 if __name__ == '__main__':
     unittest.main()

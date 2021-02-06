@@ -63,6 +63,8 @@ ASCII = Encoding('ascii')
 UTF8 = Encoding('UTF8')
 
 
+from collections import namedtuple
+TypepathItem = namedtuple('TypepathItem', ['tpe', 'offset'])
 
 class Type():
     '''
@@ -95,7 +97,7 @@ class Type():
     # @property
     # def byteSize(self):
         # return self._byteSize
-        
+    
     def canEqual(self, other):
         return isinstance(other, Type)
         
@@ -125,12 +127,23 @@ class Type():
             # b.append(tpe)
             # tpe = tpe.elementType
         # return b
+    # This works, but is nasty stepping code and inefficient
+    # The data could be gathered on build, at the cost of a kind of 
+    # repetition. The question is, is this data usable 
+    # cross-architecture for example, for relative address detection?
     def children(self, offsetIndexAndLabels):
         '''
         List the children/contained types.
+        Includes the initial type (self).
         offsetIndextAndLabels
             [] of indexes and labels for arrays and clutches. Only 
-            labeles are used, to trace types contained in a clutch.
+            labels are used, to trace down types parented/contained in a
+            clutch.
+        return
+            A list of the types. Since they types are pointer to the 
+            type, the first outer type will contain all the contained 
+            types, the next will include all the types it contains, etc. 
+            The types are in order out..in.
         '''
         typeMem = []
         tpe = self
@@ -158,10 +171,54 @@ class Type():
                             tpe
                         ))
                     tpe = tpe.elementType[offsetOrLabel]
-                    typeMem.append(tpe)
+        #print('typeMem')
+        #print(str(typeMem))
         return typeMem
                     
-                    
+
+    def typePath(self, offsetIndexAndLabels):
+        '''
+        List the children/contained types.
+        Includes the initial type (self).
+        offsetIndextAndLabels
+            [] of indexes and labels for arrays and clutches. Only 
+            labels are used, to trace down types parented/contained in a
+            clutch.
+        return
+            A list of the types. Since they types are pointer to the 
+            type, the first outer type will contain all the contained 
+            types, the next will include all the types it contains, etc. 
+            The types are in order out..in.
+        '''
+        typeMem = []
+        tpe = self
+        olIdx = 0
+        while(tpe):
+            if (not isinstance(tpe, TypeContainerOffset)):
+                typeMem.append(TypepathItem(tpe, None))
+                tpe = tpe.elementType
+            else:
+                if (olIdx >= len(offsetIndexAndLabels)):
+                    raise ValueError('Not enough data in path. tpe:{}, offsetIndexAndLabels:{}'.format(
+                        tpe,
+                        offsetIndexAndLabels
+                    ))
+                offsetOrLabel = offsetIndexAndLabels[olIdx]
+                olIdx += 1
+                typeMem.append(TypepathItem(tpe, offsetOrLabel))
+                if (isinstance(tpe, Array)):
+                    tpe = tpe.elementType
+                elif (isinstance(tpe, Clutch)):
+                    if (not (offsetOrLabel in tpe.elementType)):
+                        raise ValueError('Given label not in Clutch. label:"{}", clutch:{}'.format(
+                            offsetOrLabel,
+                            tpe
+                        ))
+                    tpe = tpe.elementType[offsetOrLabel]
+        #print('typeMem')
+        #print(str(typeMem))
+        return typeMem
+
     def typeDepth(self):
         '''
         Return the depth of this type i,e, number of subtypes
@@ -332,6 +389,7 @@ class Pointer(TypeContainer):
     A pointer to data
     '''
     #byteSize = arch['bytesize']
+    byteSize = 8
     def __init__(self, elementType):
         if not(isinstance(elementType, Type)):
             raise ValueError('Pointer elementType not a Type. elementType: {}'.format(type(elementType)))
@@ -357,7 +415,10 @@ class Array(TypeContainerOffset):
         if not(isinstance(elementType, Type)):
             raise ValueError('Array elementType not a Type. elementType: {}'.format(type(elementType)))
         super().__init__(elementType)
-        
+
+    def offset(self, lid):
+        return self.elementType.byteSize * lid
+                
     def containsTypeSingular(self):
         return isinstance(self.elementType, TypeSingular)
 
@@ -394,6 +455,9 @@ class Clutch(TypeContainerOffset):
                 break
         self.byteSize = byteSize
 
+    def offset(self, lid):
+        return self.offsets[lid]
+        
     def subTypes(self):
         return self.elementType.values()
         

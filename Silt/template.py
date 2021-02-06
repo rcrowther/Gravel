@@ -52,7 +52,7 @@ alignedByteWidths = [v.byteCount for k,v in WidthInfoMap.items()]
 bytesToASMName = {v.byteCount:v.ASMName for k,v in WidthInfoMap.items()}
 
 
-# Aritecture data
+# Architecture data
 arch = architecture.architectureSolve(architecture.x64)
     
 def byteSize(bitsize):
@@ -66,40 +66,6 @@ baseStyle = {
     'indent_step'  : 2,
 }
 
-
-## Builder
-class Builder():
-    def __init__(self):
-        self._externs = set()
-        self._data = set()
-        self._rodata = set()
-        self._bss = set()
-        self._text = []
-        self._code = []
-        
-    def externsAdd(self, s):
-        self._externs.add(s)
-        
-    def dataAdd(self, s):
-        self._data.add(s)
-     
-    def rodataAdd(self, s):
-        self._rodata.add(s)
-             
-    def bssAdd(self, s):
-        self._bss.add(s)
-  
-    def textAdd(self, s):
-        self._text.append(s)
-        
-    ## For code, defaults to class implementation
-    def __iadd__(self, s):
-       self._code.append(s)
-       return self
-         
-    def __repr__(self):
-        return "Builder()"
-
 def indent_inc(indent_step, current_indent):
     current_indent += indent_step    
     return current_indent
@@ -110,6 +76,36 @@ def indent_dec(indent_base, indent_step, current_indent):
         current_indent = indent_base
     return current_indent
          
+def builderResolveCode(builder, arch):
+    '''
+    Take gathered data and generate a cannonical linear list
+    '''
+    # Currently resolves functions into the main list, but may
+    # do other actions
+    
+    for func in builder.funcs:
+        # build the func data into the main builder
+        ## jump label
+        builder._code.append('{}:'.format(self.currentFunc.name))
+
+        ## allocations
+        stackAllocSize = self.currentFunc.stackAllocSize 
+        if(stackAllocSize > 0):
+            builder._code[0] = "rsp - {}".format(stackAllocSize)
+        heapAllocSize = self.currentFunc.heapAllocSize 
+        if(heapAllocSize > 0):
+            builder._code[1] =  "mov {}, {}".format(cParameterRegister[0], heapAllocSize)
+            builder._code[2] =  "call malloc"
+
+        ## code body
+        builder._code.extend(self.currentFunc._code)
+
+        # return
+        builder._code.append('ret')
+        
+        # zero
+        builder.currentFunc = None
+        
 def builderCode(style, code):
     '''
     Return a string of code data, inflected by style
@@ -294,7 +290,13 @@ def stringDefine(b, stackIndex, string):
     b += "call malloc"
     return Pointer(b, stackIndex, 'rax')        
         
-        
+def funcStart(b, name):
+    b.funcBegin('{}:'.format(name))
+
+def funcEnd(b, ):
+    b.funcEnd('ret')
+    
+    
 class Print64():
     #def __init__(self, b):
     #    self.b = b
@@ -782,6 +784,7 @@ class AddressRelative():
         )
         
 # Needs types
+#x
 def isRelativeGettable(tpe):
     # Base + (Index * Scale) + Displacement
     #! relative addresses can manage more than this, they can do
@@ -797,7 +800,7 @@ def isRelativeGettable(tpe):
         r = ((tpe.countType() <= 3) and (tpe.countTypesOffset() < 1))
     return r
 
-
+#x
 def isRelativeTraversable(tpe):
     r = False
     if isinstance(tpe, TypeContainer):
@@ -806,82 +809,143 @@ def isRelativeTraversable(tpe):
     return r
 
 
-from collections import namedtuple
-TypeHeirachySplit = namedtuple('TypeHeirachySplit', ['loadable', 'relative'])
+#from collections import namedtuple
+#TypeHeirachySplit = namedtuple('TypeHeirachySplit', ['loadable', 'relative'])
 
-def relativeGettableSplit(tpe, offsetIndextAndLabels):
-    typeMem = []
-    while(tpe):
-        if (not isinstance(tpe, TypeContainerOffset)):
-            typeMem.append(tpe)
-            tpe = tpe.elementType
-        else:
-            if (not offsetIndextAndLabels):
-                raise ValueError('Not enough data in path. tpe:{}, offsetIndextAndLabels:{}'.format(
-                    tpe,
-                    offsetIndextAndLabels
-                ))
-            offsetOrLabel = offsetIndextAndLabels.pop()
-            if (isinstance(tpe, Array)):
-                typeMem.append(tpe)
-                tpe = tpe.elementType
-            if (isinstance(tpe, Clutch)):
-                typeMem.append(tpe)
-                tpe = tpe.elementType(offsetOrLabel)
-                typeMem.append(tpe)
-    inOut = typeMem.reverse()
-    print('typeMem')
-    print(typeMem)
-    typesRelative = []
-    # allowed three pointer or Array/Clutchs. But only two Array/clutches
-    pointerCount = 0
-    containerOffsetType = 0
-    while(inOut):
-        e = inOut.pop()
-        if (isinstance(tpe, TypeContainerOffset)):
-            containerOffsetType += 0
-            if (containerOffsetType >= 2):
-                break
-        if (isinstance(tpe, Pointer)):
-            pointerCount += 1   
-            if (containerOffsetType >= 3):
-                break
-    typesRelative.append(tpe)
-    return TypeHeirachySplit(inOut, typesRelative)
+
+# This works, but is nasty stepping code and also a bit inefficient
+# See also tpe.children(). The question is, is this data usable 
+# cross-architecture for example, for relative address detection?
+def relativeGettableSplit(tpe, offsetIndexAndLabels):
+    '''
+    Split a type into segments handlable by relative addressing.
+    return
+        Array[Array{child..parent]..] breaking at pointers
+    '''
+    # Get allows any number of offsets to be joined. But only one 
+    # pointer
+    children = tpe.typePath(offsetIndexAndLabels)
+    relativeChains = []
+    b = []
+    # chilldren is reversed for natural termination.
+    # , so count down counts in--out
+    for e in reversed(children):
+        b.append(e)
+        # if singular or TypeContainerOffset, nothing else to do
+        if (isinstance(e.tpe, Pointer)):
+            relativeChains.append(b)
+            b = []
+    return relativeChains
+
+# def relativeTraversableSplit(tpe, offsetIndexAndLabels):
+    # '''
+    # Split a type into segments handlable by relative addressing.  
+    # '''
+    # children = tpe.typePath(offsetIndexAndLabels)
+    # relativeChains = []
+    # b = []
+    # regCount = 0
+    # # children is reversed for natural termination.
+    # # , so count down counts in--out
+    # for e in reversed(children):
+        # b.append(e)
+        # # if singular or TypeContainerOffset, nothing else to do
+        # if (isinstance(e.tpe, Pointer)):
+            # relativeChains.append(b)
+            # b = []
+        # if (isinstance(e.tpe, TypeContainerOffset):
+            # regCount += 1
+
+    # return relativeChains
+        
     
-    
+# class AddressRelativeBuilder():
+    # def __init__(self):
+        # self.r = AddressRelative()
+        # self.registerCount = 0
+        # self.offsetCount = 0
+        
+    # def register(self, register):
+        # if(self.registerCount >= 2):
+            # raise ValueError('RelaiveAdressBuilder: register count > 2. addr: {} register:"{}"'.format(
+                # self.r,
+                # register,
+            # ))
+        # if(self.registerCount == 0):
+            # self.r.base(register)
+        # if(self.registerCount == 1):
+            # self.r.index(register)
+        # self.registerCount += 1
+
+    # def offset(self, offset):
+        # if(self.offsetCount >= 1):
+            # raise ValueError('RelaiveAdressBuilder: offset count > 2. addr: {} offset:"{}"'.format(
+                # self.r,
+                # offset,
+            # ))
+        # self.r.displacement(offset)
+        # self.offsetCount += 1
+        
+    # def result(self):
+        # return self.r()
+
 class AddressRelativeBuilder():
     def __init__(self):
-        self.r = AddressRelative()
-        self.registerCount = 0
-        self.offsetCount = 0
+        self.registers = []
+        self.offsets = []
         
-    def register(self, register):
-        if(self.registerCount >= 2):
-            raise ValueError('RelaiveAdressBuilder: register count > 2. addr: {} register:"{}"'.format(
-                self.r,
+    def registerAdd(self, register):
+        if(len(self.registers) >= 2):
+            raise ValueError('RelativeAdressBuilder: register count > 2. self: {} register:"{}"'.format(
+                self,
                 register,
             ))
-        if(self.registerCount == 0):
-            self.r.base(register)
-        if(self.registerCount == 1):
-            self.r.index(register)
-        self.registerCount += 1
+        self.registers.append(register)
 
-    def offset(self, offset):
-        if(self.offsetCount >= 1):
-            raise ValueError('RelaiveAdressBuilder: offset count > 2. addr: {} offset:"{}"'.format(
-                self.r,
-                offset,
-            ))
-        self.r.displacement(offset)
-        self.offsetCount += 1
+    def offsetAdd(self, offset):
+        self.offsets.append(offset)
         
     def result(self):
-        return self.r()
-
-
-                
+        b =[]
+        if self.registers:
+            b.append(self.registers[0])
+        if (len(self.registers) > 1):
+            # Can only be plus
+            b.append('+')            
+            b.append(self.registers[1])            
+        for offset in self.offsets:
+            b.append('{:+}'.format(offset))
+        return "".join(b)
+        
+# def getRelative(relativeTypechain, offsetIndexAndLabels):
+    # olIdx = len(offsetIndexAndLabels) - 1
+    # b = AddressRelativeBuilder()
+    # ra = AddressRelative()
+    # for tpe in relativeTypechain:
+        # if (isinstance(tpe, TypeContainerOffset)):
+            # print(str(olIdx))
+            # print(str(tpe))
+            # b.offset(tpe.offset(offsetIndexAndLabels[olIdx]))
+            # olIdx -= 1
+        # else:
+            # #! need a supply of registers
+            # b.register('rax')
+    # return b.result()
+    
+def getRelative(relativeTypePath):
+    b = AddressRelativeBuilder()
+    for e in relativeTypePath:
+        if (isinstance(e.tpe, TypeContainerOffset)):
+            print(str(e))
+            print(str(e.tpe.byteSize))
+            b.offsetAdd(e.tpe.offset(e.offset))
+        if (isinstance(e.tpe, Pointer)):
+            #! need a supply of registers
+            b.registerAdd('rax')
+    return b.result()
+    
+    
+    
 class LocationRoot():
     '''
     Location of root of some data.
@@ -990,7 +1054,7 @@ class Literal():
     '''
     Define a literal
     Can be replaced with a raw description, but has 
-    extra convenienes.
+    extra conveniences.
     '''
     def __init__(self, tpe, value):
         self.tpe = tpe
@@ -1006,48 +1070,135 @@ class Literal():
                 
     def __repr__(self):
         return value
-  
-class Value():
-    '''
-    Value assembles the setting and getting of a value, plus a type. 
-    '''
-    def __init__(self, tpe, refs):
-        '''
-        refs
-            indexes or labels for collections. In order of appearence.
-        '''
-        self.tpe = tpe
-    #def merge(self):    
-    def get(self):
-        # No, split type into mustLoad/relative addressable
-        if (isRelativeGettable(self.tpe)):
-            location = AddressRelative()
-            #while (not isinstance(tpe, TypeSingular)):
-            #if isinstance(tpe, TypeSingular):
-            #    r = Location()
-            #    break:
-            # if (tpe, Pointer):
-                # r = 
-            # if (tpe, Array):
-            # if (tpe, Clutch):
-        
-            return'[' + location() + ']'
-        else:
-            # Bury down until can use relaive address
-            return None
-        
-    #def delete(self): 
-    
+
+# Look, is this an all-encompassing Var, that can be broken down to relative
+# addressable subclasses?
+# Such a thing would not have a get and setter, as the API would not either
+# e.g. Array(4)('name')
+# contruct
+# There is a data location, and a root location
+# v1 = HeapVar(b, Array(7, Clutch(['x': Bit64, 'y':Bit64])))
+# v1()
+# v1(4)('name')
+# The issue, We can delve for values, ''get', ''set' etc.
+# But we have no syntax
+# Also, offsetcollections may have pointers, may not.
+# Var(rootLocation, Pointer(Array(Clutch())
+# Van vars take vars as values, for reallocation? Yes.
+# v1 = Var(b, rootLocation, Pointer(Array(Clutch()), [values])
+# v2 = v1(3)
+# v2('x')
+# v1.free()
+
 class Var():
-    # A var assembles a type, value and location.
+    '''
+    A var assembles a type, value acessors and root location.
+    '''
+    #def valprint(self):
+    #    raise NotImplementedError('This var has no valprint representation');
+
+    def __repr__(self, b, rawLocation, storeLocation, tpe, value):
+        self.tpe = tpe
+        self.rootLocation = mkLocation(rawLocation)
+        self.value = value
+        self.alloc(storeLocation, tpe, value)
+    
+    def alloc(self, b, storeLocation, tpe, value):
+        if (isinstance(storeLocation, DefStack)):
+            b.stackAllocAdd(s, tpe.byteSize)
+
+        #elif (isinstance(storeLocation, DefGlobalRO)):
+            
+        #elif (isinstance(storeLocation, DefGlobalRW)):
+        elif (isinstance(storeLocation, DefHeap)):
+            b.heapAllocAdd(s, tpe.byteSize)
+        #elif (isinstance(storeLocation, DefRegister)):
+
+class Var():
+    '''
+    A var assembles a type, value acessors and root location.
+    '''
     #def valprint(self):
     #    raise NotImplementedError('This var has no valprint representation');
 
     def __repr__(self):
         raise NotImplementedError('This var has no __repr__ representation');
+          
+# class ValueAccessor():
+    # '''
+    # Value assembles the setting and getting of a value, plus a type. 
+    # '''
+    # def __init__(self, tpe, refs):
+        # '''
+        # refs
+            # indexes or labels for collections. In order of appearence.
+        # '''
+        # self.tpe = tpe
+    # #def merge(self):    
+    # def get(self):
+        # # No, split type into mustLoad/relative addressable
+        # if (isRelativeGettable(self.tpe)):
+            # location = AddressRelative()
+            # #while (not isinstance(tpe, TypeSingular)):
+            # #if isinstance(tpe, TypeSingular):
+            # #    r = Location()
+            # #    break:
+            # # if (tpe, Pointer):
+                # # r = 
+            # # if (tpe, Array):
+            # # if (tpe, Clutch):
         
+            # return'[' + location() + ']'
+        # else:
+            # # Bury down until can use relaive address
+            # return None
+        
+    # #def delete(self): 
+
+# Or is this a special kind of rootLocation?
+class VarLabel(Var):
+    '''
+    A varlabel contains a value wich returns directly/
+    It is not a literal, it is stored somewhere repeatably acessible and 
+    and sometimes modifiable 
+    In assembly, labels are values stored in registers. Note that the 
+    addressess of registers are either inaccessible or irrelevant. 
+    '''
+    def __init__(self, tpe, locationRaw):
+        self.tpe = tpe
+        self.location = mkLocation(locationRaw)
+        if (isinstance(self.location, LocationStack) or (isinstance(self.location, LocationROData)):
+            raise ValueError('VarLabel: a varlabel can not be on the stack or section? locationRaw:"{}"'.format(
+                locationRaw,
+            ))
+
+    def get(self):
+        return self.location()
+        
+    def set(self, b, v):
+        b += "mov {}, {}".format(self.location(), v)
+    # No delete, irrelevant, or zeroing?
+    
+    
+# Problem is, an offset type may not be on a pointer if it is embedded 
+# e.g. Array(Clutch())
+# Can these be a simple 
+        
+def address_build(self, tpe, addressRelativeBuilder, offsetId):
+    # Singletons, no need to do anything
+    ## Pointer, are constructed with acessor ops, not here
+    if isinstance(tpe, TypeContainerOffset):
+        addressRelativeBuilder.offsetAdd( self.tpe.offset(index) )
+      
+   
+
+
+
+
 class VarPointer:
-    # Treat a location as an address of a value
+    '''
+    Treat a root location as the address of a value
+    '''
     # Can free stash-allocated pointer data, but not allocate. This is 
     # because an allocation could be to a section header, a stack,
     # a stack block, or stash.
@@ -1056,30 +1207,30 @@ class VarPointer:
         self.tpe = Pointer(Bit64)
         self.location = mkLocation(rawLocation)
 
-    def address(self):
+    def addr(self):
         '''
         A snippet for accessing the address
         '''
         return self.location()
 
-    def indexAddress(self, index):
-        '''
-        A snippet for accessing an address offset from the pointer value.
-        '''
-        #Will not work naked? LEA?
-        return '{} + {}'.format(self.location(), index)
+    # def indexAddress(self, index):
+        # '''
+        # A snippet for accessing an address offset from the pointer value.
+        # '''
+        # #Will not work naked? LEA?
+        # return '{} + {}'.format(self.location(), index)
                 
-    def value(self):
+    def __call__(self):
         '''
         A snippet for accessing the value
         '''
         return '[' + self.location() + ']'
 
-    def indexValue(self, index):
-        '''
-        A snippet for accessing a value offset from the pointer value.
-        '''
-        return 'qword[{} + {}]'.format(self.location(), index)
+    # def indexValue(self, index):
+        # '''
+        # A snippet for accessing a value offset from the pointer value.
+        # '''
+        # return 'qword[{} + {}]'.format(self.location(), index)
                     
     def toPointerIndex(self, pointer, index):
         '''

@@ -8,6 +8,12 @@ dataLabelsRO = LabelsROData()
 # start a localstack
 stackIndex = StackIndex(1)
 b = Builder()
+def funcStart(b, name):
+    b.funcBegin('{}:'.format(name))
+
+def funcEnd(b, ):
+    b.funcEnd('ret')
+    
 #outerFrame = Frame(b)
 #p = Print(b) 
 # raw(b, 'mov rax, 99')
