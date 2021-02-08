@@ -69,5 +69,5 @@ sysExit(b, 0)
 b.funcEnd()      
 
 builderResolveCode(architecture.architectureSolve(architecture.x64), b)
-write(b, baseStyle)
+write(b, styleResolve(baseStyle))
 

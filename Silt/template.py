@@ -108,46 +108,62 @@ def builderResolveCode(arch, b):
 ## Render data style
 #! should be e.g. 'codeblock' : {'indent_step': 2} etc.
 baseStyle = {
-    'indent': 4,
-    'indent_step'  : 2,
-    'label' : {'indent': -4},
+    '*' : {'indent': 4},
+    'lineDefault' : {},
+    'label' : {'indent': -2},
+    'codeBlock' : {'indent': 2},
 }
 
-def indent_inc(indent_step, current_indent):
-    current_indent += indent_step    
-    return current_indent
+def styleResolve(style):
+    '''
+    Pack the style with defaults
+    Avoids constant explicit ''if'
+    '''
+    for selector, rules in style.items():
+        if (not('indent' in rules)):
+            style[selector]['indent'] = 0
+    return style
     
-def indent_dec(indent_base, indent_step, current_indent):
-    current_indent -= indent_step
-    if(current_indent < indent_base):
-        current_indent = indent_base
-    return current_indent
-           
+def indent_inc(styleBlock, indent_step):
+    styleBlock['indent'] += indent_step    
+    
+def indent_dec(style, styleBlock, indent_step):
+    styleBlock['indent'] -= indent_step    
+    if(styleBlock['indent'] < style['*']['indent']):
+        styleBlock['indent'] = indent_base
+
+def applyStyleToLine(styleBlock, styleLine, line):
+    indent = styleBlock['indent'] + styleLine['indent']
+    l = (" " * indent) + line 
+    return l
+    
 def builderCode(style, code):
     '''
     Return a string of code data, inflected by style
     '''
-    indent_base = style['indent']
-    indent_step = style['indent_step']
-    current_indent = indent_base
+    styleBlock = style['*']
     b = []
     for line in code:
         b.append('\n') 
+        styleLine = style['lineDefault']
         if line.endswith(':'):
-            style['label']
-            indent = indent_dec(indent_base, indent_step, current_indent)
-            b.append(" " * indent) 
-        
+            styleLine = style['label']
         if line.startswith('codeblock'):
-            current_indent = indent_inc(indent_step, current_indent)
-        if line.startswith('end'):
-            current_indent = indent_dec(indent_base, indent_step, current_indent)
-        b.append(" " * current_indent) 
-        b.append(line) 
+            indent_inc(
+                styleBlock, 
+                style['codeblock']['indent']
+            )
+        elif line.startswith('end'):
+            indent_dec(
+                style,
+                styleBlock, 
+                - style['codeblock']['indent']
+            )
+        b.append(applyStyleToLine(styleBlock, styleLine, line)) 
     return ''.join(b)
     
 def builderPrint(frame, b, style):
-    indent = style['indent']
+    indent = style['*']['indent']
     indent_str = " " * indent
     joinIndent = '\n' + indent_str
     styledBuilder = {
