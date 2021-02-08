@@ -2,18 +2,19 @@
 
 
 class FuncBuilder():
-    def __init__(self, name):
+    def __init__(self, name, returnAuto):
         self.name = name
         self._code = []
         self.stackAllocSize = 0
         self.heapAllocSize = 0
+        self.returnAuto = returnAuto
         
     def __iadd__(self, s):
         self._code.append(s)
         return self
          
     def __repr__(self):
-        return "FuncBuilder(name:{})".format(self.name)
+        return "FuncBuilder(name:{}, returnAuto:{})".format(self.name, self.returnAuto)
 
               
 ## Builder
@@ -27,7 +28,7 @@ class Builder():
         self._code = []
         self.currentFunc = None
         self.funcs = []
-
+        self.funcNames = []
 
     def externsAdd(self, s):
         self._externs.add(s)
@@ -44,50 +45,37 @@ class Builder():
     def textAdd(self, s):
         self._text.append(s)
 
-    def funcBegin(self, name):
+    def funcBegin(self, name, returnAuto):
+        #print('funcBegin')
         if (self.currentFunc):
-            raise  ValueError('Function not closed: func: {}'.format(self.currentFunc))
-        self.currentFunc = FuncBuilder(name)
+            raise ValueError('Function not closed: func: {}'.format(self.currentFunc))
+        self.currentFunc = FuncBuilder(name, returnAuto)
 
-    #! dont like this arch code in the builder
-    #? Why not list funcdata and resolve later?
     def funcEnd(self):
-        # build the func data into the main builder
-        ## jump label
-        # self._code.append('{}:'.format(self.currentFunc.name))
-
-        # ## allocations
-        # stackAllocSize = self.currentFunc.stackAllocSize 
-        # if(stackAllocSize > 0):
-            # self._code[0] = "rsp - {}".format(stackAllocSize)
-        # heapAllocSize = self.currentFunc.heapAllocSize 
-        # if(heapAllocSize > 0):
-            # self._code[1] =  "mov {}, {}".format(cParameterRegister[0], heapAllocSize)
-            # self._code[2] =  "call malloc"
-
-        # ## code body
-        # self._code.extend(self.currentFunc._code)
-
-        # # return
-        # self._code.append('ret')
-        
+        #print('funcEnd')
+        funcName = self.currentFunc.name 
+        if (not(funcName in self.funcNames)):       
+            self.funcs.append( self.currentFunc )
+            self.funcNames.append( funcName )
+        else:
+            raise ValueError('Two funcs, same name: name: {}'.format(self.currentFunc.name))
+            
         # zero
-        self.funcs.append( self.currentFunc )
         self.currentFunc = None
 
-    def stackAllocAdd(self, s, byteSize):
-        self.currentFunc += s
+    def stackAlloc(self, byteSize):
         self.currentFunc.stackAllocSize += byteSize
 
-    def heapAllocAdd(self, s, byteSize):
-        self.currentFunc += s
+    def heapAlloc(self, byteSize):
         self.currentFunc.heapAllocSize += byteSize
                 
     ## For code, defaults to class implementation
     def __iadd__(self, s):
-       #self._code.append(s)
-       self.currentFunc += s
-       return self
+        #print('s')
+        #print(str(s))
+        self.currentFunc += s
+
+        return self
          
     def __repr__(self):
         return "Builder()"

@@ -2,6 +2,7 @@
 
 import nasmFrames
 import architecture
+from tpl_codeBuilder import *
 from tpl_types import *
 
 '''
@@ -58,12 +59,58 @@ arch = architecture.architectureSolve(architecture.x64)
 def byteSize(bitsize):
     return bitsize >> 3
 
+## compile utilities
 
-# Render data style
+def warning(src, msg):
+    print("[Warning] {}: {}".format(src, msg))
+
+
+# builder results
+
+def builderResolveCode(arch, b):
+    '''
+    Take gathered data and generate a flat linear list of code
+    '''
+    # Currently 
+    # - constructions allocation code 
+    # - resolves functions into the main list
+    # but may do other actions
+    # Here we gather function code to append to the root builder code 
+    # block. Do not use '+='
+        
+    if (not 'main' in b.funcNames):
+        warning('builderResolveCode', 'No main func?')
+
+    for bFunc in b.funcs:
+        # build the func data into the main builder
+        ## jump label
+        b._code.append( '{}:'.format(bFunc.name) )
+
+        ## allocations
+        stackAllocSize = bFunc.stackAllocSize 
+        if(stackAllocSize > 0):
+            b._code.append( "mov rsp, rsp - {}".format(stackAllocSize))
+        heapAllocSize = bFunc.heapAllocSize 
+        if(heapAllocSize > 0):
+            b._code.append(  "mov {}, {}".format(arch['cParameterRegisters'][0], heapAllocSize) )
+            b._code.append(  "call malloc")
+
+        ## code body
+        b._code.extend(bFunc._code)
+    
+        # return
+        if (bFunc.returnAuto):
+            b._code.append('ret')
+        
+        print(str(b._code))
+
+
+## Render data style
 #! should be e.g. 'codeblock' : {'indent_step': 2} etc.
 baseStyle = {
     'indent': 4,
     'indent_step'  : 2,
+    'label' : {'indent': -4},
 }
 
 def indent_inc(indent_step, current_indent):
@@ -75,37 +122,7 @@ def indent_dec(indent_base, indent_step, current_indent):
     if(current_indent < indent_base):
         current_indent = indent_base
     return current_indent
-         
-def builderResolveCode(builder, arch):
-    '''
-    Take gathered data and generate a cannonical linear list
-    '''
-    # Currently resolves functions into the main list, but may
-    # do other actions
-    
-    for func in builder.funcs:
-        # build the func data into the main builder
-        ## jump label
-        builder._code.append('{}:'.format(self.currentFunc.name))
-
-        ## allocations
-        stackAllocSize = self.currentFunc.stackAllocSize 
-        if(stackAllocSize > 0):
-            builder._code[0] = "rsp - {}".format(stackAllocSize)
-        heapAllocSize = self.currentFunc.heapAllocSize 
-        if(heapAllocSize > 0):
-            builder._code[1] =  "mov {}, {}".format(cParameterRegister[0], heapAllocSize)
-            builder._code[2] =  "call malloc"
-
-        ## code body
-        builder._code.extend(self.currentFunc._code)
-
-        # return
-        builder._code.append('ret')
-        
-        # zero
-        builder.currentFunc = None
-        
+           
 def builderCode(style, code):
     '''
     Return a string of code data, inflected by style
@@ -115,12 +132,16 @@ def builderCode(style, code):
     current_indent = indent_base
     b = []
     for line in code:
-        #indent + joinIndent.join(b._code)
+        b.append('\n') 
+        if line.endswith(':'):
+            style['label']
+            indent = indent_dec(indent_base, indent_step, current_indent)
+            b.append(" " * indent) 
+        
         if line.startswith('codeblock'):
             current_indent = indent_inc(indent_step, current_indent)
         if line.startswith('end'):
             current_indent = indent_dec(indent_base, indent_step, current_indent)
-        b.append('\n') 
         b.append(" " * current_indent) 
         b.append(line) 
     return ''.join(b)
@@ -138,7 +159,6 @@ def builderPrint(frame, b, style):
         'code' : builderCode(style, b._code),
     }
     return frame(**styledBuilder)
-     
      
      
 
@@ -291,10 +311,12 @@ def stringDefine(b, stackIndex, string):
     return Pointer(b, stackIndex, 'rax')        
         
 def funcStart(b, name):
-    b.funcBegin('{}:'.format(name))
+    #b.funcBegin('{}:'.format(name))
+    b.funcBegin(name)
 
 def funcEnd(b, ):
-    b.funcEnd('ret')
+    #b.funcEnd('ret')
+    b.funcEnd()
     
     
 class Print64():
@@ -1167,7 +1189,7 @@ class VarLabel(Var):
     def __init__(self, tpe, locationRaw):
         self.tpe = tpe
         self.location = mkLocation(locationRaw)
-        if (isinstance(self.location, LocationStack) or (isinstance(self.location, LocationROData)):
+        if (isinstance(self.location, LocationStack) or isinstance(self.location, LocationROData)):
             raise ValueError('VarLabel: a varlabel can not be on the stack or section? locationRaw:"{}"'.format(
                 locationRaw,
             ))

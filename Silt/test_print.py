@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 from template import *
+import architecture
 
         
 stackByteSize = 8
@@ -8,12 +9,8 @@ dataLabelsRO = LabelsROData()
 # start a localstack
 stackIndex = StackIndex(1)
 b = Builder()
-def funcStart(b, name):
-    b.funcBegin('{}:'.format(name))
 
-def funcEnd(b, ):
-    b.funcEnd('ret')
-    
+b.funcBegin('goNorth', True)
 #outerFrame = Frame(b)
 #p = Print(b) 
 # raw(b, 'mov rax, 99')
@@ -57,18 +54,20 @@ raw(b, 'mov rax, 99')
 #if1 = If(b, labels, AND([LT('a', 5), OR([LT('b', 7), LT('c', 9)]) ]))
 #while1 = While(b, labels, LT('rax', 5))
 #while1 = While(b, labels, NOT(LT('rax', 5)))
-while1 = While(b, labels, AND([LT('rax', 5), LT('b', 7), LT('c', 9)  ]))
+#while1 = While(b, labels, AND([LT('rax', 5), LT('b', 7), LT('c', 9)  ]))
 #while1 = While(b, labels, OR([LT('rax', 5), LT('b', 7), LT('c', 9)  ]))
 #raw(b, ';  ifblock')
-raw(b, ';  whileblock')
+#raw(b, ';  whileblock')
 #Print().stringln(b, strP)
 #Print.flush(b)
 #if1.close(b)
-while1.close(b)
+#while1.close(b)
 #callProtect.close(b)
 #callFrame.close(b)
 #outerFrame.close(b)
 sysExit(b, 0)
+b.funcEnd()      
 
+builderResolveCode(architecture.architectureSolve(architecture.x64), b)
 write(b, baseStyle)
 
