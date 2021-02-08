@@ -15,7 +15,16 @@ extern(b, 'calloc')
 extern(b, 'realloc')
 extern(b, 'free')
 
-b.funcBegin('main', False)
+funcStart(b, 'testFunc')
+frameStart(b)
+raw(b, 'mov rbx, 99')
+lr = mkLocationRoot('rbx')
+frameEnd(b)
+funcReturn(b, lr) 
+
+funcStart(b, 'main')
+raw(b, 'mov rbx, 99')
+
 #outerFrame = Frame(b)
 #p = Print(b) 
 # raw(b, 'mov rax, 99')
@@ -50,7 +59,7 @@ b.funcBegin('main', False)
 #p.i64('rsi')
 
 labels = LabelGen()
-raw(b, 'mov rax, 99')
+#raw(b, 'mov rax, 99')
 #if1 = If(b, labels, LT('rax', 5))
 #if1 = If(b, labels, NOT(LT('a', 5)))
 #if1 = If(b, labels, AND([LT('a', 5), LT('b', 7), LT('c', 9)  ]))
@@ -70,8 +79,10 @@ raw(b, 'mov rax, 99')
 #callProtect.close(b)
 #callFrame.close(b)
 #outerFrame.close(b)
+     
+
 sysExit(b, 0)
-b.funcEnd()      
+funcEnd(b, False)      
 
 write(b, baseStyle)
 

@@ -46,6 +46,8 @@ x64 = {
         "r14",
         "r15",
     ],
+    'stackPointer': 'rsp',
+    'stackBasePointer' : 'rbp',
     #   %ebp, %ebx, %edi and %esi must be preserved   
     # clobbers r10, r11 and any parameter registers 
     #! stack must be balanced
@@ -55,4 +57,6 @@ x64 = {
     'cParemeterFloatRegisters' : [
         "xmm0", "xmm1", "xmm2", "xmm3", "xmm4", "xmm5", "xmm6"
     ],
+    'returnRegister' : 'rax',
+
 }

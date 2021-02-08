@@ -4,6 +4,7 @@ import nasmFrames
 import architecture
 from tpl_codeBuilder import *
 from tpl_types import *
+from tpl_style import *
 
 '''
 A language that captures some of the common nature of
@@ -67,129 +68,17 @@ def warning(src, msg):
 
 # builder results
 
-def builderSolveCode(arch, b):
-    '''
-    Take a builder and generate a flat list of code
-    '''
-    # Currently 
-    # - constructions allocation code 
-    # - resolves functions into the main list
-    # but may do other actions
-    # Here we gather function code to append to the root builder code 
-    # block. Do not use '+='
-        
-    if (not 'main' in b.funcNames):
-        warning('builderSolveCode', 'No main func?')
-
-    for bFunc in b.funcs:
-        # build the func data into the main builder
-        ## jump label
-        b._code.append( '{}:'.format(bFunc.name) )
-
-        ## allocations
-        stackAllocSize = bFunc.stackAllocSize 
-        if(stackAllocSize > 0):
-            b._code.append( "mov rsp, rsp - {}".format(stackAllocSize))
-        heapAllocSize = bFunc.heapAllocSize 
-        if(heapAllocSize > 0):
-            b._code.append(  "mov {}, {}".format(arch['cParameterRegisters'][0], heapAllocSize) )
-            b._code.append(  "call malloc")
-
-        ## code body
-        b._code.extend(bFunc._code)
-    
-        # return
-        if (bFunc.returnAuto):
-            b._code.append('ret')
-        
-        print(str(b._code))
-
 
 ## Render data style
 #! should be e.g. 'codeblock' : {'indent_step': 2} etc.
 baseStyle = {
     '*' : {'indent': 4},
     'lineDefault' : {},
-    'label' : {'indent': -2},
+    'label' : {'newline-top': True, 'indent': -2},
     'codeBlock' : {'indent': 2},
 }
 
-def styleSolve(style):
-    '''
-    Pack the style with defaults
-    Avoids constant explicit ''if'
-    '''
-    for selector, rules in style.items():
-        if (not('indent' in rules)):
-            style[selector]['indent'] = 0
-    return style
-    
-def indent_inc(styleBlock, indent_step):
-    styleBlock['indent'] += indent_step    
-    
-def indent_dec(style, styleBlock, indent_step):
-    styleBlock['indent'] -= indent_step    
-    if(styleBlock['indent'] < style['*']['indent']):
-        styleBlock['indent'] = indent_base
 
-def applyStyleToLine(styleBlock, styleLine, line):
-    indent = styleBlock['indent'] + styleLine['indent']
-    l = (" " * indent) + line 
-    return l
-    
-def builderCode(style, code):
-    '''
-    Return a string of code data, inflected by style
-    '''
-    styleBlock = style['*'].copy()
-    b = []
-    for line in code:
-        b.append('\n') 
-        styleLine = style['lineDefault']
-        if line.endswith(':'):
-            styleLine = style['label']
-        if line.startswith('codeblock'):
-            indent_inc(
-                styleBlock, 
-                style['codeblock']['indent']
-            )
-        elif line.startswith('end'):
-            indent_dec(
-                style,
-                styleBlock, 
-                - style['codeblock']['indent']
-            )
-        b.append(applyStyleToLine(styleBlock, styleLine, line)) 
-    return ''.join(b)
-    
-def sectionCode(style, bCode):
-    '''
-    Return a string of section data, inflected by style
-    '''
-    indent = style['*']['indent']
-    indent_str = " " * indent
-    joinIndent = '\n' + indent_str
-    return indent_str + joinIndent.join(bCode)
-    
-#? arch implies a frame. Or a group of frames, maybe not one 
-#defining frame?
-def builderPrint(architecture, frame, b, style):
-    '''
-    Print a builder as code
-    Resolves the builder, inflects for style, wraps in a frame
-    '''
-    styleSolve(baseStyle)
-    builderSolveCode(architecture, b)
-    styledCode = {
-        'externs' : '\n'.join(b._externs), 
-        'data' : sectionCode(style, b._data), 
-        'rodata'  : sectionCode(style, b._rodata), 
-        'bss'  : sectionCode(style, b._bss), 
-        'text' : '\n'.join(b._text),
-        'code' : builderCode(style, b._code),
-    }
-    return frame(**styledCode)
-     
      
 
 ## Builder Utilities
@@ -314,12 +203,12 @@ def raw(b, content):
     '''
     Append a codeline
     '''
-    b += content
+    b._code.append(content)
 
-def sysExit(b, code=0):    
-    b += "mov rax, 60"
-    b += "mov rdi, " + str(code)
-    b += "syscall"
+def sysExit(b, code):    
+    b._code.append("mov rax, 60")
+    b._code.append("mov rdi, " + str(code))
+    b._code.append("syscall")
     
 def stringROdefine(b, stackIndex, dataLabels, string):
     '''
@@ -343,13 +232,56 @@ def stringDefine(b, stackIndex, string):
     b += "call malloc"
     return Pointer(b, stackIndex, 'rax')        
         
-def funcStart(b, name):
-    #b.funcBegin('{}:'.format(name))
-    b.funcBegin(name)
 
-def funcEnd(b, ):
-    #b.funcEnd('ret')
-    b.funcEnd()
+
+def frameStart(b):
+    '''
+    Start a stack frame.
+    '''
+    # push rbp
+    b._code.append("push {}".format(arch['stackBasePointer']))
+    # mov rbp, rsp
+    b._code.append("mov {}, {}".format(arch['stackBasePointer'], arch['stackPointer']))
+
+def frameEnd(b):
+    '''
+    End a basic frame.
+    '''
+    # mov rsp, rbp
+    b._code.append("mov {}, {}".format(arch['stackPointer'], arch['stackBasePointer']))
+    # pop pop rbp
+    b._code.append("pop {}".format(arch['stackBasePointer']))
+   
+def funcStart(b, name):
+    '''
+    Start a function.
+    '''
+    raw(b,'{}:'.format(name))
+    raw(b, '; beginFunc')
+    #b.funcBegin(name)
+   
+# If these end frames, do they need to end frame inside?
+# If so, offer the frame option at begin, also?
+def funcReturn(b, locationRoot):
+    '''
+    End a function with return.
+    '''
+    locationRoot.toRegister(b, arch['returnRegister'])
+    raw(b, 'ret')
+    raw(b, '; endFunc')
+
+        
+def funcEnd(b, autoReturn):
+    '''
+    End a function.
+    '''
+    if (autoReturn):
+        raw(b, 'ret')
+    raw(b, '; endFunc')
+ 
+ 
+    
+    
     
     
 class Print64():
@@ -483,21 +415,22 @@ Print = Print64()
 
 
 ## builders
-class Frame():
-    '''
-    Write a basic frame.
-    '''
-    def __init__(self, b):
-        b += "push rbp"
-        b += "mov rbp, rsp"
-        self.stackIndex = StackIndex(0)
+#!x
+# class Frame():
+    # '''
+    # Write a basic frame.
+    # '''
+    # def __init__(self, b):
+        # b += "push rbp"
+        # b += "mov rbp, rsp"
+        # self.stackIndex = StackIndex(0)
     
-    def close(self, b):
-        b += "mov rsp, rbp"
-        b += "pop rbp"
+    # def close(self, b):
+        # b += "mov rsp, rbp"
+        # b += "pop rbp"
 
-    def __repr__(self):
-        return "Frame(stackIndex:{})".format(self.stackIndex)
+    # def __repr__(self):
+        # return "Frame(stackIndex:{})".format(self.stackIndex)
 
 
 class RegistersProtect():
@@ -1000,12 +933,125 @@ def getRelative(relativeTypePath):
     return b.result()
     
     
-    
+#! These could include relaitve address tragets to, but look at other 
+# architectures first
+#! what about heap locations?
 class LocationRoot():
     '''
-    Location of root of some data.
-    This implies a pointer.
-    Location is a register name, a stack offset, or label to segment data
+    Location of data that can be moved directly to a register.
+    Location is a register name, a stack offset, or label to segment data.
+    It can not be a deep data type, such as an Array.
+    '''
+    def __init__(self, lid):
+        self.lid = lid
+
+    def __call__(self):
+        '''
+        Code to represent the value at the location.
+        If a pointer, this is the pointer address
+        return
+            register name or stack offset in bytes e.g. 'rax' or 'rbp - 16'
+        '''
+        pass
+
+    # def toStackPush(self):
+        # '''
+        # Push the address to the stack. 
+        # records the offset
+        # '''
+        # if (type(self) == LocationRootStack):
+            # raise ValueError('toStack: value already in stack. locationRoot:{}'.format(self))
+        # #! this push not working
+        # self.b += "push {}".format(self.lid)
+        # #return LocationRootStack(index)
+
+
+    def toStackIndex(self, b, index):
+        '''
+        Copy the data to a stack allocation
+        '''
+        if (type(self) == LocationRootStack):
+            raise ValueError('toStack: value already in stack. locationRoot:{}'.format(self))
+        b += "mov [rbp - {}], {}".format(index, self())
+        return LocationRootStack(index)
+                
+    def toRegister(self, b, targetRegisterName):
+        '''
+        Copy the data to a register
+        '''
+        if (not(targetRegisterName in arch['registers'])):
+            raise NotImplementedError('toRegister: targetRegisterName not a register')
+        if (self.lid == targetRegisterName):
+            warning('toRegister', 'data already in given register. locationRoot:{}'.format(self))
+        else:
+            b += 'mov {}, {}'.format(targetRegisterName, self())              
+        return LocationRootRegister(targetRegisterName)
+        
+    def __repr__(self):
+        return "{}(lid: {})".format(self/__class__.name, self.lid)
+        
+    def __str__(self):
+        return str(self.lid)
+
+
+
+class LocationRootROData(LocationRoot):
+    def __init__(self, label):
+        if (label in arch['registers']):
+            raise ValueError('Label id must not be in registers. lid: {} registers:"{}"'.format(
+                type(label),
+                ", ".join(registers)
+            ))
+        super().__init__(label)
+
+    def __call__(self):
+        return self.lid  
+
+
+
+class LocationRootRegister(LocationRoot):
+    def __init__(self, register):
+        if (not (register in arch['registers'])):
+            raise ValueError('Parameter must be in registers. lid: {} registers:"{}"'.format(
+                register,
+                ", ".join(arch['registers'])
+            ))
+        super().__init__(register)    
+        
+    def __call__(self):
+        return self.lid
+        
+        
+        
+class LocationRootStack(LocationRoot):
+    def __init__(self, index):
+        if (not (type(index) == int)):
+            raise TypeError('Parameter must be class int. lid: {}'.format(type(index)))
+        super().__init__(index)    
+        self.stackByteSize = arch['bytesize']
+
+    def __call__(self):
+        return '[rbp - {}]'.format(self.lid * self.stackByteSize)
+
+
+
+def mkLocationRoot(rawLocation):
+    l = None
+    if (rawLocation in arch['registers']):
+        l = LocationRootRegister(rawLocation)
+    elif(type(rawLocation) == str):
+        l = LocationRootROData(rawLocation)
+    elif(type(rawLocation) == int):
+        l = LocationRootStack(rawLocation)
+    else:
+        raise NotImplementedError('mkLocationRoot: Parameter must be an int or str. type(rawLocation): {}'.format(type(rawLocation)))
+    return l
+    
+    
+    
+        
+class Location():    
+    '''
     # It can be used as a source of values, or as source of adresses to
     # values (a pointer)
     ''' 
