@@ -67,9 +67,9 @@ def warning(src, msg):
 
 # builder results
 
-def builderResolveCode(arch, b):
+def builderSolveCode(arch, b):
     '''
-    Take gathered data and generate a flat linear list of code
+    Take a builder and generate a flat list of code
     '''
     # Currently 
     # - constructions allocation code 
@@ -79,7 +79,7 @@ def builderResolveCode(arch, b):
     # block. Do not use '+='
         
     if (not 'main' in b.funcNames):
-        warning('builderResolveCode', 'No main func?')
+        warning('builderSolveCode', 'No main func?')
 
     for bFunc in b.funcs:
         # build the func data into the main builder
@@ -114,7 +114,7 @@ baseStyle = {
     'codeBlock' : {'indent': 2},
 }
 
-def styleResolve(style):
+def styleSolve(style):
     '''
     Pack the style with defaults
     Avoids constant explicit ''if'
@@ -141,7 +141,7 @@ def builderCode(style, code):
     '''
     Return a string of code data, inflected by style
     '''
-    styleBlock = style['*']
+    styleBlock = style['*'].copy()
     b = []
     for line in code:
         b.append('\n') 
@@ -162,19 +162,33 @@ def builderCode(style, code):
         b.append(applyStyleToLine(styleBlock, styleLine, line)) 
     return ''.join(b)
     
-def builderPrint(frame, b, style):
+def sectionCode(style, bCode):
+    '''
+    Return a string of section data, inflected by style
+    '''
     indent = style['*']['indent']
     indent_str = " " * indent
     joinIndent = '\n' + indent_str
-    styledBuilder = {
+    return indent_str + joinIndent.join(bCode)
+    
+#? arch implies a frame. Or a group of frames, maybe not one 
+#defining frame?
+def builderPrint(architecture, frame, b, style):
+    '''
+    Print a builder as code
+    Resolves the builder, inflects for style, wraps in a frame
+    '''
+    styleSolve(baseStyle)
+    builderSolveCode(architecture, b)
+    styledCode = {
         'externs' : '\n'.join(b._externs), 
-        'data' : indent_str + joinIndent.join(b._data), 
-        'rodata'  : indent_str + joinIndent.join(b._rodata), 
-        'bss'  : indent_str + joinIndent.join(b._bss), 
+        'data' : sectionCode(style, b._data), 
+        'rodata'  : sectionCode(style, b._rodata), 
+        'bss'  : sectionCode(style, b._bss), 
         'text' : '\n'.join(b._text),
         'code' : builderCode(style, b._code),
     }
-    return frame(**styledBuilder)
+    return frame(**styledCode)
      
      
 
@@ -293,6 +307,9 @@ class StackIndexAllocated():
 
             
 ## Builder handlers
+def extern(b, externName):
+    b.externsAdd("extern " + externName)
+        
 def raw(b, content):
     '''
     Append a codeline
@@ -1503,7 +1520,7 @@ def write(b, style):
             # text = b.text,
             # code = b.code,
         # )
-    o = builderPrint(nasmFrames.frame64CAlloc, b, style)
+    o = builderPrint(arch, nasmFrames.frame64, b, style)
     with open('build/out.asm', 'w') as f:
         f.write(o)
         

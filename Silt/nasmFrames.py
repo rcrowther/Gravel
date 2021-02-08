@@ -59,28 +59,20 @@ def frame64(
 BITS 64
 DEFAULT ABS
 
-; additional externs
+; externs
 {externs}
     
 SECTION .data
-    {data}
+{data}
 SECTION .rodata
-    {rodata}
+{rodata}
 SECTION .bss
-    {bss}
+{bss}
 SECTION .text
 {text}
     global main
-main:
-    ;??? Why only working with the bp push pop wrap?
-    push rbp ; Push stack
-    mov rbp, rsp ; Level the base pointer
-    {code}
-    mov rsp, rbp ; Level the stack pointer
-    pop rbp ; Pop stack
-    mov rax, 60 ; clean exit
-    mov rdi, 0
-    syscall
+
+{code}
     """.format(
         externs = externs,
         data = data,
@@ -90,7 +82,7 @@ main:
         code = code,
     )
     
-def frame64CAlloc(
+def frame64Alloc(
         externs, 
         data, 
         rodata, 
@@ -124,7 +116,7 @@ SECTION .bss
 SECTION .text
 {text}
     global main
-main:
+
 {code}
     """.format(
         externs= externs,

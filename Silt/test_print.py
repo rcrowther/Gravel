@@ -10,7 +10,12 @@ dataLabelsRO = LabelsROData()
 stackIndex = StackIndex(1)
 b = Builder()
 
-b.funcBegin('goNorth', True)
+extern(b, 'malloc')
+extern(b, 'calloc')
+extern(b, 'realloc')
+extern(b, 'free')
+
+b.funcBegin('main', False)
 #outerFrame = Frame(b)
 #p = Print(b) 
 # raw(b, 'mov rax, 99')
@@ -68,6 +73,5 @@ raw(b, 'mov rax, 99')
 sysExit(b, 0)
 b.funcEnd()      
 
-builderResolveCode(architecture.architectureSolve(architecture.x64), b)
-write(b, styleResolve(baseStyle))
+write(b, baseStyle)
 
