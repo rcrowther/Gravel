@@ -17,14 +17,6 @@ def styleSolve(style):
         if (not('newline-top' in rules)):
             style[selector]['newline-top'] = False
     return style
-    
-# def indent_inc(styleBlock, indent_step):
-    # styleBlock['indent'] += indent_step    
-    
-# def indent_dec(style, styleBlock, indent_step):
-    # styleBlock['indent'] -= indent_step    
-    # if(styleBlock['indent'] < style['*']['indent']):
-        # styleBlock['indent'] = indent_base
 
 def applyStyleToLine(indent, currentStyle, line):
     l = ''
@@ -90,7 +82,7 @@ def sectionCode(style, bCode):
     
 #? arch implies a frame. Or a group of frames, maybe not one 
 #defining frame?
-def builderPrint(architecture, frame, b, style):
+def builderPrint(frame, b, style):
     '''
     Print a builder as code
     Resolves the builder, inflects for style, wraps in a frame

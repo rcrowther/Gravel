@@ -5,7 +5,8 @@ import architecture
 
         
 stackByteSize = 8
-dataLabelsRO = LabelsROData()
+globalLabels = LabelGen()
+#dataLabelsRO = LabelsROData()
 # start a localstack
 stackIndex = StackIndex(1)
 b = Builder()
@@ -15,15 +16,23 @@ extern(b, 'calloc')
 extern(b, 'realloc')
 extern(b, 'free')
 
-funcStart(b, 'testFunc')
-frameStart(b)
-raw(b, 'mov rbx, 99')
-lr = mkLocationRoot('rbx')
-frameEnd(b)
-funcReturn(b, lr) 
+
+lr1 = stringROdefine(b, globalLabels.roData(), "In a Silent Way")
+
+# funcStart(b, 'testFunc')
+# frameStart(b)
+# raw(b, 'mov rbx, 99')
+# lr = mkLocationRoot('rbx')
+# frameEnd(b)
+# funcReturn(b, lr) 
 
 funcStart(b, 'main')
-raw(b, 'mov rbx, 99')
+frameStart(b)
+stackAlloc(b, 4)
+lr2 = lr1.toRegister(b, 'rbx')
+# raw(b, 'mov rbx, 99')
+Println(b, StrASCII, lr2)
+# PrintFlush(b)
 
 #outerFrame = Frame(b)
 #p = Print(b) 
@@ -34,7 +43,6 @@ raw(b, 'mov rbx, 99')
 #strP = stringROdefine(b, stackIndex, dataLabelsRO, "The value in register RAX is:")
 #strP = stringROdefine(b, stackIndex, dataLabelsRO, "True")
 #strP.toRegister('rax')
-#callFrame = Frame(b)
 #callFrame = VolatileProtectFrame(b)
 #callFrame = RegisterProtectedFrame(b, ['rsi', 'rbi'])
 #callProtect = RegisterProtect(b, ['rsi', 'rdi'])
@@ -58,7 +66,6 @@ raw(b, 'mov rbx, 99')
 #p.newline()
 #p.i64('rsi')
 
-labels = LabelGen()
 #raw(b, 'mov rax, 99')
 #if1 = If(b, labels, LT('rax', 5))
 #if1 = If(b, labels, NOT(LT('a', 5)))
@@ -77,11 +84,12 @@ labels = LabelGen()
 #if1.close(b)
 #while1.close(b)
 #callProtect.close(b)
-#callFrame.close(b)
-#outerFrame.close(b)
+
      
 
+frameEnd(b)
 sysExit(b, 0)
+
 funcEnd(b, False)      
 
 write(b, baseStyle)

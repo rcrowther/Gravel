@@ -135,6 +135,9 @@ class LabelGen():
         self.prefixes[prefix] = idx
         return prefix + str(idx)
 
+    def roData(self):
+        return self('ROData')
+        
     def __repr__(self):
         return "LabelGen(self.prefixs:'{}')".format(self.prefixs)
         
@@ -210,18 +213,17 @@ def sysExit(b, code):
     b._code.append("mov rdi, " + str(code))
     b._code.append("syscall")
     
-def stringROdefine(b, stackIndex, dataLabels, string):
+def stringROdefine(b, label, string):
     '''
     Define a static string
     A Bytestring.
     Is placed in the ROData section.
     '''
-    label = dataLabels()
     rodata = label + ': db "' + string + '", 0'
     b.rodataAdd(rodata)
-    return Pointer(b, stackIndex, label)
+    return LocationRootROData(label)
 
-
+#! revise
 def stringDefine(b, stackIndex, string):
     '''
     Allocate and define a malloced string
@@ -233,7 +235,10 @@ def stringDefine(b, stackIndex, string):
     return Pointer(b, stackIndex, 'rax')        
         
 
-
+def stackAlloc(b, size):
+    byteSize = size * arch['bytesize']
+    b._code.append("sub rsp, {}".format(byteSize)) 
+        
 def frameStart(b):
     '''
     Start a stack frame.
@@ -270,7 +275,6 @@ def funcReturn(b, locationRoot):
     raw(b, 'ret')
     raw(b, '; endFunc')
 
-        
 def funcEnd(b, autoReturn):
     '''
     End a function.
@@ -283,12 +287,15 @@ def funcEnd(b, autoReturn):
     
     
     
-    
+#? Whats 64? The registers and pointersize
 class Print64():
     #def __init__(self, b):
     #    self.b = b
         
-    def dispatch(self, b, tpe, source):
+    def __call__(self, b, tpe, locationRoot):
+        print(repr(locationRoot))
+        source = locationRoot.value()
+        print(str(source))
         if(tpe == Bit8):
             self.i8(b, source)
         elif(tpe == Bit16):
@@ -329,38 +336,38 @@ class Print64():
             raise ValueError('Printing clobbers RDI and RSI. address: {}'.format(source))
 
     def extern(self, b):
-        self.b.externsAdd("extern printf")
+        b.externsAdd("extern printf")
  
     def flush(self, b):
         b.externsAdd("extern fflush")
-        b += "mov rdi, 0"
+        b._code.append("mov rdi, 0")
         b += "call fflush"
             
     def generic(self, b, form, source):
         self.protect(source)
         self.extern(b)
-        b += "mov rdi, " + form
-        b += "mov rsi, " + source
-        b += "call printf"
+        b._code.append("mov rdi, " + form)
+        b._code.append("mov rsi, " + source)
+        b._code.append("call printf")
 
     def newline(self, b):
         self.extern(b)
         b.rodataAdd('printNewLine: db 10, 0')
-        b += "mov rdi, printNewLine"
-        b += "call printf"
+        b._code.append("mov rdi, printNewLine")
+        b._code.append("call printf")
 
     def char(self, b, source):
         b.rodataAdd('printCharFmt: db "%c", 0')
         self.generic('printCharFmt', source)
             
-    def ascii(self, b, pointer):
+    def ascii(self, b, source):
         '''
         pointer
             an instance of a pointer
         '''
-        self.protect(pointer.location.address)
+        self.protect(source)
         self.extern(b)
-        b += "mov rdi, " + pointer.address()
+        b._code.append("mov rdi, " + source)
         b += "call printf"
 
     def i8(self, b, source):
@@ -400,20 +407,29 @@ class Print64():
         b += "mov rdi, " + source
         b += "call printf"
            
-    def stringln(self, b, pointer):
-        '''
-        pointer
-            an instance of a pointer
-        '''
-        self.protect(pointer.location.address)
-        b.rodataAdd('printlnStrFmt: db "%s", 10, 0')
-        self.generic('printlnStrFmt', pointer.address()) 
+    # def stringln(self, b, pointer):
+        # '''
+        # pointer
+            # an instance of a pointer
+        # '''
+        # self.protect(pointer.location.address)
+        # b.rodataAdd('printlnStrFmt: db "%s", 10, 0')
+        # self.generic('printlnStrFmt', pointer.address()) 
+        
+#  (b, tpe, locationRoot)
+PrintArch = Print64()
 
-Print = Print64()
+def Print(b, tpe, locationRoot):
+    PrintArch(b, tpe, locationRoot)
 
+def Println(b, tpe, locationRoot):
+    PrintArch(b, tpe, locationRoot)
+    PrintArch.newline(b)
 
+def PrintFlush(b):
+    PrintArch.flush(b)
 
-
+        
 ## builders
 #!x
 # class Frame():
@@ -945,15 +961,30 @@ class LocationRoot():
     def __init__(self, lid):
         self.lid = lid
 
-    def __call__(self):
+    def value(self):
         '''
         Code to represent the value at the location.
         If a pointer, this is the pointer address
+        May not work on some storage types
         return
             register name or stack offset in bytes e.g. 'rax' or 'rbp - 16'
         '''
-        pass
-
+        raise NotImplementedError('A location should never be instanced. location:{}\nShould this be a subclass?'.format(
+            self
+        ))
+        
+    def valueAsPointer(self):
+        '''
+        Code to represent the value at the location as a pointer.
+        If a pointer, this is the pointer address
+        May not work on some storage types
+        return
+            register name or stack offset in bytes e.g. 'rax' or 'rbp - 16'
+        '''
+        raise NotImplementedError('A location should never be instanced. location:{}\nShould this be a subclass?'.format(
+            self
+        ))
+        
     # def toStackPush(self):
         # '''
         # Push the address to the stack. 
@@ -970,25 +1001,20 @@ class LocationRoot():
         '''
         Copy the data to a stack allocation
         '''
-        if (type(self) == LocationRootStack):
-            raise ValueError('toStack: value already in stack. locationRoot:{}'.format(self))
-        b += "mov [rbp - {}], {}".format(index, self())
-        return LocationRootStack(index)
-                
+        raise NotImplementedError('A location should never be instanced. location:{}\nShould this be a subclass?'.format(
+            self
+        ))
+                        
     def toRegister(self, b, targetRegisterName):
         '''
         Copy the data to a register
         '''
-        if (not(targetRegisterName in arch['registers'])):
-            raise NotImplementedError('toRegister: targetRegisterName not a register')
-        if (self.lid == targetRegisterName):
-            warning('toRegister', 'data already in given register. locationRoot:{}'.format(self))
-        else:
-            b += 'mov {}, {}'.format(targetRegisterName, self())              
-        return LocationRootRegister(targetRegisterName)
-        
+        raise NotImplementedError('A location should never be instanced. location:{}\nShould this be a subclass?'.format(
+            self
+        ))
+                
     def __repr__(self):
-        return "{}(lid: {})".format(self/__class__.name, self.lid)
+        return "{}(lid: '{}')".format(self.__class__.__name__, self.lid)
         
     def __str__(self):
         return str(self.lid)
@@ -1004,10 +1030,36 @@ class LocationRootROData(LocationRoot):
             ))
         super().__init__(label)
 
-    def __call__(self):
+    def value(self):
         return self.lid  
 
+    #? can do this
+    def valueAsPointer(self):
+        return '[{}]'.format(self.lid)        
+        #raise NotImplementedError('value: a value can not be acessed from a stack offset.If required, location{}\nTransfer to a register first'.format(
+        #    self
+        #))
 
+    
+    #! ok
+    def toStackIndex(self, b, index):
+        '''
+        Copy the data to a stack allocation
+        '''
+        b += "mov {}[rbp - {}], {}".format(
+            arch['ASMName'],
+            index * arch['bytesize'], 
+            self.value()
+        )
+        return LocationRootStack(index)
+        
+    #! ok
+    def toRegister(self, b, targetRegisterName):
+        if (not(targetRegisterName in arch['registers'])):
+            raise NotImplementedError('toRegister: targetRegisterName not a register')
+        #? or mov {}, {}
+        b += 'lea {}, [{}]'.format(targetRegisterName, self.value())              
+        return LocationRootRegister(targetRegisterName) 
 
 class LocationRootRegister(LocationRoot):
     def __init__(self, register):
@@ -1018,8 +1070,27 @@ class LocationRootRegister(LocationRoot):
             ))
         super().__init__(register)    
         
-    def __call__(self):
+    def value(self):
         return self.lid
+        
+    def valueAsPointer(self):
+        return '[{}]'.format(self.lid)        
+
+    def toStackIndex(self, b, index):
+        '''
+        Copy the data to a stack allocation
+        '''
+        b += "mov [rbp - {}], {}".format(index * arch['bytesize'], self.value())
+        return LocationRootStack(index)
+        
+    def toRegister(self, b, targetRegisterName):
+        if (not(targetRegisterName in arch['registers'])):
+            raise NotImplementedError('toRegister: targetRegisterName not a register')
+        if (self.lid == targetRegisterName):
+            warning('toRegister', 'data already in given register. locationRoot:{}'.format(self))
+        else:
+            b += 'mov {}, {}'.format(targetRegisterName, self.value())              
+        return LocationRootRegister(targetRegisterName)        
         
         
         
@@ -1030,9 +1101,25 @@ class LocationRootStack(LocationRoot):
         super().__init__(index)    
         self.stackByteSize = arch['bytesize']
 
-    def __call__(self):
+    def value(self):
         return '[rbp - {}]'.format(self.lid * self.stackByteSize)
 
+    def valueAsPointer(self):
+        raise NotImplementedError('A stackAlloc can not be treated as an address (it uses an indirection to access). location: {}\nIf required, transfer to a register first'.format(
+            self
+        ))
+        
+    def toStackIndex(self, b, index):
+        '''
+        Copy the data to a stack allocation
+        '''
+        raise ValueError('toStack: value already in stack. locationRoot:{}'.format(self))
+        
+    def toRegister(self, b, targetRegisterName):
+        if (not(targetRegisterName in arch['registers'])):
+            raise NotImplementedError('toRegister: targetRegisterName not a register')
+        b += 'lea {}, {}'.format(targetRegisterName, self.valueAsPointer())              
+        return LocationRootRegister(targetRegisterName)
 
 
 def mkLocationRoot(rawLocation):
@@ -1566,7 +1653,7 @@ def write(b, style):
             # text = b.text,
             # code = b.code,
         # )
-    o = builderPrint(arch, nasmFrames.frame64, b, style)
+    o = builderPrint(nasmFrames.frame64, b, style)
     with open('build/out.asm', 'w') as f:
         f.write(o)
         

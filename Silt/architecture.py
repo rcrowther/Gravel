@@ -6,7 +6,7 @@ def architectureSolve(architecture):
 x64 = {
     # bitsize of the architecture
     'bitsize' : 64,
-
+    "ASMName" : 'qword',
     'registers' : [
         "rax", 
         "rbx",
