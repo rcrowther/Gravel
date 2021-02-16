@@ -1,6 +1,6 @@
 from Codepoints import LINE_FEED
 
-
+#! with or without lineends
 class CodePointIterator:
     '''
     Iterate codepoints from some Source.  

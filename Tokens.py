@@ -2,7 +2,8 @@ import sys
 
 '''
 Tokens are not the same as expression symbols. Sometimes
-there is a one-one map e.g. 'intNum' 'intNum'.  Sometimes names are revised e.g. '+' : 'add'. Sometimes symbols exist where no one token matches e.g. 'type-annotation'.
+there is a one-one map e.g. 'intNum' 'intNum'.  Sometimes names are 
+revised e.g. '+' : 'add'. Sometimes symbols exist where no one token matches e.g. 'type-annotation'.
 Sometimes symbols do not exist where tokens exist e.g. '(' ')'.
 '''
 

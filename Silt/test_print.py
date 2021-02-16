@@ -1,23 +1,24 @@
 #!/usr/bin/env python3
 
-from template import *
+from template import Compiler
+from tpl_codeBuildre import Builder
 import architecture
 
         
-stackByteSize = 8
-globalLabels = LabelGen()
+#stackByteSize = 8
+#globalLabels = LabelGen()
 #dataLabelsRO = LabelsROData()
 # start a localstack
-stackIndex = StackIndex(1)
+#stackIndex = StackIndex(1)
 b = Builder()
+Compiler(architecture.architectureSolve(architecture.x64), b, Print64())
+#extern(b, 'malloc')
+#extern(b, 'calloc')
+#extern(b, 'realloc')
+#extern(b, 'free')
 
-extern(b, 'malloc')
-extern(b, 'calloc')
-extern(b, 'realloc')
-extern(b, 'free')
 
-
-lr1 = stringROdefine(b, globalLabels.roData(), "In a Silent Way")
+#lr1 = stringROdefine(b, globalLabels.roData(), "In a Silent Way")
 
 # funcStart(b, 'testFunc')
 # frameStart(b)

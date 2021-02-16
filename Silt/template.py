@@ -197,96 +197,7 @@ class StackIndexAllocated():
         return "StackIndexAlloc(size: {})".format(self.size)
 
 
-            
-## Builder handlers
-def extern(b, externName):
-    b.externsAdd("extern " + externName)
-        
-def raw(b, content):
-    '''
-    Append a codeline
-    '''
-    b._code.append(content)
 
-def sysExit(b, code):    
-    b._code.append("mov rax, 60")
-    b._code.append("mov rdi, " + str(code))
-    b._code.append("syscall")
-    
-def stringROdefine(b, label, string):
-    '''
-    Define a static string
-    A Bytestring.
-    Is placed in the ROData section.
-    '''
-    rodata = label + ': db "' + string + '", 0'
-    b.rodataAdd(rodata)
-    return LocationRootROData(label)
-
-#! revise
-def stringDefine(b, stackIndex, string):
-    '''
-    Allocate and define a malloced string
-    UTF-8
-    '''
-    byteSize = byteSize(elemByteSize) * size
-    b +=  "mov {}, {}".format(cParameterRegister[0], byteSize)
-    b += "call malloc"
-    return Pointer(b, stackIndex, 'rax')        
-        
-
-def stackAlloc(b, size):
-    byteSize = size * arch['bytesize']
-    b._code.append("sub rsp, {}".format(byteSize)) 
-        
-def frameStart(b):
-    '''
-    Start a stack frame.
-    '''
-    # push rbp
-    b._code.append("push {}".format(arch['stackBasePointer']))
-    # mov rbp, rsp
-    b._code.append("mov {}, {}".format(arch['stackBasePointer'], arch['stackPointer']))
-
-def frameEnd(b):
-    '''
-    End a basic frame.
-    '''
-    # mov rsp, rbp
-    b._code.append("mov {}, {}".format(arch['stackPointer'], arch['stackBasePointer']))
-    # pop pop rbp
-    b._code.append("pop {}".format(arch['stackBasePointer']))
-   
-def funcStart(b, name):
-    '''
-    Start a function.
-    '''
-    raw(b,'{}:'.format(name))
-    raw(b, '; beginFunc')
-    #b.funcBegin(name)
-   
-# If these end frames, do they need to end frame inside?
-# If so, offer the frame option at begin, also?
-def funcReturn(b, locationRoot):
-    '''
-    End a function with return.
-    '''
-    locationRoot.toRegister(b, arch['returnRegister'])
-    raw(b, 'ret')
-    raw(b, '; endFunc')
-
-def funcEnd(b, autoReturn):
-    '''
-    End a function.
-    '''
-    if (autoReturn):
-        raw(b, 'ret')
-    raw(b, '; endFunc')
- 
- 
-    
-    
-    
 #? Whats 64? The registers and pointersize
 class Print64():
     #def __init__(self, b):
@@ -330,7 +241,6 @@ class Print64():
         for offset in (0..tpe.size):
             self.dispatch(b, tpe, base + offset)
 
-            
     def protect(self, source):
         if (source in ['rdi', 'rsi' ]):
             raise ValueError('Printing clobbers RDI and RSI. address: {}'.format(source))
@@ -341,7 +251,7 @@ class Print64():
     def flush(self, b):
         b.externsAdd("extern fflush")
         b._code.append("mov rdi, 0")
-        b += "call fflush"
+        b._code.append("call fflush")
             
     def generic(self, b, form, source):
         self.protect(source)
@@ -368,7 +278,7 @@ class Print64():
         self.protect(source)
         self.extern(b)
         b._code.append("mov rdi, " + source)
-        b += "call printf"
+        b._code.append("call printf")
 
     def i8(self, b, source):
         b.rodataAdd('print8Fmt: db "%hhi", 0')
@@ -394,18 +304,18 @@ class Print64():
         self.protect(source)
         self.extern(b)
         b.rodataAdd('printFloatFmt: db "%g", 0')
-        b += "movsd xmm0, printlnFloatFmt"
-        b += "mov rdi, " + source
-        b += "call printf"
+        b._code.append("movsd xmm0, printlnFloatFmt")
+        b._code.append("mov rdi, " + source)
+        b._code.append("call printf")
 
     # 32f usually promoted to 64f anyhow
     def f64(self, b, form, source):
         self.protect(source)
         self.extern(b)
         b.rodataAdd('printFloatFmt: db "%g", 0')
-        b += "movsd xmm0, printlnFloatFmt"
-        b += "mov rdi, " + source
-        b += "call printf"
+        b._code.append("movsd xmm0, printlnFloatFmt")
+        b._code.append("mov rdi, " + source)
+        b._code.append("call printf")
            
     # def stringln(self, b, pointer):
         # '''
@@ -416,6 +326,112 @@ class Print64():
         # b.rodataAdd('printlnStrFmt: db "%s", 10, 0')
         # self.generic('printlnStrFmt', pointer.address()) 
         
+        
+## Builder handlers
+class Compiler():
+    def __init__(self, arch, builder, printer):
+        self.arch = arch
+        self.b = builder
+        self.printer = printer
+        
+    def Print(self, tpe, locationRoot):
+        self.printer(self.b, tpe, locationRoot)
+
+    def Println(self, tpe, locationRoot):
+        self.printer(self.b, tpe, locationRoot)
+        self.printer.newline(self.b)
+
+    def PrintFlush(self):
+        self.printer.flush(self.b)
+    
+    def extern(self, externName):
+        self.b.externsAdd("extern " + externName)
+        
+    def raw(self, content):
+        '''
+        Append a codeline
+        '''
+        self.b._code.append(content)
+
+    def sysExit(self, code):    
+        self.b._code.append("mov rax, 60")
+        self.b._code.append("mov rdi, " + str(code))
+        self.b._code.append("syscall")
+    
+    # Allocations
+    def stringROdefine(self, label, string):
+        '''
+        Define a static string
+        A Bytestring.
+        Is placed in the ROData section.
+        '''
+        rodata = label + ': db "' + string + '", 0'
+        self.b.rodataAdd(rodata)
+        return LocationRootROData(label)
+
+    #! revise
+    def stringHeapDefine(self, stackIndex, string):
+        '''
+        Allocate and define a malloced string
+        UTF-8
+        '''
+        byteSize = byteSize(elemByteSize) * size
+        self.b._code.append("mov {}, {}".format(cParameterRegister[0], byteSize))
+        self.b._code.append("call malloc")
+        return LocationRootRegister('rax')        
+        
+    #! axxount for data types
+    def stackAlloc(self, size):
+        byteSize = size * arch['bytesize']
+        self.b._code.append("sub rsp, {}".format(byteSize)) 
+        
+    def frameStart(self):
+        '''
+        Start a stack frame.
+        '''
+        # push rbp
+        self.b._code.append("push {}".format(arch['stackBasePointer']))
+        # mov rbp, rsp
+        self.b._code.append("mov {}, {}".format(arch['stackBasePointer'], arch['stackPointer']))
+
+    def frameEnd(self):
+        '''
+        End a basic frame.
+        '''
+        # mov rsp, rbp
+        self.b._code.append("mov {}, {}".format(arch['stackPointer'], arch['stackBasePointer']))
+        # pop pop rbp
+        self.b._code.append("pop {}".format(arch['stackBasePointer']))
+           
+    def funcStart(self, name):
+        '''
+        Start a function.
+        '''
+        self.b._code.append('{}:'.format(name))
+        self.b._code.append('; beginFunc')
+       
+    # If these end frames, do they need to end frame inside?
+    # If so, offer the frame option at begin, also?
+    def funcReturn(self, locationRoot):
+        '''
+        End a function with return.
+        '''
+        locationRoot.toRegister(arch['returnRegister'])
+        self.b._code.append('ret')
+        self.b._code.append('; endFunc')
+
+    def funcEnd(self, autoReturn):
+        '''
+        End a function.
+        '''
+        if (autoReturn):
+            self.b._code.append('ret')
+        self.b._code.append('; endFunc')
+     
+     
+    
+    
+    
 #  (b, tpe, locationRoot)
 PrintArch = Print64()
 
@@ -456,11 +472,11 @@ class RegistersProtect():
     def __init__(self, b, registerList):
         self.registerList = registerList
         for r in  registerList:
-            b += 'push ' + r
+            b._code.append('push ' + r)
 
     def close(self, b):
         for r in reversed(self.registerList):
-            b += 'pop ' + r
+            b._code.append('pop ' + r)
 
 
                                 

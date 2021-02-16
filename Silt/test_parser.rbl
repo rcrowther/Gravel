@@ -1,0 +1,45 @@
+## A parser
+#
+
+stringRODefine(ro1 ""In a Silent Way")
+
+func(adder)
+    frameStart()
+    raw('mov rbx, 99')
+    mkLocationRoot(locRBX, 'rbx')
+    setReturn(locRBX)
+    frameEnd()
+    funcReturn()
+
+funcStart(looper)
+    frameStart()
+    regAlloc(counter, 'rcx' 9)
+    #while(GT(counter 0))
+        dec(counter)
+    #    whileEnd()
+    frameEnd()
+    funcEnd()
+
+funcMainStart()
+    frameStart()
+    stackAlloc(4)
+    println(StrASCII, ro1)
+    if(AND( LT(stk1 5) NOT(LT(stk1 9)) ))
+    ifEnd()
+    println(Array(Bit32) ro1)
+    frameEnd()
+    sysExit(0)
+    funcMainEnd() 
+
+
+#While(OR([LT('rax', 5), LT('b', 7), LT('c', 9)  ]))
+
+#+56737.5
+#""hey ho" 
+#"""
+#multi
+#line 
+#string
+#"
+# 
+

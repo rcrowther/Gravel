@@ -13,6 +13,11 @@ from Position import Position
 #! problems:
 #! eagar grabbing of the cp means if we hit EOF,  we can do not know if 
 # brackets are closed.
+#! this is close to being a general token parser, but is not. See 
+# rubble/silt
+#? For generality,  have calls rather than using Position/Reporter implementation
+#? get rid of bracket closure, syntax has no place in the tokenizer
+#? scan errors probably throw as SyntaxError or ValueError, not StopIteration
 class TokenIterator():
     '''
     Iterate comments, identifiers, numerics, etc.
@@ -237,7 +242,7 @@ class TokenIterator():
                 self._next()
             self._loadUntil(ICOMMAS)
             # step over the end delimiters
-            self.brackets_closed = True
+            #self.brackets_closed = True
             self._next()
             return True
         else:
@@ -308,11 +313,12 @@ class TokenIterator():
 
     def __next__(self):
         #NB This catch because if a StopIteration is raised, there is 
-        # still work to do
+        # a token to read
         try:
             self.getNext()
         except StopIteration as e:
             # catch last token
+            #! This code is only for a post tokenize hook. Do we need that?
             if (self.exhausted):
                 raise e
             else:
