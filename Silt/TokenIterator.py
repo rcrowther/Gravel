@@ -16,6 +16,7 @@ punctuationCodepointToToken = {
     }
     
 #? want line indications on these errors?
+#! comma skipping
 class TokenIterator():
     def __init__(self, src, trackingIterator):
         self.src = src

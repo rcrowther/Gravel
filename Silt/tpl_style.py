@@ -1,3 +1,10 @@
+baseStyle = {
+    '*' : {'indent': 4},
+    'lineDefault' : {},
+    'label' : {'newline-top': True, 'indent': -2},
+    'codeBlock' : {'indent': 2},
+}
+
 def styleSolve(style):
     '''
     Pack the style with defaults

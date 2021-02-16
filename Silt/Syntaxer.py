@@ -26,7 +26,9 @@ class Syntaxer:
     Generates a tree holding the structure of tokens.
     The sole purpose of this class is to extract and organise data from 
     the token stream. Unlike most other parsers it is not concerned with
-    names, ''symbols', or anything else. 
+    much with lexicon e.g. does the name exist? However, it converts
+    tokens to an appropriate type i.e. numbers become numeric 
+    constructs.  
     '''
     def __init__(self, tokenIt):
         #self.code = code
@@ -174,8 +176,8 @@ class Syntaxer:
     def arg(self, argsB):
         r = False
         #print(tokenToString[self.tok])
-        # We can get away with these. as strings. We know they parse 
-        # as sytings or numbers from the tokeniser
+        # We can work without errors. We know they parse 
+        # as strings or numbers from the tokeniser
         isConst = (
             self.isToken(INT_NUM) or 
             self.isToken(FLOAT_NUM) or 
@@ -183,7 +185,12 @@ class Syntaxer:
             self.isToken(MULTILINE_STRING)
             )
         if (isConst):
-            argsB.append(self.textOf())
+            v = self.textOf()
+            if (self.isToken(INT_NUM)):
+                v = int(v)
+            if (self.isToken(FLOAT_NUM)):
+                v = float(v)
+            argsB.append(v)
             self._next()
             r = True
         elif (self.isToken(IDENTIFIER)):
@@ -206,12 +213,13 @@ class Syntaxer:
     def expr(self):
         commit = (self.isToken(IDENTIFIER))
         if (commit):
+            pos = self.position()
             name = self.textOf()
             self._next()
             self.skipTokenOrError('expr', LBRACKET)
             args = self.args()
             self.skipTokenOrError('expr', RBRACKET)
-            self.exprCB(name, args)
+            self.exprCB(pos, name, args)
         return commit
                      
     def seqContents(self):
