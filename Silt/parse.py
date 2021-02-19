@@ -37,7 +37,7 @@ import Tokens
 from TokenIterator import TokenIterator
 from Syntaxer import Syntaxer
 from Compiler import Compiler
-from BuilderAPI import BuilderAPI64
+from BuilderAPI import BuilderAPIX64
 from tpl_style import *
 import nasmFrames
 
@@ -116,7 +116,7 @@ def main():
     #for t in tkit:
     #    print(Tokens.tokenToString[t])
     #Syntaxer(tkit)
-    builderAPI = BuilderAPI64()
+    builderAPI = BuilderAPIX64()
 
     # parse input and build
     c = Compiler(tkit, builderAPI)

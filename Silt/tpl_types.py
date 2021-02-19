@@ -387,12 +387,19 @@ class TypeContainer(Type):
 class Pointer(TypeContainer):
     '''
     A pointer to data
+    The reason for the unusual and clumsy construction interface is so
+    container types can present a consistent interface.
+    elementType
+        a list with one element, the contained type
     '''
     #byteSize = arch['bytesize']
     byteSize = 8
-    def __init__(self, elementType):
+    def __init__(self, args):
+        if (len(args) != 1):
+            raise ValueError('Pointer: trying to build with wrong number of args (should be 1). args: {}'.format(args))
+        elementType = args[0]
         if not(isinstance(elementType, Type)):
-            raise ValueError('Pointer elementType not a Type. elementType: {}'.format(type(elementType)))
+            raise ValueError('Pointer: elementType not a Type. elementType: {}'.format(type(elementType)))
         super().__init__(elementType)
             
     def containsTypeSingular(self):
@@ -410,10 +417,17 @@ class Array(TypeContainerOffset):
     '''
     An array of data
     This type cannot return it's bytesize
+    The reason for the unusual and clumsy construction interface is so
+    container types can present a consistent interface.
+    elementType
+        a list with one element, the contained type
     '''
-    def __init__(self, elementType):
+    def __init__(self, args):
+        if (len(args) != 1):
+            raise ValueError('Array: trying to build with wrong number of args (should be 1). args: {}'.format(args))
+        elementType = args[0]
         if not(isinstance(elementType, Type)):
-            raise ValueError('Array elementType not a Type. elementType: {}'.format(type(elementType)))
+            raise ValueError('Array: contained element type not a Type. element: {}'.format(elementType))
         super().__init__(elementType)
 
     def offset(self, lid):
@@ -431,10 +445,22 @@ class Clutch(TypeContainerOffset):
     '''
     Collection of non-similar data.
     This can return bytesize. And cumulative offsets.
+    The reason for the unusual and clumsy construction interface is so
+    container types can present a consistent interface.
     elementType
-        A dict of {key: type, ...}
+        A list of of [label, type, label2, type2 ...}
     '''
-    def __init__(self, elementType):
+    def __init__(self, args):
+        #NB Yes, I can do it faster and tidier. I have reasons
+        if (len(args) % 2 != 0):
+            raise ValueError('Clutch: supplied args not even number? args:{}'.format(
+                args
+            ))
+
+        elementType = {}
+        
+        for i in range(0, len(args), 2):
+            elementType[args[i]] = args[i + 1]
         super().__init__(elementType)
         '''
         a cumulative list of byte index.
@@ -445,7 +471,7 @@ class Clutch(TypeContainerOffset):
         #? that should never be. Only applies to arrays, and no array should be raw in a clutch?
         for k,tpe in elementType.items():
             if not(isinstance(tpe, Type)):
-                raise ValueError('Clutch: an element of elementType not instance of Type. elementType:{}, element: {}'.format(elementType, tpe))
+                raise ValueError('Clutch: contained element type not instance of Type. elementType:{}, element: {}'.format(elementType, tpe))
             self.offsets[k] = byteSize
             # Humm, This can be none, if it's an array
             if (tpe.byteSize):
@@ -475,3 +501,36 @@ class Clutch(TypeContainerOffset):
         for tpe in self.subTypes():
             maxDepth = max(maxDepth, tpe.typeDepth())
         return maxDepth + 1
+
+typeNames = [
+    'Bit8',
+    'Bit16',
+    'Bit32',
+    'Bit64',
+    'Bit128',
+    'Bit32F',
+    'Bit64F',
+    'StrASCII',
+    'StrUTF8',
+    'Pointer',
+    'Array',
+    'Clutch',
+]
+
+typeNameSingularToType = {
+    'Bit8': Bit8,
+    'Bit16': Bit16,
+    'Bit32': Bit32,
+    'Bit64': Bit64,
+    'Bit128': Bit128,
+    'Bit32F': Bit32F,
+    'Bit64F': Bit64F,
+    'StrASCII': StrASCII,
+    'StrUTF8': StrUTF8,
+}
+
+typeNameContainerToType = {
+    'Pointer': Pointer,
+    'Array': Array,
+    'Clutch': Clutch,
+}

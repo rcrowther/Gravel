@@ -89,7 +89,7 @@ class TokenIterator():
         '''
         [a-z, A-Z] ~ zeroOrMore(not(Whitespace) | not(Punctuation))
         '''
-        if(self.isAlphabetic()):
+        if(self.isAlphabetic() or self.c == AT):
             self.tok = Tokens.IDENTIFIER 
             while (True):
                 self.b.append(self.c)
@@ -215,7 +215,7 @@ class TokenIterator():
         '''
         [a-z, A-Z] ~ zeroOrMore(not(Whitespace) | not(Punctuation))
         '''
-        if(self.isAlphabetic()):
+        if(self.isAlphabetic() or self.c == AT):
             self.tok = Tokens.IDENTIFIER 
             while (True):
                 self.b.append(self.c)

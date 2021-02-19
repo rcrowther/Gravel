@@ -2,6 +2,8 @@ from TokenIterator import TokenIterator
 from Tokens import *
 from Position import Position
 from Message import messageWithPos
+from tpl_types import typeNameSingularToType, typeNameContainerToType
+
 
 class ArgFunc:
     def __init__(self, name, args):
@@ -157,6 +159,9 @@ class Syntaxer:
                 # self.symbolCB(name)
         # return commit
 
+    def findIdentifier(self, pos, sym):
+        raise NotImplemented()
+        
     def argExprOrSymbol(self, argsB):
         name = self.textOf()
         self._next() 
@@ -165,14 +170,24 @@ class Syntaxer:
             # to hold data and represent the possible nesting
             args = self.args()
             #print('argExp')
-            arg = ArgFunc(name, args)
+            if (not(name in typeNameContainerToType)):
+                arg = ArgFunc(name, args)
+            else:
+                arg = typeNameContainerToType[name](args)
             self.skipTokenOrError('argExprOrSymbol', RBRACKET)
             argsB.append(arg)
         else:
             #print('argSym')
+            #print(name)
             # It was a symbol
-            argsB.append(name)
-                 
+            if (name in typeNameSingularToType):
+                arg = typeNameSingularToType[name]
+            elif (name[0] == '@'):
+                arg = name[1:]
+            else:
+                arg = self.findIdentifier(self.position(), name)
+            argsB.append(arg)
+                
     def arg(self, argsB):
         r = False
         #print(tokenToString[self.tok])

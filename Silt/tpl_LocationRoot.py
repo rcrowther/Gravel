@@ -1,4 +1,5 @@
-    
+import architecture
+
 
 #! problems here
 #- Arch is all through them
@@ -8,13 +9,16 @@
 #! These could include relaitve address tragets to, but look at other 
 # architectures first
 #! what about heap locations?
-class LocationRoot():
+class LocationRootX64():
     '''
     Location of data that can be moved directly to a register.
     Location is a register name, a stack offset, or label to segment data.
     It can not be a deep data type, such as an Array.
     '''
+    arch = architecture.architectureSolve(architecture.x64)
+
     def __init__(self, lid):
+        
         self.lid = lid
 
     def value(self):
@@ -46,11 +50,11 @@ class LocationRoot():
         # Push the address to the stack. 
         # records the offset
         # '''
-        # if (type(self) == LocationRootStack):
+        # if (type(self) == LocationRootStackX64):
             # raise ValueError('toStack: value already in stack. locationRoot:{}'.format(self))
         # #! this push not working
         # self.b += "push {}".format(self.lid)
-        # #return LocationRootStack(index)
+        # #return LocationRootStackX64(index)
 
 
     def toStackIndex(self, b, index):
@@ -77,9 +81,9 @@ class LocationRoot():
 
 
 
-class LocationRootROData(LocationRoot):
+class LocationRootRODataX64(LocationRootX64):
     def __init__(self, label):
-        if (label in arch['registers']):
+        if (label in self.arch['registers']):
             raise ValueError('Label id must not be in registers. lid: {} registers:"{}"'.format(
                 type(label),
                 ", ".join(registers)
@@ -103,26 +107,26 @@ class LocationRootROData(LocationRoot):
         Copy the data to a stack allocation
         '''
         b += "mov {}[rbp - {}], {}".format(
-            arch['ASMName'],
-            index * arch['bytesize'], 
+            self.arch['ASMName'],
+            index * self.arch['bytesize'], 
             self.value()
         )
-        return LocationRootStack(index)
+        return LocationRootStackX64(index)
         
     #! ok
     def toRegister(self, b, targetRegisterName):
-        if (not(targetRegisterName in arch['registers'])):
+        if (not(targetRegisterName in self.arch['registers'])):
             raise NotImplementedError('toRegister: targetRegisterName not a register')
         #? or mov {}, {}
         b += 'lea {}, [{}]'.format(targetRegisterName, self.value())              
-        return LocationRootRegister(targetRegisterName) 
+        return LocationRootRegisterX64(targetRegisterName) 
 
-class LocationRootRegister(LocationRoot):
+class LocationRootRegisterX64(LocationRootX64):
     def __init__(self, register):
-        if (not (register in arch['registers'])):
+        if (not (register in self.arch['registers'])):
             raise ValueError('Parameter must be in registers. lid: {} registers:"{}"'.format(
                 register,
-                ", ".join(arch['registers'])
+                ", ".join(self.arch['registers'])
             ))
         super().__init__(register)    
         
@@ -136,26 +140,26 @@ class LocationRootRegister(LocationRoot):
         '''
         Copy the data to a stack allocation
         '''
-        b += "mov [rbp - {}], {}".format(index * arch['bytesize'], self.value())
-        return LocationRootStack(index)
+        b += "mov [rbp - {}], {}".format(index * self.arch['bytesize'], self.value())
+        return LocationRootStackX64(index)
         
     def toRegister(self, b, targetRegisterName):
-        if (not(targetRegisterName in arch['registers'])):
+        if (not(targetRegisterName in self.arch['registers'])):
             raise NotImplementedError('toRegister: targetRegisterName not a register')
         if (self.lid == targetRegisterName):
             warning('toRegister', 'data already in given register. locationRoot:{}'.format(self))
         else:
             b += 'mov {}, {}'.format(targetRegisterName, self.value())              
-        return LocationRootRegister(targetRegisterName)        
+        return LocationRootRegisterX64(targetRegisterName)        
         
         
         
-class LocationRootStack(LocationRoot):
+class LocationRootStackX64(LocationRootX64):
     def __init__(self, index):
         if (not (type(index) == int)):
             raise TypeError('Parameter must be class int. lid: {}'.format(type(index)))
         super().__init__(index)    
-        self.stackByteSize = arch['bytesize']
+        self.stackByteSize = self.arch['bytesize']
 
     def value(self):
         return '[rbp - {}]'.format(self.lid * self.stackByteSize)
@@ -172,22 +176,22 @@ class LocationRootStack(LocationRoot):
         raise ValueError('toStack: value already in stack. locationRoot:{}'.format(self))
         
     def toRegister(self, b, targetRegisterName):
-        if (not(targetRegisterName in arch['registers'])):
+        if (not(targetRegisterName in self.arch['registers'])):
             raise NotImplementedError('toRegister: targetRegisterName not a register')
         b += 'lea {}, {}'.format(targetRegisterName, self.valueAsPointer())              
-        return LocationRootRegister(targetRegisterName)
+        return LocationRootRegisterX64(targetRegisterName)
 
 
-def mkLocationRoot(rawLocation):
-    l = None
-    if (rawLocation in arch['registers']):
-        l = LocationRootRegister(rawLocation)
-    elif(type(rawLocation) == str):
-        l = LocationRootROData(rawLocation)
-    elif(type(rawLocation) == int):
-        l = LocationRootStack(rawLocation)
-    else:
-        raise NotImplementedError('mkLocationRoot: Parameter must be an int or str. type(rawLocation): {}'.format(type(rawLocation)))
-    return l
+# def mkLocationRoot(rawLocation, arch):
+    # l = None
+    # if (rawLocation in arch['registers']):
+        # l = LocationRootRegisterX64(rawLocation)
+    # elif(type(rawLocation) == str):
+        # l = LocationRootRODataX64(rawLocation)
+    # elif(type(rawLocation) == int):
+        # l = LocationRootStackX64(rawLocation)
+    # else:
+        # raise NotImplementedError('mkLocationRoot: Parameter must be an int or str. type(rawLocation): {}'.format(type(rawLocation)))
+    # return l
     
     

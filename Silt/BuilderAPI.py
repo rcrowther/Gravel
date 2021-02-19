@@ -1,8 +1,11 @@
 import architecture
-from LocationRoot import mkLocationRoot
+from tpl_LocationRoot import LocationRootRODataX64, LocationRootRegisterX64
+from tpl_Printers import PrintX64
+
 
 class BuilderAPI():
     arch = None
+    printers = None
     
     def byteSize(self, bitsize):
         return bitsize >> 3
@@ -28,9 +31,12 @@ class BuilderAPI():
     def __getitem__(self, name):
         return getattr(self, name)
 
+
+
 #! needs inherit arch
-class BuilderAPI64(BuilderAPI):
+class BuilderAPIX64(BuilderAPI):
     arch = architecture.architectureSolve(architecture.x64)
+    printers = PrintX64()
 
     def mustPushData(self, name):
         return name in [
@@ -47,24 +53,26 @@ class BuilderAPI64(BuilderAPI):
             'ifEnd',
             'whileEnd',
         ]
-        
+
+    def mustSetData(self, name):
+        return name in [
+            'stringRODefine',
+            'stringHeapDefine'
+        ]
+
+    def isGlobalData(self, name):
+        return name in [
+            'stringRODefine',
+        ] 
+               
+    def mustGetData(self, name):
+        return name in [
+        ]
+                
     #def __init___():
     #    builderAPI = architecture.architectureSolve(architecture.x64)
 
-    # def stringRODefine(self, b, string):
-        # rodata = label + ': db "' + string + '", 0'
-        # b.rodataAdd(rodata)
-        # return LocationRootROData(label)
-
-    # def stringHeapDefine(self, b, stackIndex, string):
-        # '''
-        # Allocate and define a malloced string
-        # UTF-8
-        # '''
-        # byteSize = byteSize(elemByteSize) * size
-        # b._code.append("mov {}, {}".format(cParameterRegister[0], byteSize))
-        # b._code.append("call malloc")
-        # return LocationRootRegister('rax')        
+       
 
     def sysExit(self, b, args):    
         b._code.append("mov rax, 60")
@@ -78,6 +86,9 @@ class BuilderAPI64(BuilderAPI):
         byteSize = args[0] * self.arch['bytesize']
         b._code.append("sub rsp, {}".format(byteSize)) 
 
+    def comment(self, b, args):
+        b._code.append("; " + args[0])
+        
     def frame(self, b, args):
         '''
         Start a stack frame.
@@ -123,7 +134,35 @@ class BuilderAPI64(BuilderAPI):
         
     def funcMainEnd(self, b, args):
         b._code.append('; endFunc')
+
+    def stringRODefine(self, b, args):
+        label = args[0]
+        rodata = label + ': db "' + args[1] + '", 0'
+        b.rodataAdd(rodata)
+        return (label, LocationRootRODataX64(label))
+
+    def stringHeapAlloc(self, b, args):
+        '''
+        Malloc string space
+        Bytesize API
+        '''
+        self.extern(b, ['malloc'])
+        #! but malloc works in bytes?
+        byteSize = self.arch['bytesize'] * args[0]
+        b._code.append("mov {}, {}".format(self.arch['cParameterRegisters'][0], byteSize))
+        b._code.append("call malloc")
+        return LocationRootRegisterX64(self.arch['returnRegister']) 
         
+    # def stringHeapDefine(self, b, args):
+        # '''
+        # Allocate and define a malloced string
+        # UTF-8
+        # '''
+        # byteSize = self.byteSize() * size
+        # b._code.append("mov {}, {}".format(arch['cParameterRegister'][0], byteSize))
+        # b._code.append("call malloc")
+        # return LocationRootRegisterX64('rax') 
+                
     # #! needs datapush
     def registersPush(self, b, args):
         registerList = args
@@ -145,3 +184,14 @@ class BuilderAPI64(BuilderAPI):
     #?x
     def registersVolatilePop(self, b, popData, args):
         self.registersPop(b, popData, args)
+
+
+    def print(self, b, args):
+        self.printers(b, args[0], args[1])
+
+    def println(self, b, args):
+        self.printers(b, args[0], args[1])
+        self.printers.newline(b)
+
+    def printFlush(self, b, args):
+        self.printers.flush(b)
