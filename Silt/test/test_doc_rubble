@@ -1,0 +1,20 @@
+
+stringRODefine(@ro1 ""In a Silent Way")
+
+func(@adder)
+    frame()
+    raw('mov rbx, 99')
+    #mkLocationRoot(locRBX, 'rbx')
+    #setReturn(locRBX)
+    frameEnd()
+    funcEnd()
+
+func(@looper)
+    frame()
+    stackAlloc(3)
+    #regDefine(counter, 'rcx' 9)
+    #while(GT(counter 0))
+        #dec(counter)
+    #    whileEnd()
+    frameEnd()
+    funcEnd()

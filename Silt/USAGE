@@ -1,0 +1,126 @@
+= Usage
+Rubble implemrnts a simple base syntax. Everything is a function (not a ''lambda' or ''proc'). All functions have brackets. Functions are one per line,
+
+?rubble
+# function name ~ '(' ~ arguments ~')'
+dec()
+?
+
+Most of Rubbles' functions are pretty close to assembly language nuggets e.g.
+
+?rubble
+frame()
+frameEnd()
+?
+== How rubble handles brrackets in geneerated code
+Note that bracketing implied in generated code is, in Rubble, explicitly stated 
+?rubblwe
+frame()
+  ...
+  frameEnd()
+?
+implies a bracketed section. This is similar to a Ruby ""do..end" block, or Ada ""func FuncName..endFuncName"
+
+==== Rationale
+Rubble draws common assembly idoms together. A reduced syntax makes sense, both for academic purpose of generating useful abstracctions, and for potential machine generation of code (use of Rubble as an intermediate language)
+
+
+
+=== Layout
+Rubble functions must be one per line. But whitespace is irellevsant, so they can be spaced how you wish. I lean towards a python-style indenting,
+?rubble
+func(name: type)
+    ...
+    endFunc()
+? 
+but the spacing is irellevant.
+
+
+== Arguments
+Every function can have arguments. These are bone-simple. 
++
+134 = number
+5.4 = float (because there's a period. Also 2.0)
+""goof" = a string. note the double opeing quotes
+'doof' = also a sting. But can't be longer than one line
++
+Types default to the machine base. See later.
+
+== Arguments for allocation
+Sometimes you make a variable. What really happenins is that data is returned from a function that will be stored for later use. This data is associated with a label for later use. 
+
+??
+stringRODefine(@ro1 ""In a Silent Way")
+?
+Note the ''@' symbol. This says ""Here is some text that will be used as a label for the data next time I use it",. 
+??
+stringRODefine(@ro1 ""In a Silent Way")
+println(StrASCII ro1)
+?
+
+==== Rationale
+Other languages use parsers and alternate syntxes to make symbol  allocation readable. Infixed operators like ''=' would allow the usual cute, high-level, mathematical,
+
+?ruby
+ro1 = "In a Silent Way"
+?
+
+But Rubble is deliberately low in syntax, so doesn't implement infixed operators. It reuses the function syntax, in a vaguely LISP-like way. The small syntax is seen as more important.
+
+Also,  the ''@' syntax is unusual. All languages must resolve the issue that when a ''symbol' is defined, the arrgument given is not the symbol, it is text that will be used to create the symbol. The ''@' solution is just an unambiguaous, easily handled way of doing this (as opposed the the more generral methods of most LISPs, such as unquoting).
+
+I agree this is not the most readable solution, but it removes a swathe of complexity from the parser.
+
+=== Commas
+Rubble treats commas as whitespace. It will replace them, usually at the tokeniser stage. So mostly you are free to put commas in or not, 
+??
+sub(reg1, 30)
+?
+Same as,
+??
+sub(reg1,30)
+?
+Same as,
+?rubble
+sub(reg1 30)
+?
+
+But in some places the replacement of commas can have an effect on parsing, You can't give a func this name
+?rubble
+func(@n,s,e,w 99)
+?
+That would parse as seperate arguments, and the function return an error.
+
+==== Rationale
+People like to type commas, and many other languages use commas. Rubble is assumed to be a languge which will be used at the same time as other languages, so commas are allowed. Commas may also improve readability.
+
+== Allocation and definition are seperate
+In most languages, allocation and deffinition arre the same,
+
+?ruby
+ro1 = "In a Silent Way"
+?
+
+In C-family languages, alllocation is sometimes separated from definition,
+
+?c
+*str1 = mallloc(15)
+str1 = "In a Silent Way"
+?
+
+In Rubble, allocation is (nearly) always separated from definition,
+?rubble
+stackAlloc(@str1 ASCII 15)
+set(str1 "In a Silent Way")
+?
+
+==== Rationale
+High level languages use their parsers and optimisers to resolve what must happen in allocation and dealocation. They will scan a function/proceedure/method to find what space is needed, and where.
+
+Assembly coders are used to, for example, mallocing a large general space in one go. It is verging on unpredicatable to scan and decide storage areas for the coder. So Rubble provides the general methods.
+
+There are two exceptions. First, if an architecture can not handle a given register request, the storage will be put on stack. Second, it is possibble to allocate and define global string storage in one command,
+?rubble
+roDataDefine(@str1 "In a Silent Way")
+?
+This must be because most such definitions are read-only.

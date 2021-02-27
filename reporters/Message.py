@@ -8,20 +8,21 @@ from gio.Sources import Source
 
 class Message:
     '''
-    Data carrier for Reporter messages.
+    Data carrier for messages.
     Very little here. It is the job of reporters to organise 
     and format the material.
     'pos' and 'details' attributes are optional, and reporters 
     should handle this.
-    Python note: all attributes are explicitly created per instance, so can be used
-    immediately.
-    If a message has a ''pos', it has a ''src', at least.
+    Python note: all attributes are explicitly created per instance, so 
+    can be used immediately.
+    If a message has a ''pos', it has a ''src'.
     '''
     #def __init__(self, message, pos = None):
     def __init__(self, message):
         #assert ((not pos) or isinstance(pos, Position)), 'Not a Position: type:{}'.format(type(pos)) 
-        #self.pos = pos
-        #self.pos = None
+        '''
+        Main constructor is a simple string message
+        '''
         self.msg = message
         self.src = None
         self.pos = None
@@ -29,12 +30,19 @@ class Message:
 
     @classmethod
     def withSrc(cls, msg, src):
+        '''
+        Create a message with a source
+        '''
         m = cls(msg)
         m.src = src
         return m
 
     @classmethod
     def withPos(cls, msg, src, pos):
+        '''
+        Create a message with a position
+        This implies a source
+        '''
         m = cls(msg)
         m.src = src
         m.pos = pos

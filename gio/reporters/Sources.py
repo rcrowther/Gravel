@@ -1,7 +1,3 @@
-#from gio.CodepointIterators import File, StringLine
-#from gio.TokenIterator import TokenIterator
-#from gio.TrackingIterator import TrackingIterator
-
 
 #! There is always a source, even if it is the compiler
 class Source:
@@ -51,7 +47,7 @@ class Source:
     def __repr__(self):
         return 'Source(locationStr:{})'.format(
             self.locationStr(),
-            )
+        )
 
 
 class _BuiltInSource:
@@ -86,7 +82,7 @@ class FileSource(Source):
     def isFileSource(self):
         return True
                                         
-    def lineByIndex(self, lineNum):
+    def lineByIndex(self, lineIdx):
         '''
         Get a line from the file by index.
         Indexes work from 1. 0 is an error.
@@ -95,12 +91,12 @@ class FileSource(Source):
         @throw error if index is out of range
         @return line is rstrip(), including line ends.
         '''
-        assert lineNum > 0, "linenum (from a Position?) < 1"
         # Caches the source, for faster calls on the same file.
         if (not self.lineList):
             with open(self.srcPath, 'r') as f:
                 self.lineList = f.readlines()
-        return self.lineList[lineNum - 1].rstrip()
+        assert (lineIdx >= 0 and lineIdx < len(self.lineList)), "lineIdx out of range. lineIdx:{}".format(lineIdx)
+        return self.lineList[lineIdx].rstrip()
             
     def locationStr(self):
         return self.srcPath
@@ -116,6 +112,7 @@ class StringSource(Source):
         
     def lineByIndex(self, lineNum):
         # Linenum is ignored, in action
+        assert (lineNum == 0), "String source recieved non-zero linenum. lineNum:{}".format(lineNum)
         return self.line.rstrip()
 
     def locationStr(self):
@@ -124,6 +121,9 @@ class StringSource(Source):
 
 
 class StringsSource(Source):
+    '''
+    Each string is a line
+    '''
     def __init__(self, strings):
         assert (isinstance(strings, list)), 'Not a list: {}'.format(type(strings))
         self.strings = strings
@@ -131,9 +131,9 @@ class StringsSource(Source):
     def isLinebasedSource(Self):
         return True
         
-    def lineByIndex(self, lineNum):
-        assert lineNum > 0, "linenum (from a Position?) < 1"
-        return self.strings[lineNum - 1].rstrip()
+    def lineByIndex(self, lineIdx):
+        assert (lineIdx >= 0 and lineIdx < len(self.strings)), "lineIdx out of range. lineIdx:{}".format(lineIdx)
+        return self.strings[lineIdx].rstrip()
 
     def locationStr(self):
         return '<console>'

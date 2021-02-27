@@ -1,7 +1,6 @@
 ## A parser
 #
 
-#var( ro1 stringRODefine(""In a Silent Way") )
 stringRODefine(@ro1 ""In a Silent Way")
 
 func(@adder)
@@ -14,6 +13,7 @@ func(@adder)
 
 func(@looper)
     frame()
+    stackAlloc(3)
     #regDefine(counter, 'rcx' 9)
     #while(GT(counter 0))
         #dec(counter)
@@ -24,7 +24,13 @@ func(@looper)
 funcMain()
     #comment('gettin funky')
     frame()
-    stackAlloc(4)
+    #tackAlloc(4)
+    #heapAlloc(8)
+    #var(@reg1 regc 99)
+    #var(@stk2 stack 2 99)
+    #var(@hp2 heap 99)
+    varStack(@stk2 2 99)
+    println(Bit64 stk2)
     #stringHeapAlloc(24)
     #registersVolatilePush('rax' 'rbx' 'rcx')
     #registersVolatilePop()

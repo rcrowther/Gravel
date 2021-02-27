@@ -1,4 +1,5 @@
-from Codepoints import LINE_FEED
+#from Codepoints import LINE_FEED
+LINE_FEED = 10
 
 #! with or without lineends
 class CodePointIterator:
@@ -8,6 +9,7 @@ class CodePointIterator:
     Should:
     ++
     - return unicode codepoints
+    - Right strip and replaces linends with (Linuxy) cp = 10
     - throw StopIteration
     - do any tidy, such as file descriptor closing
     +
@@ -19,8 +21,12 @@ class CodePointIterator:
         return self
         
         
-#! assumes Linuxy Python by assuming line-end is codepoint LINE_FEED         
-class FileIterator(CodePointIterator):
+# The problem is, doesn't close files on exception       
+class FileIteratorUnstripped(CodePointIterator):
+    '''
+    Much simpler than the usual FileIterator, but bulk loads whole file 
+    and will not rstrip()
+    '''
     #NB Changes the syntax from read-a-char
     # to __next__-for-a-char iteration
     def __init__(self, path):
@@ -36,8 +42,66 @@ class FileIterator(CodePointIterator):
             raise StopIteration
         return ord(c)
 
+# The problem is, doesn't close files on exception       
+class FileIteratorByLine(CodePointIterator):
+    #NB Changes the syntax from read-a-char
+    # to __next__-for-a-char iteration
+    def __init__(self, path):
+        self.path = path
+        self.fd = open(path, 'r')
+        self.loadNewLine()
+        
+    def loadNewLine(self):
+        self.line = self.fd.readline()
+        if (self.line == ''):
+            self.fd.close()
+            raise StopIteration   
+        # ensuring newline
+        self.line = self.line.rstrip()
+        self.line += chr(LINE_FEED)
+        self.charNum = 0
+        self.lineCharLen = len(self.line)
+        
+    def __next__(self):
+        if(self.charNum >= self.lineCharLen):
+            self.loadNewLine()
+        c = self.line[self.charNum]
+        self.charNum += 1
+        return ord(c)
+        
+        
 
-
+class FileIterator(CodePointIterator):
+    #NB Changes the syntax from read-a-char
+    # to __next__-for-a-char iteration
+    def __init__(self, path):
+        self.path = path
+        self.lineNum = -1
+        self.cpNum = 0
+        with open(path, 'r') as f:
+            self.lineList = f.readlines()
+        self.linesLen = len(self.lineList)
+        self.lineCPLen = 0
+        self.loadNewLine()
+        
+    def loadNewLine(self):
+        self.lineNum += 1
+        if (self.lineNum >= self.linesLen):
+            raise StopIteration   
+        self.line = self.lineList[self.lineNum]
+        # ensuring newline
+        self.line = self.line.rstrip()
+        self.line += chr(LINE_FEED)
+        self.cpNum = 0
+        self.lineCPLen = len(self.line)
+        
+    def __next__(self):
+        if(self.cpNum >= self.lineCPLen):
+            self.loadNewLine()
+        c = self.line[self.cpNum]
+        self.cpNum += 1
+        return ord(c)
+        
 #$ Clumsy for Python, but keeping it generic. 
 class StringIterator(CodePointIterator):
 

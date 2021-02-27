@@ -59,7 +59,7 @@ class PrintX64():
             
     def generic(self, b, form, source):
         self.protect(source)
-        self.extern(b)
+        self.extern(b) 
         b._code.append("mov rdi, " + form)
         b._code.append("mov rsi, " + source)
         b._code.append("call printf")
@@ -72,7 +72,7 @@ class PrintX64():
 
     def char(self, b, source):
         b.rodataAdd('printCharFmt: db "%c", 0')
-        self.generic('printCharFmt', source)
+        self.generic(b, 'printCharFmt', source)
             
     def ascii(self, b, source):
         '''
@@ -86,23 +86,23 @@ class PrintX64():
 
     def i8(self, b, source):
         b.rodataAdd('print8Fmt: db "%hhi", 0')
-        self.generic('print8Fmt', source) 
+        self.generic(b, 'print8Fmt', source) 
 
     def i16(self, b, source):
         b.rodataAdd('print16Fmt: db "%hi", 0')
-        self.generic('print16Fmt', source) 
+        self.generic(b, 'print16Fmt', source) 
                         
     def i32(self, b, source):
         b.rodataAdd('print32Fmt: db "%i", 0')
-        self.generic('print32Fmt', source) 
+        self.generic(b, 'print32Fmt', source) 
 
     def i64(self, b, source):
         b.rodataAdd('print64Fmt: db "%li", 0')
-        self.generic('print64Fmt', source)
+        self.generic(b, 'print64Fmt', source)
 
     def i128(self, b, source):
         b.rodataAdd('print128Fmt: db "%lli", 0')
-        self.generic('print128Fmt', source)
+        self.generic(b, 'print128Fmt', source)
         
     def f32(self, b, form, source):
         self.protect(source)

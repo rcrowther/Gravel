@@ -142,14 +142,14 @@ class Compiler(Syntaxer):
                 func(self.b, args)
 
         except TypeError:
-            msg = "[Error] Symbol too many args. symbol '{}', args:{}".format(
+            msg = "[Error] Symbol too many args. symbol:'{}', args:{}".format(
                  name,
                  args
                  )
             msgp = messageWithPos(pos, msg)
             raise TypeError(msgp)
         except IndexError:
-            msg = "[Error] Symbol not enough args. symbol '{}', args:{}".format(
+            msg = "[Error] Symbol not enough args. symbol:'{}', args:{}".format(
                  name,
                  args
                  )

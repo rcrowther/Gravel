@@ -180,10 +180,10 @@ class Syntaxer:
             #print('argSym')
             #print(name)
             # It was a symbol
+            # We can lookup all symbols for code value. Protosymbols are
+            # tokened as STRING in the tokenIterator.
             if (name in typeNameSingularToType):
                 arg = typeNameSingularToType[name]
-            elif (name[0] == '@'):
-                arg = name[1:]
             else:
                 arg = self.findIdentifier(self.position(), name)
             argsB.append(arg)

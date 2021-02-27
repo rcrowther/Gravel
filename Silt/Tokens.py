@@ -12,7 +12,7 @@ tokenBase = {
     
     
     #40 : ('period' , 'PERIOD' ),
-    #41 : ('comma' , 'COMMA' ),
+    41 : ('comma' , 'COMMA' ),
     42 : ('colon' , 'COLON' ),
     #43 : ('scolon' , 'SEMI_COLON' ),
     44 : ('lbracket' , 'LBRACKET' ),
@@ -22,7 +22,7 @@ tokenBase = {
     # 48 : ('lsquare' , 'LSQUARE' ),
     # 49 : ('rsquare' , 'RSQUARE' ),
     # 50 : ('solidus' , 'SOLIDUS' ),
-    # 51 : ('linefeed' , 'LINEFEED' ),
+    51 : ('linefeed' , 'LINEFEED' ),
 }
 
 # Set the codes as attributes on the module
