@@ -3,7 +3,12 @@ import Tokens
 from .reporters.Reporter import Reporter
 from .reporters.Message import Message
 from .reporters.Position import Position
+from .exceptions import LexicalError
 
+
+
+
+    
 
 ## TODO:
 # Test for end
@@ -14,7 +19,7 @@ from .reporters.Position import Position
 #! eagar grabbing of the cp means if we hit EOF,  we can do not know if 
 # brackets are closed.
 #? scan errors probably throw as SyntaxError or ValueError, not StopIteration
-class TokenIteratorBase():
+class LexerBase():
     '''
     Iterate comments, identifiers, numerics, etc.
     Very simple, compared to other efforts, but it works.
@@ -49,7 +54,7 @@ class TokenIteratorBase():
     Token iterators are not reusable. See also the factory method
     mkTokenIterator()
     '''
-    def __init__(self,  src, trackingIterator, reporter):
+    def __init__(self, src, trackingIterator, reporter):
         self.src = src
         #self.exhausted = False
         self.it = trackingIterator
@@ -84,9 +89,13 @@ class TokenIteratorBase():
 
     def error(self, msg):
         pos = Position(self.tokenLineCount, self.tokenStartOffset)
-        msgKlass = Message.withPos(msg, self.src, pos, self.src.lineByIndex(self.tokenLineCount))
+        msgKlass = Message.withPos(
+            msg, 
+            self.src, pos, 
+            self.src.lineByIndex(self.tokenLineCount)
+        )
         self.reporter.error(msgKlass)
-        raise StopIteration
+        raise LexicalError()
         
     def _next(self):
         #print('_nxt')
@@ -111,12 +120,25 @@ class TokenIteratorBase():
         Load the builder from current char until matching the given 
         codepoint.
         
-        Used for gathering strings and ids.
+        Used for gathering strings etc. Note that his will gather 
+        linefeeds also
         '''
         while(self.cp != cp):
             self.b.append(self.cp)
             self._next()
 
+    def _loadUntilOrLineFeed(self, cp):
+        '''
+        Load the builder from current char until matching the given 
+        codepoint.
+        
+        Used for gathering strings etc. Note that his will gather 
+        linefeeds also
+        '''
+        while(self.cp != cp and self.cp != LINE_FEED):
+            self.b.append(self.cp)
+            self._next()
+            
     def isWhitespace(self):
         '''
         Not including linefeed.
@@ -125,7 +147,19 @@ class TokenIteratorBase():
 
     def isWhitespaceOrLinefeed(self):
         return (self.cp <= 32)
+    
+    def skipWhitespace(self):
+        '''
+        Not including linefeed.
+        '''        
+        while (self.isWhitespace()):
+            self._next()
 
+    def _loadUntilWhitespaceOrLinefeed(self):
+        while (not(self.isWhitespaceOrLinefeed())):
+            self.b.append(self.cp)
+            self._next()
+            
     def isAlphabetic(self):
         '''
         Includes underline
@@ -143,13 +177,7 @@ class TokenIteratorBase():
         Match plus/hyphen-minus latin
         '''
         return (self.cp == 43 or self.cp == 45)
-    
-    def skipWhitespace(self):
-        '''
-        Not including linefeed.
-        '''        
-        while (self.isWhitespace()):
-            self._next()
+
                        
     def getNext(self):
         '''

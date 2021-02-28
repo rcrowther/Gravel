@@ -1,9 +1,9 @@
-from TokenIterator import TokenIterator
+#from Lexer import Lexer
 from Tokens import *
-from Position import Position
-from Message import messageWithPos
+#from Position import Position
+#from Message import messageWithPos
 from tpl_types import typeNameSingularToType, typeNameContainerToType
-
+from gio.SyntaxerBase import SyntaxerBase
 
 class ArgFunc:
     def __init__(self, name, args):
@@ -16,14 +16,16 @@ class ArgFunc:
             self.args
         )
 
+
 class BooleanOp(ArgFunc):
     def __repr__(self):
         return "BooleanOp(name:'{}',  args:{})".format(
             self.name,
             self.args
         )    
+
         
-class Syntaxer:
+class Syntaxer(SyntaxerBase):
     '''
     Generates a tree holding the structure of tokens.
     The sole purpose of this class is to extract and organise data from 
@@ -32,65 +34,7 @@ class Syntaxer:
     tokens to an appropriate type i.e. numbers become numeric 
     constructs.  
     '''
-    def __init__(self, tokenIt):
-        #self.code = code
-        self.it = tokenIt
-        self.tok = None
 
-        # start me up
-        self.root()
-
-    ## report helpers     
-    def position(self):
-        return Position(self.it.src, self.it.lineCount, self.it.lineOffset)
-        
-    def error(self, msg):
-        tokenTxt = self.it.textOf()
-        msg = messageWithPos( self.position(), msg)
-        if (tokenTxt):
-            msg += " token text : '{0}'".format(tokenTxt)
-        raise SyntaxError(msg)
-
-    def expectedTokenError(self, ruleName, tok):
-         self.error("In rule '{0}' expected token '{1}' but found '{2}'".format(
-             ruleName,
-             tokenToString[tok],
-             tokenToString[self.tok]
-             ))
-
-    def expectedRuleError(self, currentRule, expectedRule):
-         self.error("In rule '{0}' expected rule '{1}'. Current token: '{2}'".format(
-             currentRule,
-             expectedRule,
-             tokenToString[self.tok]
-             ))
-                     
-    def textOf(self):
-        return self.it.textOf()
-        
-    def _next(self):
-        #self.prevLine = self.it.lineCount()
-        #self.prevOffset = self.it.lineOffset()
-        self.tok = self.it.__next__()
-
-    ## Token helpers
-    def isToken(self, token):
-       return (token == self.tok)
-
-    def optionallySkipToken(self, token):
-        '''
-        Optionally skip a token.
-        If skips, returns True.
-        ''' 
-        r = (token == self.tok)
-        if (r):
-            self._next()
-        return r
-
-    def skipTokenOrError(self, ruleName,  token):
-       if(self.tok != token):
-           self.expectedTokenError(ruleName, token)
-       self._next()
        
     def commentCB(self, text):
         print('comment with "' + text)
@@ -228,15 +172,22 @@ class Syntaxer:
     def expr(self):
         commit = (self.isToken(IDENTIFIER))
         if (commit):
-            pos = self.position()
             name = self.textOf()
             self._next()
             self.skipTokenOrError('expr', LBRACKET)
             args = self.args()
             self.skipTokenOrError('expr', RBRACKET)
-            self.exprCB(pos, name, args)
+            self.exprCB(name, args)
         return commit
                      
+    def punctuation(self):
+        commit = (self.isToken(LINEFEED) or self.isToken(COMMA))
+        if (commit):
+            #name = self.textOf()
+            self._next()
+            #self.exprCB(name, args)
+        return commit
+                
     def seqContents(self):
         '''
         Used for body contents.
@@ -248,6 +199,7 @@ class Syntaxer:
             #or self.exprOrSym()
             self.expr()
             or self.comment()
+            or self.punctuation()
         ):
                 pass
             #? what are we doing here at the end?
@@ -256,15 +208,4 @@ class Syntaxer:
         return True
         
     def root(self):
-        try:
-            # charge
-            self._next()
-            self.seqContents()
-            # if we don't get StopIteration...
-            self.error('Parsing did not complete: lastToken: {},'.format(
-                tokenToString[self.tok],                
-                ))
-        except StopIteration:
-            # All ok
-            print('parsed')
-            pass
+        self.seqContents()

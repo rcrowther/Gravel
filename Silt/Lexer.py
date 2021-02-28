@@ -1,6 +1,6 @@
 import Tokens
-from Codepoints import *
-from gio.TokenIteratorBase import TokenIteratorBase
+from library.encodings.Codepoints import *
+from gio.LexerBase import LexerBase
 
 #punctuationCodepoints = [COLON, LEFT_BRACKET, RIGHT_BRACKET]
 
@@ -9,7 +9,7 @@ from gio.TokenIteratorBase import TokenIteratorBase
 #! do something about ICOMMA (this uses ICOMMAS)
 punctuationCodepointToToken = {
     COMMA : Tokens.COMMA,
-    LINEFEED : Tokens.LINEFEED,
+    LINE_FEED : Tokens.LINEFEED,
     COLON : Tokens.COLON,
     LEFT_BRACKET : Tokens.LBRACKET,
     RIGHT_BRACKET : Tokens.RBRACKET,
@@ -18,7 +18,7 @@ punctuationCodepointToToken = {
 punctuationCodepoints = punctuationCodepointToToken.keys()
     
 
-class TokenIterator(TokenIteratorBase):
+class Lexer(LexerBase):
 
     #def __init__(self,  src, trackingIterator, reporter):
     #    super().__init__(src, trackingIterator, reporter)
@@ -57,19 +57,17 @@ class TokenIterator(TokenIteratorBase):
     def scanString(self):
         if (self.cp == ICOMMAS or self.cp == ICOMMA):
             isSingle = (self.cp == ICOMMA)  
-            self.tok = Tokens.STRING
             self._next()
             if(isSingle):
+                self.tok = Tokens.STRING
                 #!? this could be  self._loadUntil(ICOMMA or NEWLINE)
-                self._loadUntil(ICOMMA)
+                self._loadUntilOrLineFeed(ICOMMA)
             else:
                 if(not self.cp == ICOMMAS):
                     msg = 'Double inverted comma scanned as string start but not followed with double inverted commas'
                     self.error(msg)
                 self._next()
-                if (self.cp == ICOMMAS):
-                    self.tok = Tokens.MULTILINE_STRING
-                    self._next()
+                self.tok = Tokens.MULTILINE_STRING
                 self._loadUntil(ICOMMAS)
             # step over the end delimiter
             self._next()
@@ -97,7 +95,7 @@ class TokenIterator(TokenIteratorBase):
                self._next()
                self._loadUntil(HASH)
             else:
-               self._loadUntil(LINEFEED)
+               self._loadUntil(LINE_FEED)
             # step over the end delimiters
             self._next()
             return True
@@ -107,7 +105,7 @@ class TokenIterator(TokenIteratorBase):
 
     def scanIdentifier(self):
         '''
-        [a-z, A-Z] ~ zeroOrMore(not(Whitespace) | not(Punctuation))
+        [a-z, A-Z] ~ zeroOrMore(not(WhitespaceOrLinefeed) | not(Punctuation))
         '''
         if(self.isAlphabetic() or self.cp == AT):
             #? isProtoSymbol is a deep speciality of this tokeniser.

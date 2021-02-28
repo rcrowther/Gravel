@@ -2,11 +2,10 @@
 
 import unittest
 from gio.iterators.TrackingIterator import FileIteratorTracking
-#from reporters.Position import Position
 from gio.reporters.Sources import FileSource
-#from gio.reporters.Reporter import Reporter
 from gio.reporters.ReporterStreamConsole import ReporterStreamConsole
-from gio.TokenIterator import TokenIterator
+from gio.LexerBase import LexerBase
+from gio.exceptions import LexicalError
 
 
 # python3 -m unittest test
@@ -19,8 +18,7 @@ class TestTokenIterator(unittest.TestCase):
         fp = 'gio/test/test_doc_tracker'
         self.it = FileIteratorTracking(fp)
         self.reporter = ReporterStreamConsole(0, 0)
-        self.tkIt = TokenIterator(FileSource(fp), self.it, self.reporter)
-    
+        self.tkIt = LexerBase(FileSource(fp), self.it, self.reporter)
 
     def test_offset(self):
         self.tkIt._next()
@@ -28,7 +26,8 @@ class TestTokenIterator(unittest.TestCase):
         self.assertEqual(off, 0)
 
     def test_error_print(self):
-        self.tkIt.error("Ouch!")
+        with self.assertRaises(LexicalError):
+            self.tkIt.error("Ouch!")
         #self.assertEqual(self.rp.errorCount, 1)
 
     def test_skip_whitespace(self):
@@ -47,7 +46,8 @@ class TestTokenIterator(unittest.TestCase):
         self.tkIt.skipWhitespace()
         self.tkIt.stashOffsets()
         self.tkIt._loadUntil(32)
-        self.tkIt.error("Again! With '" + self.tkIt.textOf() + "'")
+        with self.assertRaises(LexicalError):
+            self.tkIt.error("Again! With '" + self.tkIt.textOf() + "'")
 
     def test_next(self):
         with self.assertRaises(NotImplementedError):
