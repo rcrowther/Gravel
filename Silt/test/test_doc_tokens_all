@@ -1,8 +1,8 @@
 # comment
 ## Multiline comment
 #
-'string'
-"" multiline string
+'"string"'
+"" 'string'
 "
 123 428.34
 ,:()

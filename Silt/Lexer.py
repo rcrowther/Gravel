@@ -56,18 +56,16 @@ class Lexer(LexerBase):
 
     def scanString(self):
         if (self.cp == ICOMMAS or self.cp == ICOMMA):
+            self.tok = Tokens.STRING
             isSingle = (self.cp == ICOMMA)  
             self._next()
             if(isSingle):
-                self.tok = Tokens.STRING
-                #!? this could be  self._loadUntil(ICOMMA or NEWLINE)
                 self._loadUntilOrLineFeed(ICOMMA)
             else:
                 if(not self.cp == ICOMMAS):
-                    msg = 'Double inverted comma scanned as string start but not followed with double inverted commas'
+                    msg = 'Inverted commas scanned as string start but not followed with inverted commas'
                     self.error(msg)
                 self._next()
-                self.tok = Tokens.MULTILINE_STRING
                 self._loadUntil(ICOMMAS)
             # step over the end delimiter
             self._next()
@@ -115,7 +113,7 @@ class Lexer(LexerBase):
             # symbols, thus addressing the issue that when a symbol is
             # formed, the id is really a string, not an initialized
             # symbol
-            isProtoSymbol = (self.cp == AT)
+            #isProtoSymbol = (self.cp == AT)
             while (True):
                 self.b.append(self.cp)
                 self._next()
@@ -126,14 +124,14 @@ class Lexer(LexerBase):
                     (self.isPunctuation())
                  ):
                     break
-            if (isProtoSymbol):
-                self.tok = Tokens.STRING
-                if (len(self.b) < 2):
-                    msg = '"@" char stands alone.\n    This codepoint indicates a string intended to create a symbol. Add a name or remove?'
-                    self.error(msg)
-                self.b = self.b[1:]
-            else:
-                self.tok = Tokens.IDENTIFIER 
+            # if (isProtoSymbol):
+                # self.tok = Tokens.STRING
+                # if (len(self.b) < 2):
+                    # msg = '"@" char stands alone.\n    This codepoint indicates a string intended to create a symbol. Add a name or remove?'
+                    # self.error(msg)
+                # self.b = self.b[1:]
+            # else:
+            self.tok = Tokens.IDENTIFIER 
             return True
         else:
             return False

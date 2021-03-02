@@ -2,11 +2,74 @@ import architecture
 from tpl_LocationRoot import LocationRootRODataX64, LocationRootRegisterX64, LocationRootStackX64
 from tpl_Printers import PrintX64
 
+#? dont like this import
+from Syntaxer import ProtoSymbol
+
+
+
 
 class BuilderAPI():
+    '''
+    A base for building code.
+    Mostly this is a builder for machine code instructions. This is
+    the base. Subclasses will target an architecture.
+    Mostly, it is functions that take a builder followed by a generic
+    'args' parameter.
+    Some builder funcs return data. This is so 
+    compilers/interpreters recieve data to store in environments,
+    either for symbol registration or block closure. These functions 
+    must be registered in the (architecture-specific) functions
+    mustPushData, mmustSetData, isGlobalData etc.
+    '''
+    # NB arg checking would not be done here. This assumes args are
+    # correct, it is just a builder
     arch = None
     printers = None
-    
+
+    def isGlobalData(self, name):
+        '''
+        Test if a function defines global instructions.
+        return 
+            If True, places in global environment (else data is local) 
+        '''
+        raise NotImplementedError()
+
+        
+    def mustPushData(self, name):
+        '''
+        Test if a function pushes to the stack.
+        return 
+            If True, builder pushes data to the stack (a closure mark)
+        '''
+        raise NotImplementedError()
+
+        
+    def mustPopData(self, name):
+        '''
+        Test if a function pops from the stack.
+        return 
+            If True, builder pops data from the stack (a closure mark)
+        '''
+        raise NotImplementedError()
+
+
+    def mustSetData(self, name):
+        '''
+        Test if a function sets data in an environment.
+        return 
+            If True, builder sets data on the environment (a var symbol).
+        '''
+        raise NotImplementedError()
+
+
+    def mustGetData(self, name):
+        '''
+        Test if a function gets data from an environment.
+        return 
+            If True, builder gets data from the environment (a var symbol).
+        '''
+        raise NotImplementedError()
+            
     def byteSize(self, bitsize):
         return bitsize >> 3
 
@@ -38,6 +101,11 @@ class BuilderAPIX64(BuilderAPI):
     arch = architecture.architectureSolve(architecture.x64)
     printers = PrintX64()
 
+    def isGlobalData(self, name):
+        return name in [
+            'stringRODefine',
+        ] 
+        
     def mustPushData(self, name):
         return name in [
             'registersPush',
@@ -62,11 +130,6 @@ class BuilderAPIX64(BuilderAPI):
             'varStack',
         ]
 
-    def isGlobalData(self, name):
-        return name in [
-            'stringRODefine',
-        ] 
-               
     def mustGetData(self, name):
         return name in [
         ]
@@ -123,7 +186,7 @@ class BuilderAPIX64(BuilderAPI):
         '''
         Start a function.
         '''
-        b._code.append('{}:'.format(args[0]))
+        b._code.append('{}:'.format(args[0].toString()))
         b._code.append('; beginFunc')
 
         
@@ -141,16 +204,16 @@ class BuilderAPIX64(BuilderAPI):
 
     
     def funcMain(self, b, args):
-        self.func(b, ['main'])
+        self.func(b, [ProtoSymbol('@main')])
         
     def funcMainEnd(self, b, args):
         b._code.append('; endFunc')
 
     def stringRODefine(self, b, args):
-        label = args[0]
-        rodata = label + ': db "' + args[1] + '", 0'
+        protoSymbolLabel = args[0].toString()
+        rodata = protoSymbolLabel + ': db "' + args[1] + '", 0'
         b.rodataAdd(rodata)
-        return (label, LocationRootRODataX64(label))
+        return (protoSymbolLabel, LocationRootRODataX64(protoSymbolLabel))
 
     # def stringHeapAlloc(self, b, args):
         # '''
@@ -201,11 +264,11 @@ class BuilderAPIX64(BuilderAPI):
         '''
         label, index, value
         '''
-        label = args[0]
+        protoSymbolLabel = args[0].toString()
         index = args[1]
         byteSize = self.arch['bytesize'] * index
         b._code.append("mov {}[rbp - {}], {}".format(self.arch['ASMName'], byteSize, args[2]))
-        return (label, LocationRootStackX64(index))
+        return (protoSymbolLabel, LocationRootStackX64(index))
     
     def print(self, b, args):
         self.printers(b, args[0], args[1])

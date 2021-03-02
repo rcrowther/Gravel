@@ -1,0 +1,135 @@
+= Lexer and Syntaxer
+Always useful,
+
+
+
+== Lexer
+
+=== Whitespace
+The lexer strips all whitespace (excepting lineends). Spacing can be whatever you wish, tabs/spaces, in whatever whitespace layout,
+
+# Ok
+    func(@acc)
+        frame( )
+        frameEnd( )
+    funcEnd( )
+
+# Ok
+func(@acc)
+    frame()
+    frameEnd()
+    funcEnd()
+  
+All lineends are stripped and replaced with sentinels. There should be no difference cross-platform.
+
+ 
+=== Comments
+A comment terminates on line end
+
+# doimh
+
+A multiline comment starts with double pound, ends with single pound,
+
+## multiline comment
+...can go  on
+...and on
+#
+
+
+=== String
+A string
+
+'owch'
+
+Double inverted comma also form strings. They must start with double codepoints,
+
+""ouch"
+
+Both types can be multiline,
+
+' multiline
+'
+"" multiline
+"
+
+(like NASM and Python) Either type of string naturally escapes the other,
+
+ '"multiline" '
+
+"" 'multiline' "
+
+
+=== Numbers
+A number,
+
+7894
+
+A float number has a point,
+
+789.8
+
+You can use point zero
+
+567.0
+
+
+
+=== Punctuation
+The only punctuations are,
+
+: ( ) LINEEND
+
+Comma is sometimes puctuation, in lists of arguments.
+
+Note that means you can not use '.', '-', '_', '^' etc. anywhere. They raise errors (but see identifiers).
+
+
+=== Identifiers
+An identifier is an initial alphabetic codepoint, followed by zero or more codepoints, ended by punctuation or whitespace. Do this if you want,
+
+# Ok, it starts alphabetic
+A£$%^&*-67
+
+# Not Ok, ':' is punctuation
+Aesop:fable
+
+Besides upper and lower alphabetic codepoints, the '@' codepoint can start an identifier. It has a special meaning for the syntaxer,
+
+@fried-tomatoes
+
+
+
+== Syntax
+Expressions are one to a line.
+
+All expressions have brackets, no exceptions,
+
+    frame()
+
+Lines can be empty.
+
+Expressions can not be embedded except for Boolean comparison operators and types
+
+
+    # Ok, the embedded expression is a type
+    print(regA Pointer(Bit32))
+
+    # Ok, the embedded expression is a boolean comparison
+    while(GT(counter 0))
+        dec(counter)
+        whileEnd()
+
+    # Not Ok, the embedded expression is not a type (or a comparison)
+    print(var(reg1).get() Pointer(Bit32))
+
+
+Arguments are written in a line. The usual delimiter is a space (but see below),
+
+    mkLocationRoot(locRBX 'rbx')
+
+Commas can be used to delimit, they are ignored,
+
+    mkLocationRoot(locRBX,'rbx')
+    mkLocationRoot(locRBX , 'rbx')
+
+Both ok

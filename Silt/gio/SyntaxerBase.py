@@ -20,8 +20,34 @@ class SyntaxerBase:
         self.tok = None
         self.src = None   
         self.it = None
+
+
         
     ## reporter helpers  
+    def toPosition(self):
+        '''
+        Retern a position object
+        Note that since a syntaxer expects a lexical iterator, the 
+        current position in source will bw the start of the current 
+        token, not a position by codepoint.
+        '''
+        return Position(self.it.tokenLineCount, self.it.tokenStartOffset)
+
+    def errorWithPos(self, pos, msg):
+        '''
+        Error message.
+        Full source, position and token detail.
+        Sometimes it may be preferable to hold on to a pos, to report 
+        back after later parsing. This is slightly less convenient. Use
+        error() to report on the current pos.
+        '''
+        msgKlass = Message.withPos(msg, self.src, pos, self.src.lineByIndex(self.it.tokenLineCount))
+        tokenTxt = self.it.textOf()
+        if (tokenTxt):
+            msgKlass.details = ["token text : '{}'".format(tokenTxt)]
+        self.reporter.error(msgKlass)
+        raise SyntaxError() 
+                
     def error(self, msg):
         '''
         Error message.
@@ -34,6 +60,7 @@ class SyntaxerBase:
             msgKlass.details = ["token text : '{}'".format(tokenTxt)]
         self.reporter.error(msgKlass)
         raise SyntaxError() 
+        #sys.exit(1)
         
     def expectedTokenError(self, ruleName, tok):
          self.error("In rule '{}' expected token '{}' but found '{}'".format(
@@ -138,7 +165,7 @@ class SyntaxerBase:
         When you know what it is, and are not interested (e.g. brackets)
         '''
         r = False
-        if (token != self.tok):
+        if (self.tok == token):
             r = True
             self._next()
         return r
@@ -224,7 +251,8 @@ class SyntaxerBase:
                 tokenToString[self.tok],                
             ))
         # Any other exception can float up as an exception i.e. also a 
-        # parsing error
+        # parsing error.
+        # They are either LexicalError, or SyntxError
         except StopIteration:
             # All ok
             print('parsed')

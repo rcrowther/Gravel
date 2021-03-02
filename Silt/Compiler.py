@@ -1,6 +1,5 @@
 from Syntaxer import Syntaxer
 from tpl_codeBuilder import Builder
-from Message import messageWithPos
 
 
 #x
@@ -33,94 +32,35 @@ class Compiler(Syntaxer):
         if (sym in self.envGlobal):        
             return self.envGlobal[sym]
         #print(str(self.envStd))
-        msg = "[Error] Symbol requested but not found in scope. symbol '{}'".format(
+        msg = "Symbol requested but not found in scope. symbol '{}'".format(
              sym
              )
-        msgp = messageWithPos(pos, msg)
-        raise ValueError(msgp)
-
+        self.errorWithPos(pos, msg)
              
     def commentCB(self, text):
         print('Compiler comment with "' + text)
 
     def exprCB(self, pos, name, args):
+        #! such a useful print---enhance and be part of a debug?
         print('Compiler expr {}({})'.format(name, args))
         func = self.findIdentifier(pos, name)
         
         # stacked data protection
+        #? assert?
         if ((name == "funcEnd" or name == "funcMainEnd") and len(self.closureData) > 0):
             msg = "[Error] End of func with unclosed instructions. unused instruction args:{}".format(
                 self.closureData,
                 )
-            msgp = messageWithPos(pos, msg)
-            raise SyntaxError(msgp)
+            self.errorWithPos(pos, msg)
             
         # localEnv reset
         if (name == "funcEnd"):
             self.envFunc = {}
             
-        #? Hefty, but how to dry? return from every func cuts stuff 
-        # down a little, but is obscure                            
-        #print(str(self.envStd.mustPushData(name)))
-        #print(str(self.envStd.mustPopData(name)))
-        # if (self.envStd.mustPushData(name)):
-                # self.closureData.append(func(self.b, args))
-        # elif (self.envStd.mustPopData(name)):
-            # poppedData = self.closureData.pop()
-            # #print(str(poppedData))
-            # try:
-                # func(self.b, poppedData, args)
-            # except TypeError:
-                # msg = "[Error] Symbol not accept given args. symbol '{}', args:{}".format(
-                     # name,
-                     # args
-                     # )
-                # msgp = messageWithPos(pos, msg)
-                # raise TypeError(msgp)
-        # # and now provide for labels(sigh)
-        # elif (self.envStd.mustSetData(name)):
-            # try:
-                # ret = func(self.b, args)                  
-            # except TypeError:
-                # msg = "[Error] Symbol too many args. symbol '{}', args:{}".format(
-                     # name,
-                     # args
-                     # )
-            # except IndexError:
-                # msg = "[Error] Symbol not enough args. symbol '{}', args:{}".format(
-                     # name,
-                     # args
-                     # )
-                # msgp = messageWithPos(pos, msg)
-                # raise TypeError(msgp)
-            # if(not(self.envStd.isGlobalData)):
-                # self.envFunc[ret[0]] = ret[1]
-            # else:
-                # self.envGlobal[ret[0]] = ret[1]  
-        # elif (self.envStd.mustGetData(name)):
-            # #print(str(poppedData))
-            # k = args.pop(0)
-            # try:
-                # func(self.b, k, args)
-            # except TypeError:
-                # msg = "[Error] Symbol not accept given args. symbol '{}', args:{}".format(
-                     # name,
-                     # args
-                     # )
-                # msgp = messageWithPos(pos, msg)
-                # raise TypeError(msgp)        
-        # else:
-            # # at last, a default
-            # try:
-                # func(self.b, args)
-            # except TypeError:
-                # msg = "[Error] Symbol not accept given args. symbol '{}', args:{}".format(
-                     # name,
-                     # args
-                     # )
-                # msgp = messageWithPos(pos, msg)
-                # raise TypeError(msgp) 
-###
+        #! if tested args for type and/or number, likely here.
+        
+        #? Hefty, but how to dry? return from every func would cut stuff 
+        # down a little, but is obscure
         try:
             if (self.envStd.mustPushData(name)):
                 self.closureData.append(func(self.b, args))                
@@ -138,7 +78,7 @@ class Compiler(Syntaxer):
                 k = args.pop(0)
                 func(self.b, k, args)
             else:
-                # Wow--a simple call
+                # Wow--now can do a simple call
                 func(self.b, args)
 
         except TypeError:
@@ -146,15 +86,13 @@ class Compiler(Syntaxer):
                  name,
                  args
                  )
-            msgp = messageWithPos(pos, msg)
-            raise TypeError(msgp)
+            self.errorWithPos(pos, msg)
         except IndexError:
             msg = "[Error] Symbol not enough args. symbol:'{}', args:{}".format(
                  name,
                  args
                  )
-            msgp = messageWithPos(pos, msg)
-            raise TypeError(msgp)
+            self.errorWithPos(pos, msg)
                 
     def result(self):
         return self.b

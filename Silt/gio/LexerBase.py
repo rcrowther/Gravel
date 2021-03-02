@@ -7,9 +7,6 @@ from .exceptions import LexicalError
 
 
 
-
-    
-
 ## TODO:
 # Test for end
 # Need to test for '$' initially, as used to mark 
@@ -130,7 +127,7 @@ class LexerBase():
     def _loadUntilOrLineFeed(self, cp):
         '''
         Load the builder from current char until matching the given 
-        codepoint.
+        codepoint or a linefeed.
         
         Used for gathering strings etc. Note that his will gather 
         linefeeds also

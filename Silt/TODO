@@ -1,15 +1,26 @@
+Full rename to Rubble
+Split repositories?
+
 == IO
-Clean GIO from parser
-Rebuild GIO for generalities
-Exchange GIO with Gravel
-Sink into sub-modules
-Commas
+Move GIO into Gravel
+
+== Lexer
+Lex exponential numbers
+
+== Syntaxer
+New rule for Types
 
 == Compiling
 What needs to be reusable in compilation?
+
+== Interpreting
+???
 
 == Features
 Enable print
 Enable locations
 Label generation - we sometimes need auto-label generattion, for while/if etc.
 Enable locations
+
+== Tests
+Test code to subfolders

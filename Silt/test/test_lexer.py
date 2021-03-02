@@ -47,7 +47,7 @@ class TestLexer(unittest.TestCase):
     def test_tokens_all(self):
         fp = 'test/test_doc_tokens_all'
         it = FileIteratorTracking(fp)
-        tkIt = Lexer(FileSource(self.fp), it, self.reporter)
+        tkIt = Lexer(FileSource(fp), it, self.reporter)
         outStream = [tok for tok in tkIt]
         anticipatedStream = [
             Tokens.COMMENT,
@@ -55,12 +55,12 @@ class TestLexer(unittest.TestCase):
             Tokens.LINEFEED,
             Tokens.STRING,
             Tokens.LINEFEED,
-            Tokens.MULTILINE_STRING,
+            Tokens.STRING,
             Tokens.LINEFEED,
             Tokens.INT_NUM, Tokens.FLOAT_NUM,
             Tokens.LINEFEED,
             Tokens.COMMA, Tokens.COLON, Tokens.LBRACKET, Tokens.RBRACKET,
             Tokens.LINEFEED,
-            Tokens.IDENTIFIER, Tokens.IDENTIFIER, Tokens.STRING,
+            Tokens.IDENTIFIER, Tokens.IDENTIFIER, Tokens.IDENTIFIER,
         ]
         self.assertEqual(outStream, anticipatedStream)
