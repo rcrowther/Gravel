@@ -8,9 +8,9 @@ from tpl_types import *
 class TestTypes(unittest.TestCase):
 
     def setUp(self):
-        self.ptr = Pointer(Bit64)
-        self.ary = Array(Bit64)
-        self.clh = Clutch({'x': Bit32, 'y': Bit32})
+        self.ptr = Pointer([Bit64])
+        self.ary = Array([Bit64])
+        self.clh = Clutch(['x', Bit32, 'y', Bit32])
         
     def test_encoding(self):
         self.assertEqual(Bit64.encoding, Signed)
@@ -42,7 +42,7 @@ class TestTypes(unittest.TestCase):
         self.assertEqual(self.clh.children(['x']), [self.clh, Bit32])
 
     def test_children_complex(self):
-        tpe = Pointer(Array(Clutch({'velocity': Bit32, 'direction': Pointer(Bit32)})))
+        tpe = Pointer([Array([Clutch( ['velocity', Bit32, 'direction', Pointer([Bit32])] )] )] )
         self.assertEqual(len(tpe.children([5, 'direction'])), 5)
         self.assertEqual(tpe.children([5, 'direction'])[0], tpe)
         self.assertEqual(tpe.children([5, 'direction'])[4], Bit32)

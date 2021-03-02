@@ -389,7 +389,7 @@ class Pointer(TypeContainer):
     A pointer to data
     The reason for the unusual and clumsy construction interface is so
     container types can present a consistent interface.
-    elementType
+    args
         a list with one element, the contained type
     '''
     #byteSize = arch['bytesize']
@@ -419,7 +419,7 @@ class Array(TypeContainerOffset):
     This type cannot return it's bytesize
     The reason for the unusual and clumsy construction interface is so
     container types can present a consistent interface.
-    elementType
+    args
         a list with one element, the contained type
     '''
     def __init__(self, args):
@@ -447,7 +447,7 @@ class Clutch(TypeContainerOffset):
     This can return bytesize. And cumulative offsets.
     The reason for the unusual and clumsy construction interface is so
     container types can present a consistent interface.
-    elementType
+    args
         A list of of [label, type, label2, type2 ...}
     '''
     def __init__(self, args):

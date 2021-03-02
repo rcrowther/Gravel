@@ -12,7 +12,7 @@ import nasmFrames
 
 
 
-# ./parse.py test_parser.rbl
+# ./rubblec code_test_parser.rbl
 def main():
     args = sys.argv
     if (len(args) < 2):

@@ -4,7 +4,8 @@ import unittest
 from tpl_codeBuilder import *
 
 
-
+# was TestBuilder, but now more like TestBuilderAPI
+# Not yet attacked
 class TestBuilder(unittest.TestCase):
     
     def setUp(self):
@@ -22,6 +23,7 @@ class TestBuilder(unittest.TestCase):
         writtenFuncs = b.funcs
         firstFunc = writtenFuncs[0]
         self.assertEqual(firstFunc.name, 'goNorth')
+
 
 
 class TestBuilderFuncs(unittest.TestCase):
