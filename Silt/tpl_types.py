@@ -131,6 +131,7 @@ class Type():
     # The data could be gathered on build, at the cost of a kind of 
     # repetition. The question is, is this data usable 
     # cross-architecture for example, for relative address detection?
+    #! may abandon this for something else
     def children(self, offsetIndexAndLabels):
         '''
         List the children/contained types.
@@ -344,6 +345,8 @@ class TypeContainer(Type):
     In this system a container must be instanciated to make a type.
     Containers have no encoding
     '''
+    size = 0
+        
     def __init__(self, elementType):
         self.elementType = elementType
 
@@ -392,16 +395,16 @@ class Pointer(TypeContainer):
     args
         a list with one element, the contained type
     '''
+    size = 1
     #byteSize = arch['bytesize']
-    byteSize = 8
+    #byteSize = 8
     def __init__(self, args):
-        if (len(args) != 1):
-            raise ValueError('Pointer: trying to build with wrong number of args (should be 1). args: {}'.format(args))
+        assert (len(args) == 1), 'Pointer: trying to build with wrong number of args (should be 1). args: {}'.format(args)
         elementType = args[0]
-        if not(isinstance(elementType, Type)):
-            raise ValueError('Pointer: elementType not a Type. elementType: {}'.format(type(elementType)))
+        assert (isinstance(elementType, Type)), 'Pointer: elementType not a Type. elementType: {}'.format(type(elementType))
         super().__init__(elementType)
-            
+        self.byteSize = 8
+           
     def containsTypeSingular(self):
         return isinstance(self.elementType, TypeSingular)            
                             
@@ -411,26 +414,41 @@ class Pointer(TypeContainer):
         
         
 class TypeContainerOffset(TypeContainer):
-    pass
-    
+
+    def offset(self, lid):
+        '''
+        Get the offet of a contained element
+        lid
+            a locating value (either int or label)
+        '''
+        raise NotImplementedError()
+
+        
 class Array(TypeContainerOffset):
     '''
     An array of data
-    This type cannot return it's bytesize
+    A fixed length. So the type can return it's bytesize
     The reason for the unusual and clumsy construction interface is so
     container types can present a consistent interface.
     args
-        a list with one element, the contained type
+        the contained type, size
     '''
     def __init__(self, args):
-        if (len(args) != 1):
-            raise ValueError('Array: trying to build with wrong number of args (should be 1). args: {}'.format(args))
+        # assertions?
+        assert (len(args) == 2), 'Array: number of args should be 2. args: {}'.format(args)
         elementType = args[0]
-        if not(isinstance(elementType, Type)):
-            raise ValueError('Array: contained element type not a Type. element: {}'.format(elementType))
+        assert isinstance(elementType, Type), 'Array: first arg not a Type. args: {}'.format(args)
         super().__init__(elementType)
-
+        self.size = args[1]
+        self.byteSize =  elementType.byteSize * self.size
+        
     def offset(self, lid):
+        '''
+        Get the offset of a contained element
+        lid
+            an integer
+        '''
+        #? Humm. Could precalculate these...
         return self.elementType.byteSize * lid
                 
     def containsTypeSingular(self):
@@ -438,6 +456,41 @@ class Array(TypeContainerOffset):
 
     def typeDepth(self):
         return self.elementType.typeDepth() + 1        
+
+
+
+class ArrayLabeled(TypeContainerOffset):
+    '''
+    An array of data
+    A fixed length. So the type can return it's bytesize
+    The reason for the unusual and clumsy construction interface is so
+    container types can present a consistent interface.
+    args
+        the contained type, label1, label2...]
+    '''
+    def __init__(self, args):
+        elementType = args.pop(0)
+        assert isinstance(elementType, Type), 'ArrayLabeled: first arg not a Type. args: {}'.format(args)
+        self.size = len(args)
+        super().__init__(elementType)
+        # a cumulative list of byte index.
+        offsets = {}
+        elemByteSize = elementType.byteSize
+        i = 0
+        for label in args:
+            offsets[label] = i
+            i += elemByteSize
+        self.offsets = offsets
+        self.byteSize = i
+                    
+    def offset(self, lid):
+        '''
+        Get the offset of a contained element
+        lid
+            a label
+        '''
+        return self.offsets[lid]        
+        
         
         
 #! There is situations when cluch data is aligned. Acccount for that
@@ -448,39 +501,79 @@ class Clutch(TypeContainerOffset):
     The reason for the unusual and clumsy construction interface is so
     container types can present a consistent interface.
     args
-        A list of of [label, type, label2, type2 ...}
+        A list of [type1, type2 ...}
+    '''
+    def __init__(self, args):
+        super().__init__(args)
+        self.size = len(args)
+        
+        # a cumulative list of byte index.
+        offsets = []
+        i = 0
+        #? what if the type bytesize is None? That would be the case
+        # for dynamic arrays...
+        for tpe in args:
+            assert isinstance(tpe, Type), 'Clutch: arg not a Type. args:{}, arg: {}'.format(args, tpe)
+            offsets.append(i)
+            i += tpe.byteSize
+        self.offsets = offsets
+        self.byteSize = i
+
+    def offset(self, lid):
+        return self.offsets[lid]
+        
+    def subTypes(self):
+        return self.elementType
+
+    def containsTypeSingular(self):
+        for tpe in self.subTypes():
+            if (not isinstance(tpe, TypeSingular)):
+                return False 
+        return True
+
+    def typeDepth(self):
+        maxDepth = 0
+        for tpe in self.subTypes():
+            maxDepth = max(maxDepth, tpe.typeDepth())
+        return maxDepth + 1
+        
+        
+                
+#! There is situations when cluch data is aligned. Acccount for that
+class ClutchLabeled(TypeContainerOffset):
+    '''
+    Collection of non-similar data.
+    This can return bytesize. And cumulative offsets.
+    The reason for the unusual and clumsy construction interface is so
+    container types can present a consistent interface.
+    args
+        A list of of [label1, type1, label2, type2 ...}
     '''
     def __init__(self, args):
         #NB Yes, I can do it faster and tidier. I have reasons
-        if (len(args) % 2 != 0):
-            raise ValueError('Clutch: supplied args not even number? args:{}'.format(
+        assert(len(args) % 2 == 0), 'ClutchLabeled: supplied args not even number? args:{}'.format(
                 args
-            ))
+            )
 
+        # Make a map of the args
         elementType = {}
-        
         for i in range(0, len(args), 2):
             elementType[args[i]] = args[i + 1]
         super().__init__(elementType)
-        '''
-        a cumulative list of byte index.
-        '''
-        self.offsets = {}
-        byteSize = 0
-        #! what if the type bytesize is None
-        #? that should never be. Only applies to arrays, and no array should be raw in a clutch?
-        for k,tpe in elementType.items():
-            if not(isinstance(tpe, Type)):
-                raise ValueError('Clutch: contained element type not instance of Type. elementType:{}, element: {}'.format(elementType, tpe))
-            self.offsets[k] = byteSize
-            # Humm, This can be none, if it's an array
-            if (tpe.byteSize):
-                byteSize += tpe.byteSize
-            else:
-                byteSize = None
-                break
-        self.byteSize = byteSize
-
+        self.size = len(elementType) 
+        
+        # a cumulative list of byte index.
+        offsets = {}
+        i = 0
+        #? what if the type bytesize is None? That would be the case
+        # for dynamic arrays...
+        for label,tpe in elementType.items():
+            assert isinstance(tpe, Type), 'ClutchLabeled: arg not a Type. args:{}, arg: {}'.format(args, tpe)
+            offsets[label] = i
+            i += tpe.byteSize
+        self.offsets = offsets
+        self.byteSize = i
+                
     def offset(self, lid):
         return self.offsets[lid]
         
@@ -532,5 +625,7 @@ typeNameSingularToType = {
 typeNameContainerToType = {
     'Pointer': Pointer,
     'Array': Array,
+    'ArrayLabeled': ArrayLabeled,
     'Clutch': Clutch,
+    'ClutchLabeled' : ClutchLabeled,
 }

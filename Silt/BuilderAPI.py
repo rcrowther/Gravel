@@ -148,11 +148,25 @@ class BuilderAPIX64(BuilderAPI):
 
     #! account for data types
     # and align
-    def stackAlloc(self, b, args):
+    def stackAllocBytes(self, b, args):
+        '''
+        Allocate stack storage
+        '''
         byteSize = self.arch['bytesize'] * args[0]
         b._code.append("sub rsp, {}".format(byteSize)) 
 
-    def heapAlloc(self, b, args):
+    def stackAlloc(self, b, args):
+        '''
+        Allocate stack storage
+        type
+        '''
+        #reg = args[0]
+        tpe = args[0]
+        #b._code.append("mov {}, rsp".format(reg)) 
+        b._code.append("sub rsp, {}".format(tpe.byteSize)) 
+        #return LocationRootRegisterX64(reg)
+        
+    def heapAllocBytes(self, b, args):
         '''
         Allocate and define a malloced string
         UTF-8
@@ -162,7 +176,18 @@ class BuilderAPIX64(BuilderAPI):
         b._code.append("mov {}, {}".format(self.arch['cParameterRegisters'][0], byteSize))
         b._code.append("call malloc")
         return LocationRootRegisterX64(self.arch['returnRegister'])
-                
+
+    def heapAlloc(self, b, args):
+        '''
+        Allocate and define a malloced string
+        UTF-8
+        '''
+        self.extern(b, ['malloc'])
+        tpe = args[0]
+        b._code.append("mov {}, {}".format(self.arch['cParameterRegisters'][0], tpe.byteSize))
+        b._code.append("call malloc")
+        return LocationRootRegisterX64(self.arch['returnRegister'])
+                        
     def frame(self, b, args):
         '''
         Start a stack frame.
