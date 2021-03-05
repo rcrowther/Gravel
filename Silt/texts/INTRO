@@ -1,40 +1,55 @@
 = Intro
-Silt is a computer language.
+Rubble is a computer language.
 
-== Why you may not want to use Silt
+== Why you may not want to use Rubble
 +dl
 ~ x64 architectures only
-: And only some x64 architectures. Silt is intended eventually to cover all of x64, and/then maybe x32, but other architectures are a long-range target with no commitment
+: And only some x64 architectures. Rubble is intended eventually to cover all of x64, and/then maybe x32, but other architectures are a long-range target with no commitment
 ~ It's made by someone who doesn't know what they are doing
 : The author has no books on assembly programming, and does not work as a programmer
 ~ It's not supported by any expertese or community
-: The author is not famous. And the author has no weight of Google/Mozilla/finance/government behind him. Bear in mind how important celebrity, authority, and review are to computing
+: The author is not famous. And the author has no weight of Google/Mozilla/finance/government behind him. Please bear in mind how important celebrity, authority, and review are to computing
 +
 
-== What kind of language is Silt?
-Attempts to provide teasers for languages are usually inaccurate, but one description of Silt might be, ""To generate prodictable, plain machine code using high-level means".
+== What kind of language is Rubble?
+Attempts to provide teasers for languages are usually inaccurate, but one description of Rubble might be, ""To generate prodictable, plain assembly code using (relatively) high-level means".
 
-== Come again? Whatt's it like?
+The reasons are more complicated than that, and have not much to do with assembly code. But ""predicatable, plain assembly code" is a target that achieves those ends.
+
+
+== Come again? What's it like?
 A little Lispy, verbose and dumb.
  
-== Machine code! Silt must be fast? Is Silt one of those super-tuned specialist-purpose languages?
-No. Read the above. Silt generates plain, predictable machine code. It does not use it's involvement in machine code to do tricks or obscure actions.
+Oh, ok. A string of simple functions. Sometimes it is like a base language, like Microsoft's CLI, or Java bytecode. You deal with registers and the stack directly, not abstracted variable binding,
 
-One result of aiming for predictable machine code is thatt Silt avoids optimisation. Yoou read that correct---Silt avoids optimisation. The only ''optimisations' in Silt are when a feature/abstraction within CPU architectures forces Silt to make a choice. This might include, for example, where to store data (stack, executable section allocation, heap etc.). Even then, Silt will work to offer these choices in a plain way, rather than by automatic choice. Here and there features/abstractions within the language can force Silt to make decisions. But Silt tries to avoid such abstractions, and where it soes not, usually offers the choice to the programmer.
+frame()
+
+frameEnd()
+
+The Rubble policy is that we will build as abstracted as possible, as long as this does not force undue optimisations, or conceal machine code process. So sometimes Rubble is more like languages of higher abstraction,
+
+if(NOT(some-var))
+    print(another-var)
+ifEnd()
+
+== Machine code! Rubble must be fast? Is Rubble one of those super-tuned specialist-purpose languages?
+No. Read the above. Rubble generates plain, predictable machine code. It does not use it's involvement in machine code to do tricks or obscure actions.
+
+One result of aiming for predictable machine code is thatt Rubble avoids optimisation. Yoou read that correct---Rubble avoids optimisation. The only ''optimisations' in Rubble are when a feature/abstraction within CPU architectures forces Rubble to make a choice. This might include, for example, where to store data (stack, executable section allocation, heap etc.). Even then, Rubble will work to offer these choices in a plain way, rather than by automatic choice. Here and there features/abstractions within the language can force Rubble to make decisions. But Rubble tries to avoid such abstractions, and where it soes not, usually offers the choice to the programmer.
   
-== How ''powerrful' is Silt?
-Never an easy question to answer. One measure would be to ask ""how many machine-code ops does a language produce per instruction, averaged over the lexical/syntactic set?". That measue ignore levels of abstraction, but is quantifiable. In which case Silt is far above assembler, but far below C. 
+== How ''powerful' is Rubble?
+Never an easy question to answer. One measure would be to ask ""how many machine-code ops does a language produce per instruction, averaged over the lexical/syntactic set?". That measue ignore levels of abstraction, but is quantifiable. In which case Rubble is above assembler, but far below C. 
 
-== What is similar to Silt?
-The BCPL language, the precursor to C, was designed to be a base for writing compilers. As a small language, easily implemented over many architectures, with a distillation of general computer concepts, and intended as a basis for other languages, it has some of the same aims, and/or perhaps occupies some of the saame expressive territory, as Silt.
+== What is similar to Rubble?
+The BCPL language, the precursor to C, was designed to be a base for writing compilers. As a small language, easily implemented over many architectures, with a distillation of general computer concepts, and intended as a basis for other languages, it has some of the same aims, and/or perhaps occupies some of the saame expressive territory, as Rubble.
 
-Silt is not like a bytecode. Bytecodes are designed to be near-one-to-one representations of assembly instructions with enough abstraction to become portable. Silt allows gathering of instructions into small concepts. Bytecodes are designed to be small (''byte'-code). Silt has a small syntex, but is a parsed language. Bytecodes are designed as one-off instructions. Silt enables codeblocks and other concepts where instructions can interact and influence each other. Bytecodes are written/executed in steady streams. Silt needs to be interpreted/compiled in some way. However, it would be true that writing in bytecode needs a similar level of conceptual knowlege as Silt.
+Rubble is not like a bytecode. Bytecodes are designed to be near-one-to-one representations of assembly instructions with enough abstraction to become portable. Rubble allows gathering of instructions into small concepts. Bytecodes are designed to be small (''byte'-code). Rubble has a small syntex, but is a parsed language. Bytecodes are designed as one-off instructions. Rubble enables codeblocks and other concepts where instructions can interact and influence each other. Bytecodes are written/executed in steady streams. Rubble needs to be interpreted/compiled in some way. However, it would be true that writing in bytecode needs a similar level of conceptual knowlege as Rubble.
  
-Silt is also similar, in it's use of high level means to produce predictable low level instruction, and a vague atmosphere of transparency, to a Hardware Description Language, especially the Ada-based ???. But Silt generates assembly language, not logic-gate, models.
+Rubble is also similar, in it's use of high level means to produce predictable low level instruction, and a vague atmosphere of transparency, to a Hardware Description Language, especially the Ada-based ???. But Rubble generates assembly language, not logic-gate, models.
 
-Most languages,  whatever their claims of generality, tend to have usage areas established by their capability and culture. In this way, Silt is similar to hardcore languages like Go, Rust, or Ada. These languages are wildly different, but share the feature of acccess to lower level detail computing detail like pointers, memory-management etc. This is true of Silt.
+Most languages,  whatever their claims of generality, tend to have usage areas established by their capability and culture. In this way, Rubble is similar to hardcore languages like Go, Rust, or Ada. These languages are wildly different, but share the feature of acccess to lower level detail computing detail like pointers, memory-management etc. This is true of Rubble.
 
-Aside from BCPL, which is very different to Silt, the only language I've come across similar to Silt in aim, is HSL, of which was written,
+Aside from BCPL, which is very different to Rubble, the only language I've come across similar to Rubble in aim, is HSL, of which was written,
 >>
 Creates a language that generates assembly language. Now defunct, it seems to be unecessary nowadays.
 >
@@ -42,11 +57,25 @@ Creates a language that generates assembly language. Now defunct, it seems to be
 == Why would I use it?
 Good question. If you asked, this language is probably not for you.
 
-The author wanted something predictable and plain, as a base for other projects.
+The author wanted a base for other projects. It's good for that. And the reduced lexicon and syntax make auto-generation of Rubble code easy.
+
+Rubble is also fun for trying and working with assebly language. Rubble will let you access machine code directly. That is, without importing a libray, using weird datatypes or intermediate languages, and drinking only water for a day,
+
+
+func('@load-rax')
+frame()
+raw('mov rax, 99')
+frameEnd()
+endFunc()
+
 
 
 ==  Why not implement in LLVM?
-Most people would be better with LLVM. But LLVM does not support the stated aim of Silt. LLVM is layered, pipelined, flexible and written in C++, so is not plain. LLVM is packed with optimisations, so is not predictable.
+Most people would be better with LLVM. But LLVM does not support the stated aims of Rubble. LLVM is layered, pipelined, flexible and written in C++. So it is not plain. LLVM is packed with optimisations, so is not predictable.
+
+== What's written in Rubble?
+Nothing of cosmic importance. And not much, yet.
+
 
  
 

@@ -19,11 +19,45 @@ class Compiler(Syntaxer):
     def __init__(self, tokenIt, builderAPI):
         self.b = Builder()
         self.envStd = builderAPI
+        self.funcNameToArgsType = builderAPI.funcNameToArgsType
         self.envFunc = {}
         self.envGlobal = {}
         self.closureData = []
         super().__init__(tokenIt)
+
+
+    def argsCheck(self, pos, name, args, argsTypes):
+        '''
+        Check args for length and type.
         
+        argsTypes can be any Rubble type, also,
+        - OrotoSymbol
+        
+        argsTypes
+            a list of types
+        '''
+        if (len(args) > len(argsTypes)):
+            msg = "Too many args. symbol:'{}', args:{}".format(
+                 name,
+                 args
+                 )
+            self.errorWithPos(pos, msg)
+        if (len(args) < len(argsTypes)):
+            msg = "Not enough args. symbol:'{}', args:{}".format(
+                 name,
+                 args
+                 )
+            self.errorWithPos(pos, msg)
+            
+        for argType, arg in zip(argsTypes, args):
+            if (not(isinstance(arg, argType))):
+                msg = "Arg type not match signature. symbol:'{}', argsTypes:{}, args:{}".format(
+                    name,
+                    argsTypes,
+                    args
+                 )
+                self.errorWithPos(pos, msg)
+                
     def findIdentifier(self, pos, sym):
         if (sym in self.envStd):
             return self.envStd[sym]
@@ -57,8 +91,10 @@ class Compiler(Syntaxer):
         if (name == "funcEnd"):
             self.envFunc = {}
             
-        #! if tested args for type and/or number, likely here.
-        
+        # Test args for type and/or count
+        if name in self.funcNameToArgsType:
+            self.argsCheck(pos, name, args, self.funcNameToArgsType[name])
+                   
         #? Hefty, but how to dry? return from every func would cut stuff 
         # down a little, but is obscure
         try:
@@ -78,7 +114,7 @@ class Compiler(Syntaxer):
                 k = args.pop(0)
                 func(self.b, k, args)
             else:
-                # Wow--now can do a simple call
+                # Wow--now can do a simple call 
                 func(self.b, args)
 
         except TypeError:

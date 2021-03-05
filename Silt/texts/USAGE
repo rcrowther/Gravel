@@ -12,6 +12,9 @@ Most of Rubbles' functions are pretty close to assembly language nuggets e.g.
 frame()
 frameEnd()
 ?
+
+
+
 == How rubble handles brrackets in geneerated code
 Note that bracketing implied in generated code is, in Rubble, explicitly stated 
 ?rubblwe
@@ -27,7 +30,7 @@ Rubble draws common assembly idoms together. A reduced syntax makes sense, both 
 
 
 === Layout
-Rubble functions must be one per line. But whitespace is irellevsant, so they can be spaced how you wish. I lean towards a python-style indenting,
+Rubble functions must be one per line. But other whitespace is irellevsant, so they can be spaced how you wish. I lean towards a python-style indenting,
 ?rubble
 func(name: type)
     ...
@@ -41,8 +44,8 @@ Every function can have arguments. These are bone-simple.
 +
 134 = number
 5.4 = float (because there's a period. Also 2.0)
-""goof" = a string. note the double opeing quotes
-'doof' = also a sting. But can't be longer than one line
+""goof" = a string. note the double opening quotes
+'doof' = also a sting
 +
 Types default to the machine base. See later.
 
@@ -72,7 +75,7 @@ Also,  the ''@' syntax is unusual. All languages must resolve the issue that whe
 I agree this is not the most readable solution, but it removes a swathe of complexity from the parser.
 
 === Commas
-Rubble treats commas as whitespace. It will replace them, usually at the tokeniser stage. So mostly you are free to put commas in or not, 
+Rubble treats commas between arguments as whitespace. It will replace them. So mostly you are free to put commas in or not, 
 ??
 sub(reg1, 30)
 ?
@@ -85,7 +88,7 @@ Same as,
 sub(reg1 30)
 ?
 
-But in some places the replacement of commas can have an effect on parsing, You can't give a func this name
+But in other places the replacement of commas can have an effect on parsing, You can't give a func this name
 ?rubble
 func(@n,s,e,w 99)
 ?
@@ -93,6 +96,39 @@ That would parse as seperate arguments, and the function return an error.
 
 ==== Rationale
 People like to type commas, and many other languages use commas. Rubble is assumed to be a languge which will be used at the same time as other languages, so commas are allowed. Commas may also improve readability.
+
+== Typing
+Rubble includes a notion of type. The types are a small fixed set, they do not extend like in many higher level languages declaring a class creates a new type. Not so in Rubble (there is no notion of class anyway). Types look like this,
+
+Bit8
+
+ASCIIString
+
+Array(Bit8, 4)
+
+=== !Type in Rubble is not for type-checking
+In most computer languages, the idea of type exists so compiler/interpreters can report type changes to the user. these type changes are assumed to be unintentional, so are usually reported as errors. Ok, Users of OCaml and Haskel may have a different notion, and users of Ruby especially (also Python) will be used to ''duck-typing' where the idea of type is avoided (however, it should be noted that types still exist in these languages, they are mostly hidden).
+
+Rubble does not use types for this purpose. The current compiler does not check type consistency agross instructions, not at all through the program, and only moves types about as a convenience to DRY out code in some places. Repeat---Rubble does not check type consistency, and if a Specification is ever published for Rubble, then it will be explicit that type can be checked and changes warned, but must never throw errors.
+
+Why have type expressions then? Because with type expressions Rubble can summaries many assembly-level instructions with one ploy. For example, it is common for an assembly programmer to only move a small number using a part register. This can save quite a few clock cycles. Even on a 64Bit computer, if I know the number will be no bigger than 32 bit, I'd use the 32 bit move,
+
+move eax, 99
+
+not the 64Bit move,
+
+mov rax, 99
+
+(as long as I know the register is zeroed and I won't finish with garbage).
+
+further, on modern chips, there are several kinds of move instruction, this for ???, 
+
+dmov rax
+
+Using a type hint system, Rubble can boil many of these instructions to one instuction, plus a type,
+
+Reduced syntax is a primary aim of Rubble.
+ 
 
 == Allocation and definition are seperate
 In most languages, allocation and deffinition arre the same,

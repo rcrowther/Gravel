@@ -1,4 +1,4 @@
-== Sybtax
+== Syntax
 Silt has a base syntax usually described as Algol-like. Functions are named then followed by brackets containing data,
 
 if()

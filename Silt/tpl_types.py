@@ -354,11 +354,17 @@ class TypeContainer(Type):
         #return self.canEqual(other) and self.elementType.equals(other)
         return (type(self) == type(other)) and self.elementType.equals(other.elementType)
 
+    def elemType(self, lid):
+        '''
+        The type of a contained element
+        '''
+        raise NotImplementedError()
+        
     def containsTypeSingular(self):
         '''
         Are all child types TypeSingular?
         '''
-        raise NotImplementedError('This type has no __repr__ representation');
+        raise NotImplementedError('This type has no __repr__ representation')
         
     # def countTypesOffset(self):
         # i = 0
@@ -405,6 +411,9 @@ class Pointer(TypeContainer):
         super().__init__(elementType)
         self.byteSize = 8
            
+    def elemType(self, lid):
+        return self.elementType
+        
     def containsTypeSingular(self):
         return isinstance(self.elementType, TypeSingular)            
                             
@@ -414,7 +423,7 @@ class Pointer(TypeContainer):
         
         
 class TypeContainerOffset(TypeContainer):
-
+        
     def offset(self, lid):
         '''
         Get the offet of a contained element
@@ -441,7 +450,10 @@ class Array(TypeContainerOffset):
         super().__init__(elementType)
         self.size = args[1]
         self.byteSize =  elementType.byteSize * self.size
-        
+
+    def elemType(self, lid):
+        return self.elementType
+                
     def offset(self, lid):
         '''
         Get the offset of a contained element
@@ -482,7 +494,10 @@ class ArrayLabeled(TypeContainerOffset):
             i += elemByteSize
         self.offsets = offsets
         self.byteSize = i
-                    
+
+    def elemType(self, lid):
+        return self.elementType
+        
     def offset(self, lid):
         '''
         Get the offset of a contained element
@@ -519,6 +534,9 @@ class Clutch(TypeContainerOffset):
         self.offsets = offsets
         self.byteSize = i
 
+    def elemType(self, lid):
+        return self.elementType[lid]
+        
     def offset(self, lid):
         return self.offsets[lid]
         
@@ -573,7 +591,10 @@ class ClutchLabeled(TypeContainerOffset):
             i += tpe.byteSize
         self.offsets = offsets
         self.byteSize = i
-                
+
+    def elemType(self, lid):
+        return self.elementType[lid]
+        
     def offset(self, lid):
         return self.offsets[lid]
         
@@ -595,6 +616,16 @@ class ClutchLabeled(TypeContainerOffset):
             maxDepth = max(maxDepth, tpe.typeDepth())
         return maxDepth + 1
 
+
+def getCode(tpe, path):
+    currTpe = tpe
+    b = ''
+    for lid in path:
+        b += "+" 
+        b += str(currTpe.offset(lid))
+        currTpe = currTpe.elemType(lid)
+    return b[1:]
+        
 typeNames = [
     'Bit8',
     'Bit16',

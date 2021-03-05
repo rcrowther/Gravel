@@ -56,7 +56,7 @@ class TestTypeContainersForBytesize(unittest.TestCase):
 
 
         
-class TestTypesOffsetForOffset(unittest.TestCase):
+class TestTypesElemOffset(unittest.TestCase):
     # test last element, most prone to error
     
     def test_array(self):
@@ -78,7 +78,43 @@ class TestTypesOffsetForOffset(unittest.TestCase):
     def test_clutch_in_array(self):
         tpe = Array([Clutch([Bit32, Bit64]), 7])
         self.assertEqual(tpe.offset(6), 72)
-                                                 
+                        
+                        
+                        
+class TestTypesElemType(unittest.TestCase):
+    # test last element, most prone to error
+    
+    def test_array(self):
+        tpe = Array([Bit64, 3])
+        self.assertEqual(tpe.elemType(2), Bit64)
+
+    def test_array_labeled(self):
+        tpe = ArrayLabeled([Bit64, 'x', 'y', 'z'])
+        self.assertEqual(tpe.elemType('z'), Bit64)
+
+    def test_clutch(self):
+        tpe = Clutch([Bit32, Bit64])
+        self.assertEqual(tpe.elemType(1), Bit64)  
+
+    def test_clutch_labeled(self):
+        tpe = ClutchLabeled(['x', Bit32, 'y', Bit32, 'size', Bit8, 'color', Bit64])       
+        self.assertEqual(tpe.elemType('color'), Bit64)
+
+    def test_clutch_in_array(self):
+        innerTpe = Clutch([Bit32, Bit64])
+        tpe = Array([innerTpe, 7])
+        self.assertEqual(tpe.elemType(6), innerTpe)
+        
+class TestTypesFet(unittest.TestCase):
+    # test last element, most prone to error
+    
+    def test_clutch_in_array(self):
+        innerTpe = ClutchLabeled(['x', Bit32, 'y', Bit32, 'size', Bit8, 'color', Bit64]) 
+        tpe = Array([innerTpe, 7])
+        code = getCode(tpe, [6, 'color'])
+        self.assertEqual('102+9', code)
+        
+        
 # class TestTypes(unittest.TestCase):
 
     # def setUp(self):

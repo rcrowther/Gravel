@@ -101,6 +101,30 @@ class BuilderAPIX64(BuilderAPI):
     arch = architecture.architectureSolve(architecture.x64)
     printers = PrintX64()
 
+    # Yuck. Total yuck. Preferably, this data would be on the method as 
+    # an assert. But that means passing spurious information like
+    # position---for the error---and oassing the error method in from 
+    # the compiler.
+    # Data gathering from a method is possible in Python, there are 
+    # decorators and so forth, which are pythonic, so we avoid that.
+    # Inheritance would avoid this, but seems a small reason to generate
+    # potentially many specialised compintler classes, vrs. a setup by 
+    # parameter 
+    funcNameToArgsType = {
+        'comment': [str],
+        'raw': [str],
+        'frame': [],
+        'frameEnd': [],
+        'funcEnd': [],
+        'funcMain': [],
+        'funcMainEnd': [],
+        'sysExit': [int],
+        'printFlush': [],
+            #'println': [Type, Var],
+    #'': [].
+    }
+
+        
     def isGlobalData(self, name):
         return name in [
             'stringRODefine',
@@ -137,7 +161,9 @@ class BuilderAPIX64(BuilderAPI):
     #def __init___():
     #    builderAPI = architecture.architectureSolve(architecture.x64)
 
-       
+
+####
+
     def comment(self, b, args):
         b._code.append("; " + args[0])
         
