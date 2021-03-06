@@ -1,6 +1,8 @@
 import architecture
 from tpl_LocationRoot import LocationRootRODataX64, LocationRootRegisterX64, LocationRootStackX64
 from tpl_Printers import PrintX64
+import tpl_vars as Var
+import tpl_types as Type
 
 #? dont like this import
 from Syntaxer import ProtoSymbol
@@ -24,8 +26,27 @@ class BuilderAPI():
     # NB arg checking would not be done here. This assumes args are
     # correct, it is just a builder
     arch = None
+    
+    # Anchor for a seperate API for printing 
     printers = None
 
+    '''
+    Type signature of API funcs
+    '''
+    funcNameToArgsType = {
+        'comment': [str],
+        'raw': [str],
+        'frame': [],
+        'frameEnd': [],
+        'funcEnd': [],
+        'funcMain': [],
+        'funcMainEnd': [],
+        'sysExit': [int],
+        'printFlush': [],
+        'println': [Var.Base],
+    #'': [].
+    }
+    
     def isGlobalData(self, name):
         '''
         Test if a function defines global instructions.
@@ -87,7 +108,7 @@ class BuilderAPI():
 
     #!!! Python specific code turns this class into an imitation of a
     # map of func pointers. Probably what is needed is a map of func 
-    # pointers (but thatt is not templatable). 
+    # pointers (but that is not templatable). 
     def __contains__(self, k):
         return k in dir(self)
             
@@ -110,21 +131,7 @@ class BuilderAPIX64(BuilderAPI):
     # Inheritance would avoid this, but seems a small reason to generate
     # potentially many specialised compintler classes, vrs. a setup by 
     # parameter 
-    funcNameToArgsType = {
-        'comment': [str],
-        'raw': [str],
-        'frame': [],
-        'frameEnd': [],
-        'funcEnd': [],
-        'funcMain': [],
-        'funcMainEnd': [],
-        'sysExit': [int],
-        'printFlush': [],
-            #'println': [Type, Var],
-    #'': [].
-    }
 
-        
     def isGlobalData(self, name):
         return name in [
             'stringRODefine',
@@ -264,8 +271,12 @@ class BuilderAPIX64(BuilderAPI):
         protoSymbolLabel = args[0].toString()
         rodata = protoSymbolLabel + ': db "' + args[1] + '", 0'
         b.rodataAdd(rodata)
-        return (protoSymbolLabel, LocationRootRODataX64(protoSymbolLabel))
-
+        #return (protoSymbolLabel, LocationRootRODataX64(protoSymbolLabel))
+        return (
+            protoSymbolLabel, 
+            Var.ROC64(protoSymbolLabel, Type.StrASCII)
+        )
+        
     # def stringHeapAlloc(self, b, args):
         # '''
         # Malloc string space
@@ -324,9 +335,17 @@ class BuilderAPIX64(BuilderAPI):
     def print(self, b, args):
         self.printers(b, args[0], args[1])
 
-    def println(self, b, args):
-        self.printers(b, args[0], args[1])
-        self.printers.newline(b)
+    # def println(self, b, args):
+        # self.printers(b, args[0], args[1])
+        # self.printers.newline(b)
 
+    def println(self, b, args):
+        '''
+        type, locationroot
+        '''
+        var = args[0]
+        self.printers(b, var.tpe, var.loc)
+        self.printers.newline(b)
+        
     def printFlush(self, b, args):
         self.printers.flush(b)

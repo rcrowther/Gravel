@@ -1,4 +1,6 @@
 import math
+from exceptions import TypePathError
+
 
 '''
 Far as I can see, we have two implementation alternatives with types:
@@ -346,19 +348,20 @@ class TypeContainer(Type):
     Containers have no encoding
     '''
     size = 0
+    isLabeled = False
         
     def __init__(self, elementType):
         self.elementType = elementType
-
-    def equals(self, other):
-        #return self.canEqual(other) and self.elementType.equals(other)
-        return (type(self) == type(other)) and self.elementType.equals(other.elementType)
-
+    
     def elemType(self, lid):
         '''
         The type of a contained element
         '''
         raise NotImplementedError()
+    
+    def equals(self, other):
+        #return self.canEqual(other) and self.elementType.equals(other)
+        return (type(self) == type(other)) and self.elementType.equals(other.elementType)
         
     def containsTypeSingular(self):
         '''
@@ -414,6 +417,7 @@ class Pointer(TypeContainer):
     def elemType(self, lid):
         return self.elementType
         
+        
     def containsTypeSingular(self):
         return isinstance(self.elementType, TypeSingular)            
                             
@@ -427,11 +431,52 @@ class TypeContainerOffset(TypeContainer):
     def offset(self, lid):
         '''
         Get the offet of a contained element
+        Only works on the top level type.
         lid
             a locating value (either int or label)
         '''
         raise NotImplementedError()
 
+    def _typeIsContainer(self, tpe, path):
+            print(str(tpe))
+            if (not isinstance(tpe, TypeContainer)):
+                raise TypePathError('Path accesses type element which is not a container. type:{}, path:{}'.format(
+                    tpe,
+                    path
+                ))
+            return True
+                
+    def _pathElementTypeMatch(self, tpe, lid, path):
+            if (tpe.isLabeled):
+                if (type(lid)!= str):
+                    raise TypePathError('Path element for labeled type is not str. type:{}, path:{}'.format(
+                        tpe,
+                        path
+                    ))  
+            else:
+                if (type(lid)!= int):
+                    raise TypePathError('Path element for unlabeled type is not int. type:{}, path:{}'.format(
+                        tpe,
+                        path
+                    ))           
+            return True
+        
+    def offsetDeep(self, path):
+        '''
+        Use a path to get the offet of a contained element
+        Can work into a type tree. See offset.
+        path
+            [locationValue1,  locationValue2, ...]
+        '''
+        currTpe = self
+        offset = 0
+        for lid in path:
+            assert self._typeIsContainer(currTpe, path)
+            assert self._pathElementTypeMatch(currTpe, lid, path)
+            offset += currTpe.offset(lid)
+            currTpe = currTpe.elemType(lid)
+        return offset
+        
         
 class Array(TypeContainerOffset):
     '''
@@ -480,6 +525,8 @@ class ArrayLabeled(TypeContainerOffset):
     args
         the contained type, label1, label2...]
     '''
+    isLabeled = True
+
     def __init__(self, args):
         elementType = args.pop(0)
         assert isinstance(elementType, Type), 'ArrayLabeled: first arg not a Type. args: {}'.format(args)
@@ -567,6 +614,8 @@ class ClutchLabeled(TypeContainerOffset):
     args
         A list of of [label1, type1, label2, type2 ...}
     '''
+    isLabeled = True
+
     def __init__(self, args):
         #NB Yes, I can do it faster and tidier. I have reasons
         assert(len(args) % 2 == 0), 'ClutchLabeled: supplied args not even number? args:{}'.format(
@@ -597,7 +646,7 @@ class ClutchLabeled(TypeContainerOffset):
         
     def offset(self, lid):
         return self.offsets[lid]
-        
+
     def subTypes(self):
         return self.elementType.values()
         
@@ -616,15 +665,15 @@ class ClutchLabeled(TypeContainerOffset):
             maxDepth = max(maxDepth, tpe.typeDepth())
         return maxDepth + 1
 
-
-def getCode(tpe, path):
+#x see also tpl_vars
+def accessSnippet(b, tpe, path):
+    #! protrect against path type error
     currTpe = tpe
-    b = ''
     for lid in path:
         b += "+" 
         b += str(currTpe.offset(lid))
         currTpe = currTpe.elemType(lid)
-    return b[1:]
+    return b
         
 typeNames = [
     'Bit8',
