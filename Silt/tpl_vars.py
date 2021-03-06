@@ -1,5 +1,5 @@
 import architecture
-import tpl_LocationRoot
+import tpl_LocationRoot as LocRoot
 
 
 class Base():
@@ -35,34 +35,51 @@ class Base():
         '''
         return NotImplementedError()
                 
+    def __repr__(self):
+        return "Var(loc:'{}', tpe:{})".format(
+            self.loc,
+            self.tpe
+        )
                 
                 
-class ROC64(Base):
+class ROX64(Base):
     def __init__(self, label, tpe):
-        self.loc = tpl_LocationRoot.LocationRootRODataX64(label)
+        self.loc = LocRoot.RODataX64(label)
         self.tpe = tpe
 
-    def accessPartial(self):
+    def accessMk(self):
         # labels represent assembler -driven addresses.
         # They do not need address syntax  
         return self.loc.lid
-
-
     
-    def accessPartialDeep(self, path):
-        # labels represent assembler -driven addresses.
-        # They do not need address syntax  
-        return self.loc.lid + str(self.type.offsetDeep(path))        
+    def accessDeepMk(self, path):
+        return '[' + self.loc.lid + str(self.type.offsetDeep(path)) + ']'        
+        
+        
         
 class RegX64(Base):
     def __init__(self, register, tpe):
-        self.loc = tpl_LocationRoot.LocationRootRegisterX64(register)
+        self.loc = LocRoot.RegisterX64(register)
         self.tpe = tpe
 
+    def accessMk(self):
+        # registers represent assembler-driven addresses.
+        # They do not need address syntax  
+        return self.loc.lid
+    
+    def accessDeepMk(self, path):
+        return '[' + self.loc.lid + '+' + str(self.tpe.offsetDeep(path)) + ']'   
+        
+        
+        
 class StackX64(Base):
     def __init__(self, index, tpe):
-        self.loc = tpl_LocationRoot.LocationRootStackX64(index)
+        self.loc = LocRoot.StackX64(index)
         self.tpe = tpe
 
-
+    def accessMk(self): 
+        return '[rbp -' + str(self.loc.lid)  + ']' 
+    
+    def accessDeepMk(self, path): 
+        return '[rbp -' + str(self.loc.lid + self.tpe.offsetDeep(path)) + ']' 
 

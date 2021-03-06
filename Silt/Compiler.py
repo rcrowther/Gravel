@@ -37,21 +37,23 @@ class Compiler(Syntaxer):
             a list of types
         '''
         if (len(args) > len(argsTypes)):
-            msg = "Too many args. symbol:'{}', args:{}".format(
-                 name,
+            msg = "Too many args. symbol:'{}', expected:{}, args:{}".format(
+                 name,                 
+                 argsTypes,
                  args
                  )
             self.errorWithPos(pos, msg)
         if (len(args) < len(argsTypes)):
-            msg = "Not enough args. symbol:'{}', args:{}".format(
+            msg = "Not enough args. symbol:'{}', expected:{}, args:{}".format(
                  name,
-                 args
+                 argsTypes,
+                 args,
                  )
             self.errorWithPos(pos, msg)
             
         for argType, arg in zip(argsTypes, args):
             if (not(isinstance(arg, argType))):
-                msg = "Arg type not match signature. symbol:'{}', argsTypes:{}, args:{}".format(
+                msg = "Arg type not match signature. symbol:'{}', expected:{}, args:{}".format(
                     name,
                     argsTypes,
                     args
@@ -74,7 +76,7 @@ class Compiler(Syntaxer):
     def commentCB(self, text):
         print('Compiler comment with "' + text)
 
-    def exprCB(self, pos, name, args):
+    def exprCB(self, pos, posArgs, name, args):
         #! such a useful print---enhance and be part of a debug?
         print('Compiler expr {}({})'.format(name, args))
         func = self.findIdentifier(pos, name)
@@ -93,7 +95,7 @@ class Compiler(Syntaxer):
             
         # Test args for type and/or count
         if name in self.funcNameToArgsType:
-            self.argsCheck(pos, name, args, self.funcNameToArgsType[name])
+            self.argsCheck(posArgs, name, args, self.funcNameToArgsType[name])
                    
         #? Hefty, but how to dry? return from every func would cut stuff 
         # down a little, but is obscure
@@ -116,7 +118,9 @@ class Compiler(Syntaxer):
             else:
                 # Wow--now can do a simple call 
                 func(self.b, args)
-
+                
+        #! Since args are enow checked, these errors are now code errors
+        #! allow to rise?
         except TypeError:
             msg = "[Error] Symbol too many args. symbol:'{}', args:{}".format(
                  name,

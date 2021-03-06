@@ -1,5 +1,8 @@
 import architecture
-from tpl_LocationRoot import LocationRootRODataX64, LocationRootRegisterX64, LocationRootStackX64
+#x
+#from tpl_LocationRoot import LocationRootRODataX64, LocationRootRegisterX64, LocationRootStackX64
+#x
+import tpl_LocationRoot as LocRoot
 from tpl_Printers import PrintX64
 import tpl_vars as Var
 import tpl_types as Type
@@ -44,6 +47,8 @@ class BuilderAPI():
         'sysExit': [int],
         'printFlush': [],
         'println': [Var.Base],
+        'heapAlloc': [ProtoSymbol, Type.Type],
+        'stackAlloc': [ProtoSymbol, Type.Type],
     #'': [].
     }
     
@@ -157,6 +162,7 @@ class BuilderAPIX64(BuilderAPI):
         return name in [
             'stringRODefine',
             'stringHeapDefine',
+            'heapAlloc',
             'varHeap',
             'varStack',
         ]
@@ -188,38 +194,60 @@ class BuilderAPIX64(BuilderAPI):
         byteSize = self.arch['bytesize'] * args[0]
         b._code.append("sub rsp, {}".format(byteSize)) 
 
+    #! bad thing here, we don't know where stack starts, so only works 
+    # on empty stackframe
     def stackAlloc(self, b, args):
         '''
         Allocate stack storage
-        type
+        label type
         '''
-        #reg = args[0]
-        tpe = args[0]
-        #b._code.append("mov {}, rsp".format(reg)) 
+        protoSymbolLabel = args[0].toString()
+        tpe = args[1]
+        index = tpe.byteSize
         b._code.append("sub rsp, {}".format(tpe.byteSize)) 
-        #return LocationRootRegisterX64(reg)
-        
+        return (
+            protoSymbolLabel, 
+            Var.StackX64(index, Type.StrASCII)
+        )    
+                
     def heapAllocBytes(self, b, args):
         '''
-        Allocate and define a malloced string
-        UTF-8
+        Allocate bytes to malloc
         '''
         self.extern(b, ['malloc'])
         byteSize = self.arch['bytesize'] * args[0]
         b._code.append("mov {}, {}".format(self.arch['cParameterRegisters'][0], byteSize))
         b._code.append("call malloc")
-        return LocationRootRegisterX64(self.arch['returnRegister'])
+        return LocRoot.RegisterX64(self.arch['returnRegister'])
 
     def heapAlloc(self, b, args):
         '''
-        Allocate and define a malloced string
-        UTF-8
+        Alloc space for a type on the heap
+        protosymbol, type
         '''
         self.extern(b, ['malloc'])
-        tpe = args[0]
+        #! but malloc works in bytes?
+        protoSymbolLabel = args[0].toString()
+        tpe = args[1]
         b._code.append("mov {}, {}".format(self.arch['cParameterRegisters'][0], tpe.byteSize))
         b._code.append("call malloc")
-        return LocationRootRegisterX64(self.arch['returnRegister'])
+        #return LocationRootRegisterX64(self.arch['returnRegister']) 
+        return (
+            protoSymbolLabel, 
+            Var.RegX64(self.arch['returnRegister'], tpe)
+        ) 
+                
+    # def stringHeapDefine(self, b, args):
+        # '''
+        # Allocate and define a malloced string
+        # UTF-8
+        # '''
+        # byteSize = self.byteSize() * size
+        # b._code.append("mov {}, {}".format(arch['cParameterRegister'][0], byteSize))
+        # b._code.append("call malloc")
+        # return LocationRootRegisterX64('rax') 
+
+                  
                         
     def frame(self, b, args):
         '''
@@ -271,34 +299,12 @@ class BuilderAPIX64(BuilderAPI):
         protoSymbolLabel = args[0].toString()
         rodata = protoSymbolLabel + ': db "' + args[1] + '", 0'
         b.rodataAdd(rodata)
-        #return (protoSymbolLabel, LocationRootRODataX64(protoSymbolLabel))
         return (
             protoSymbolLabel, 
-            Var.ROC64(protoSymbolLabel, Type.StrASCII)
+            Var.ROX64(protoSymbolLabel, Type.StrASCII)
         )
         
-    # def stringHeapAlloc(self, b, args):
-        # '''
-        # Malloc string space
-        # Bytesize API
-        # '''
-        # self.extern(b, ['malloc'])
-        # #! but malloc works in bytes?
-        # byteSize = self.arch['bytesize'] * args[0]
-        # b._code.append("mov {}, {}".format(self.arch['cParameterRegisters'][0], byteSize))
-        # b._code.append("call malloc")
-        # return LocationRootRegisterX64(self.arch['returnRegister']) 
-        
-    # def stringHeapDefine(self, b, args):
-        # '''
-        # Allocate and define a malloced string
-        # UTF-8
-        # '''
-        # byteSize = self.byteSize() * size
-        # b._code.append("mov {}, {}".format(arch['cParameterRegister'][0], byteSize))
-        # b._code.append("call malloc")
-        # return LocationRootRegisterX64('rax') 
-                
+      
     # #! needs datapush
     def registersPush(self, b, args):
         registerList = args
@@ -322,17 +328,28 @@ class BuilderAPIX64(BuilderAPI):
     def registersVolatilePop(self, b, popData, args):
         self.registersPop(b, popData, args)
 
-    def varStack(self, b, args):
-        '''
-        label, index, value
-        '''
-        protoSymbolLabel = args[0].toString()
-        index = args[1]
-        byteSize = self.arch['bytesize'] * index
-        b._code.append("mov {}[rbp - {}], {}".format(self.arch['ASMName'], byteSize, args[2]))
-        return (protoSymbolLabel, LocationRootStackX64(index))
-    
+
     def print(self, b, args):
+        '''
+        var
+        '''
+        # We could print out using printf semantics....
+        # No, print singly. figue out the slowness later.
+        var = args[0]
+        tpe = var.tpe
+        if (not isinstance(tpe, Type.TypeSingular)):
+            # we got to do something recursive with it
+            printStr(b, tpe.name, StrASCII)
+            printStr(b, ['(' StrASCII])
+            print(b, tpe.foreach(args => print(b, [args])))
+            printStr(b, [')' StrASCII])
+            # etc.
+        else:
+            # Figure out what will print or not
+            var.accessMk()
+            var.accessDeepMk(path)
+            # tpe, offset(lid)
+            # tpe.offsetDeep(self, path)
         self.printers(b, args[0], args[1])
 
     # def println(self, b, args):
@@ -341,10 +358,9 @@ class BuilderAPIX64(BuilderAPI):
 
     def println(self, b, args):
         '''
-        type, locationroot
+        var
         '''
-        var = args[0]
-        self.printers(b, var.tpe, var.loc)
+        self.print(b, args)
         self.printers.newline(b)
         
     def printFlush(self, b, args):

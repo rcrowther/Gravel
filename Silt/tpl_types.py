@@ -427,7 +427,9 @@ class Pointer(TypeContainer):
         
         
 class TypeContainerOffset(TypeContainer):
-        
+    #? Consider generalising offset methods through all types.
+    #? Should they be NotImplemented (means a catch), or return zero 
+    # (spurious code)?
     def offset(self, lid):
         '''
         Get the offet of a contained element

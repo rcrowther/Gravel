@@ -172,9 +172,10 @@ class Syntaxer(SyntaxerBase):
             
             # stash the position at the start of the expression
             pos = self.toPosition()
-            print(str(pos))
+            #print(str(pos))
             self._next()
             self.skipTokenOrError('expr', LBRACKET)
+            posArgs = self.toPosition()
             args = self.args()
             
             # Can't use skipTokenOrError(). That will advance the
@@ -185,7 +186,7 @@ class Syntaxer(SyntaxerBase):
             # function...
             #print('{}({})'.format(name, args))
             if (self.isToken(RBRACKET)):
-                self.exprCB(pos, name, args)
+                self.exprCB(pos, posArgs, name, args)
                 # ..if EOF, then that is thown here
                 self._next()
             else:

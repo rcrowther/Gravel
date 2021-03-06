@@ -8,7 +8,7 @@ import architecture
 
 #! These could include relaitve address tragets to, but look at other 
 # architectures first
-#! what about heap locations?
+#!? get position for errors
 class LocationRootX64():
     '''
     Location of data that can be moved directly to a register.
@@ -18,9 +18,12 @@ class LocationRootX64():
     arch = architecture.architectureSolve(architecture.x64)
 
     def __init__(self, lid):
-        
         self.lid = lid
 
+    def _validInitialLID(self, lid):
+        return NotImplementedError()
+        
+    #x needed now? See the offset stuff in types and vars
     def value(self):
         '''
         Code to represent the value at the location.
@@ -32,7 +35,8 @@ class LocationRootX64():
         raise NotImplementedError('A location should never be instanced. location:{}\nShould this be a subclass?'.format(
             self
         ))
-        
+
+    #x needed now? See the offset stuff in types and vars        
     def valueAsPointer(self):
         '''
         Code to represent the value at the location as a pointer.
@@ -81,15 +85,23 @@ class LocationRootX64():
 
 
 
-class LocationRootRODataX64(LocationRootX64):
+class RODataX64(LocationRootX64):
     def __init__(self, label):
-        if (label in self.arch['registers']):
-            raise ValueError('Label id must not be in registers. lid: {} registers:"{}"'.format(
+        assert self._validInitialLID(label)
+        super().__init__(label)
+
+    def _validInitialLID(self, lid):
+        if (not (type(lid) == str)):
+            raise TypeError('LocationRootRODataX64: Parameter must be class "str". lid: "{}"'.format(
+                lid
+            ))
+        if (lid in self.arch['registers']):
+            raise ValueError('LocationRootRODataX64: Label id must not be in registers. lid: "{}" registers:"{}"'.format(
                 type(label),
                 ", ".join(registers)
             ))
-        super().__init__(label)
-
+        return True
+        
     def value(self):
         return self.lid  
 
@@ -111,7 +123,7 @@ class LocationRootRODataX64(LocationRootX64):
             index * self.arch['bytesize'], 
             self.value()
         )
-        return LocationRootStackX64(index)
+        return StackX64(index)
         
     #! ok
     def toRegister(self, b, targetRegisterName):
@@ -119,17 +131,27 @@ class LocationRootRODataX64(LocationRootX64):
             raise NotImplementedError('toRegister: targetRegisterName not a register')
         #? or mov {}, {}
         b += 'lea {}, [{}]'.format(targetRegisterName, self.value())              
-        return LocationRootRegisterX64(targetRegisterName) 
+        return RegisterX64(targetRegisterName) 
 
-class LocationRootRegisterX64(LocationRootX64):
+
+
+class RegisterX64(LocationRootX64):
     def __init__(self, register):
-        if (not (register in self.arch['registers'])):
-            raise ValueError('Parameter must be in registers. lid: {} registers:"{}"'.format(
-                register,
+        assert self._validInitialLID(register)
+        super().__init__(register)    
+
+    def _validInitialLID(self, lid):
+        if (not (type(lid) == str)):
+            raise TypeError('LocationRootRegisterX64: Parameter must be class "str". lid: "{}"'.format(
+                lid
+            ))
+        if (not (lid in self.arch['registers'])):
+            raise ValueError('LocationRootRegisterX64: Parameter must be in registers. lid: "{}", registers:"{}"'.format(
+                lid,
                 ", ".join(self.arch['registers'])
             ))
-        super().__init__(register)    
-        
+        return True
+                
     def value(self):
         return self.lid
         
@@ -141,7 +163,7 @@ class LocationRootRegisterX64(LocationRootX64):
         Copy the data to a stack allocation
         '''
         b += "mov [rbp - {}], {}".format(index * self.arch['bytesize'], self.value())
-        return LocationRootStackX64(index)
+        return StackX64(index)
         
     def toRegister(self, b, targetRegisterName):
         if (not(targetRegisterName in self.arch['registers'])):
@@ -150,17 +172,24 @@ class LocationRootRegisterX64(LocationRootX64):
             warning('toRegister', 'data already in given register. locationRoot:{}'.format(self))
         else:
             b += 'mov {}, {}'.format(targetRegisterName, self.value())              
-        return LocationRootRegisterX64(targetRegisterName)        
+        return RegisterX64(targetRegisterName)        
         
         
         
-class LocationRootStackX64(LocationRootX64):
+class StackX64(LocationRootX64):
     def __init__(self, index):
-        if (not (type(index) == int)):
-            raise TypeError('Parameter must be class int. lid: {}'.format(type(index)))
+        assert self._validInitialLID(index)
         super().__init__(index)    
         self.stackByteSize = self.arch['bytesize']
 
+
+    def _validInitialLID(self, lid):
+        if (not (type(lid) == int)):
+            raise TypeError('LocationRootStackX64: Parameter must be class "int". lid: "{}"'.format(
+                lid
+            ))
+        return True
+            
     def value(self):
         return '[rbp - {}]'.format(self.lid * self.stackByteSize)
 

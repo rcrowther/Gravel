@@ -8,6 +8,7 @@ class PrintX64():
     #    self.b = b
         
     def __call__(self, b, tpe, locationRoot):
+        # This should go. It should be given the snippet
         print(repr(locationRoot))
         source = locationRoot.value()
         print(str(source))

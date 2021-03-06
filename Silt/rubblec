@@ -28,6 +28,11 @@ def main():
     lxr = Lexer(FileSource(filePath), FileIteratorTracking(filePath), reporter)
     
     # parse input and get builder
+    # try:
+        # compiler.parse(lxr)
+    # except:
+        # print('not done')
+        # sys.exit(1)
     compiler.parse(lxr)
     finishedBuilder = compiler.result()
     # print(str(finishedBuilder._code))
