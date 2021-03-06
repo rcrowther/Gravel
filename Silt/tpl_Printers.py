@@ -7,11 +7,8 @@ class PrintX64():
     #def __init__(self, b):
     #    self.b = b
         
-    def __call__(self, b, tpe, locationRoot):
-        # This should go. It should be given the snippet
-        print(repr(locationRoot))
-        source = locationRoot.value()
-        print(str(source))
+    def __call__(self, b, tpe, srcSnippet):
+        source = srcSnippet
         if(tpe == Bit8):
             self.i8(b, source)
         elif(tpe == Bit16):
@@ -35,7 +32,7 @@ class PrintX64():
         #elif(tpe == Array):
         #    self.array(b, tpe, source)
         else:
-            raise NotImplementedError('Print: unrecognised type. tpe:()'.format(tpe));
+            raise NotImplementedError('Print: unrecognised type. tpe:{}'.format(tpe));
 
     def pointer(self, b, tpe, location):
         self.dispatch(b, tpe, base + offset)

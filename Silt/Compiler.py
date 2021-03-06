@@ -99,40 +99,40 @@ class Compiler(Syntaxer):
                    
         #? Hefty, but how to dry? return from every func would cut stuff 
         # down a little, but is obscure
-        try:
-            if (self.envStd.mustPushData(name)):
-                self.closureData.append(func(self.b, args))                
-            elif (self.envStd.mustPopData(name)):
-                poppedData = self.closureData.pop()
-                func(self.b, poppedData, args)
-            elif (self.envStd.mustSetData(name)):
-                ret = func(self.b, args)                  
-                if(not(self.envStd.isGlobalData)):
-                    self.envFunc[ret[0]] = ret[1]
-                else:
-                    self.envGlobal[ret[0]] = ret[1]  
-            elif (self.envStd.mustGetData(name)):
-                #print(str(poppedData))
-                k = args.pop(0)
-                func(self.b, k, args)
+        #try:
+        if (self.envStd.mustPushData(name)):
+            self.closureData.append(func(self.b, args))                
+        elif (self.envStd.mustPopData(name)):
+            poppedData = self.closureData.pop()
+            func(self.b, poppedData, args)
+        elif (self.envStd.mustSetData(name)):
+            ret = func(self.b, args)                  
+            if(not(self.envStd.isGlobalData)):
+                self.envFunc[ret[0]] = ret[1]
             else:
-                # Wow--now can do a simple call 
-                func(self.b, args)
+                self.envGlobal[ret[0]] = ret[1]  
+        elif (self.envStd.mustGetData(name)):
+            #print(str(poppedData))
+            k = args.pop(0)
+            func(self.b, k, args)
+        else:
+            # Wow--now can do a simple call 
+            func(self.b, args)
                 
         #! Since args are enow checked, these errors are now code errors
         #! allow to rise?
-        except TypeError:
-            msg = "[Error] Symbol too many args. symbol:'{}', args:{}".format(
-                 name,
-                 args
-                 )
-            self.errorWithPos(pos, msg)
-        except IndexError:
-            msg = "[Error] Symbol not enough args. symbol:'{}', args:{}".format(
-                 name,
-                 args
-                 )
-            self.errorWithPos(pos, msg)
+        # except TypeError:
+            # msg = "[Error] Symbol too many args. symbol:'{}', args:{}".format(
+                 # name,
+                 # args
+                 # )
+            # self.errorWithPos(pos, msg)
+        # except IndexError:
+            # msg = "[Error] Symbol not enough args. symbol:'{}', args:{}".format(
+                 # name,
+                 # args
+                 # )
+            # self.errorWithPos(pos, msg)
                 
     def result(self):
         return self.b

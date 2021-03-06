@@ -6,6 +6,7 @@ import tpl_LocationRoot as LocRoot
 from tpl_Printers import PrintX64
 import tpl_vars as Var
 import tpl_types as Type
+from asm_db import TypesToASMAbv
 
 #? dont like this import
 from Syntaxer import ProtoSymbol
@@ -37,18 +38,37 @@ class BuilderAPI():
     Type signature of API funcs
     '''
     funcNameToArgsType = {
+        # basics
         'comment': [str],
+        'sysExit': [int],
+        'extern': [str],
         'raw': [str],
+        
+        ## Code structure 
         'frame': [],
         'frameEnd': [],
+        'func': [ProtoSymbol],
         'funcEnd': [],
         'funcMain': [],
         'funcMainEnd': [],
-        'sysExit': [int],
-        'printFlush': [],
-        'println': [Var.Base],
-        'heapAlloc': [ProtoSymbol, Type.Type],
+
+        ## Register utilities
+        'registersPush': [list],
+        'registersVolatilePush': [],
+        'registersPop': [],
+
+        ## Allocs
+        'ROStringDefine': [ProtoSymbol, str],
+        'RODefine': [ProtoSymbol, int, Type.Type],
+        'stackAllocBytes': [ProtoSymbol, int],
         'stackAlloc': [ProtoSymbol, Type.Type],
+        'heapAllocBytes': [ProtoSymbol, int],
+        'heapAlloc': [ProtoSymbol, Type.Type],
+        
+        ## printers
+        'print' : [Var.Base],
+        'println': [Var.Base],
+        'printFlush': [],
     #'': [].
     }
     
@@ -99,25 +119,15 @@ class BuilderAPI():
     def byteSize(self, bitsize):
         return bitsize >> 3
 
-    def extern(self, b, args):
-        '''
-        Append an extern.
-        '''
-        b.externsAdd("extern " + args[0])
-        
-    def raw(self, b, args):
-        '''
-        Append a line of code.
-        '''
-        b._code.append(args[0])
-
     #!!! Python specific code turns this class into an imitation of a
     # map of func pointers. Probably what is needed is a map of func 
     # pointers (but that is not templatable). 
     def __contains__(self, k):
+        # python 'in' syntax
         return k in dir(self)
             
     def __getitem__(self, name):
+        # python '[id]' syntax
         return getattr(self, name)
 
 
@@ -139,7 +149,7 @@ class BuilderAPIX64(BuilderAPI):
 
     def isGlobalData(self, name):
         return name in [
-            'stringRODefine',
+            'ROStringDefine',
         ] 
         
     def mustPushData(self, name):
@@ -160,11 +170,13 @@ class BuilderAPIX64(BuilderAPI):
 
     def mustSetData(self, name):
         return name in [
-            'stringRODefine',
-            'stringHeapDefine',
+            'ROStringDefine',
+            'RODefine',
+            #'stringHeapDefine',
+            'stackAlloc',
             'heapAlloc',
-            'varHeap',
-            'varStack',
+            #'varHeap',
+            #'varStack',
         ]
 
     def mustGetData(self, name):
@@ -174,9 +186,8 @@ class BuilderAPIX64(BuilderAPI):
     #def __init___():
     #    builderAPI = architecture.architectureSolve(architecture.x64)
 
-
 ####
-
+    ## basics
     def comment(self, b, args):
         b._code.append("; " + args[0])
         
@@ -185,70 +196,23 @@ class BuilderAPIX64(BuilderAPI):
         b._code.append("mov rdi, " + str(args[0]))
         b._code.append("syscall")
 
-    #! account for data types
-    # and align
-    def stackAllocBytes(self, b, args):
-        '''
-        Allocate stack storage
-        '''
-        byteSize = self.arch['bytesize'] * args[0]
-        b._code.append("sub rsp, {}".format(byteSize)) 
 
-    #! bad thing here, we don't know where stack starts, so only works 
-    # on empty stackframe
-    def stackAlloc(self, b, args):
+
+    def extern(self, b, args):
         '''
-        Allocate stack storage
-        label type
+        Append an extern.
         '''
-        protoSymbolLabel = args[0].toString()
-        tpe = args[1]
-        index = tpe.byteSize
-        b._code.append("sub rsp, {}".format(tpe.byteSize)) 
-        return (
-            protoSymbolLabel, 
-            Var.StackX64(index, Type.StrASCII)
-        )    
+        b.externsAdd("extern " + args[0])
+        
+    def raw(self, b, args):
+        '''
+        Append a line of code.
+        '''
+        b._code.append(args[0])
+        
+        
                 
-    def heapAllocBytes(self, b, args):
-        '''
-        Allocate bytes to malloc
-        '''
-        self.extern(b, ['malloc'])
-        byteSize = self.arch['bytesize'] * args[0]
-        b._code.append("mov {}, {}".format(self.arch['cParameterRegisters'][0], byteSize))
-        b._code.append("call malloc")
-        return LocRoot.RegisterX64(self.arch['returnRegister'])
-
-    def heapAlloc(self, b, args):
-        '''
-        Alloc space for a type on the heap
-        protosymbol, type
-        '''
-        self.extern(b, ['malloc'])
-        #! but malloc works in bytes?
-        protoSymbolLabel = args[0].toString()
-        tpe = args[1]
-        b._code.append("mov {}, {}".format(self.arch['cParameterRegisters'][0], tpe.byteSize))
-        b._code.append("call malloc")
-        #return LocationRootRegisterX64(self.arch['returnRegister']) 
-        return (
-            protoSymbolLabel, 
-            Var.RegX64(self.arch['returnRegister'], tpe)
-        ) 
-                
-    # def stringHeapDefine(self, b, args):
-        # '''
-        # Allocate and define a malloced string
-        # UTF-8
-        # '''
-        # byteSize = self.byteSize() * size
-        # b._code.append("mov {}, {}".format(arch['cParameterRegister'][0], byteSize))
-        # b._code.append("call malloc")
-        # return LocationRootRegisterX64('rax') 
-
-                  
-                        
+    ## Code structure 
     def frame(self, b, args):
         '''
         Start a stack frame.
@@ -288,23 +252,15 @@ class BuilderAPIX64(BuilderAPI):
         b._code.append('ret')
         b._code.append('; endFunc')
 
-    
     def funcMain(self, b, args):
         self.func(b, [ProtoSymbol('@main')])
         
     def funcMainEnd(self, b, args):
         b._code.append('; endFunc')
 
-    def stringRODefine(self, b, args):
-        protoSymbolLabel = args[0].toString()
-        rodata = protoSymbolLabel + ': db "' + args[1] + '", 0'
-        b.rodataAdd(rodata)
-        return (
-            protoSymbolLabel, 
-            Var.ROX64(protoSymbolLabel, Type.StrASCII)
-        )
-        
-      
+
+
+    ## Register utilities
     # #! needs datapush
     def registersPush(self, b, args):
         registerList = args
@@ -323,12 +279,116 @@ class BuilderAPIX64(BuilderAPI):
         '''
         return self.registersPush(b, self.arch['cParameterRegisters'].copy())
 
-
     #?x
-    def registersVolatilePop(self, b, popData, args):
-        self.registersPop(b, popData, args)
+    #def registersVolatilePop(self, b, popData, args):
+    #    self.registersPop(b, popData, args)
 
 
+
+    ## Allocs
+    def ROStringDefine(self, b, args):
+        protoSymbolLabel = args[0].toString()
+        rodata = protoSymbolLabel + ': db "' + args[1] + '", 0'
+        b.rodataAdd(rodata)
+        return (
+            protoSymbolLabel, 
+            Var.ROX64(protoSymbolLabel, Type.StrASCII)
+        )
+
+    def RODefine(self, b, args):
+        protoSymbolLabel = args[0].toString()
+        data = args[1]
+        tpe = args[2]
+        #? wrap as string if necessary
+        rodata = '{}: {} {}'.format(
+            protoSymbolLabel,
+            TypesToASMAbv[tpe],
+            data
+        )
+        b.rodataAdd(rodata)
+        return (
+            protoSymbolLabel, 
+            Var.ROX64(protoSymbolLabel, tpe)
+        )
+                
+    #! account for data types
+    # and align
+    def stackAllocBytes(self, b, args):
+        '''
+        Allocate stack storage
+            protoSymbol, slotIndex
+        '''
+        protoSymbolLabel = args[0].toString()
+        byteSize = self.arch['bytesize'] * args[1]
+        b._code.append("sub rsp, {}".format(byteSize)) 
+        index = args[1]
+        return (
+            protoSymbolLabel, 
+            Var.StackX64(index, Type.StrASCII)
+        ) 
+        
+    #! bad thing here, we don't know where stack starts, so only works 
+    # on empty stackframe
+    def stackAlloc(self, b, args):
+        '''
+        Allocate stack storage
+        var
+        '''
+        protoSymbolLabel = args[0].toString()
+        tpe = args[1]
+        index = tpe.byteSize
+        b._code.append("sub rsp, {}".format(tpe.byteSize)) 
+        return (
+            protoSymbolLabel, 
+            Var.StackX64(index, Type.StrASCII)
+        )    
+                
+    def heapAllocBytes(self, b, args):
+        '''
+        Allocate bytes to malloc
+            protoSymbol, slotIndex
+        '''
+        self.extern(b, ['malloc'])
+        protoSymbolLabel = args[0].toString()
+        byteSize = self.arch['bytesize'] * args[1]
+        b._code.append("mov {}, {}".format(self.arch['cParameterRegisters'][0], byteSize))
+        b._code.append("call malloc")
+        #return LocRoot.RegisterX64(self.arch['returnRegister'])
+        return (
+            protoSymbolLabel, 
+            Var.RegX64(self.arch['returnRegister'], tpe)
+        ) 
+        
+    def heapAlloc(self, b, args):
+        '''
+        Alloc space for a type on the heap
+        protosymbol, type
+        '''
+        self.extern(b, ['malloc'])
+        #! but malloc works in bytes?
+        protoSymbolLabel = args[0].toString()
+        tpe = args[1]
+        b._code.append("mov {}, {}".format(self.arch['cParameterRegisters'][0], tpe.byteSize))
+        b._code.append("call malloc")
+        #return LocationRootRegisterX64(self.arch['returnRegister']) 
+        return (
+            protoSymbolLabel, 
+            Var.RegX64(self.arch['returnRegister'], tpe)
+        ) 
+                
+    # def stringHeapDefine(self, b, args):
+        # '''
+        # Allocate and define a malloced string
+        # UTF-8
+        # '''
+        # byteSize = self.byteSize() * size
+        # b._code.append("mov {}, {}".format(arch['cParameterRegister'][0], byteSize))
+        # b._code.append("call malloc")
+        # return LocationRootRegisterX64('rax') 
+
+                  
+
+    ## Printers
     def print(self, b, args):
         '''
         var
@@ -339,18 +399,30 @@ class BuilderAPIX64(BuilderAPI):
         tpe = var.tpe
         if (not isinstance(tpe, Type.TypeSingular)):
             # we got to do something recursive with it
-            printStr(b, tpe.name, StrASCII)
-            printStr(b, ['(' StrASCII])
-            print(b, tpe.foreach(args => print(b, [args])))
-            printStr(b, [')' StrASCII])
+            # printStr(b, tpe.name, StrASCII)
+            # printStr(b, ['(' StrASCII])
+            # print(b, tpe.foreach(args => print(b, [args])))
+            # printStr(b, [')' StrASCII])
+            raise NotImplementedError()
             # etc.
         else:
             # Figure out what will print or not
-            var.accessMk()
-            var.accessDeepMk(path)
+            #var.accessMk()
+            #var.accessDeepMk(path)
             # tpe, offset(lid)
             # tpe.offsetDeep(self, path)
-        self.printers(b, args[0], args[1])
+            srcSnippet = var.accessMk()
+            #! Obviously, very temproary!
+            # What we need is probably something that separates string 
+            # types from numbers
+            #print(str(tpe))
+            if (tpe == Type.StrASCII):
+                # For a string, printf wants the address, not the value
+                srcSnippet = var.accessAddrMk()
+            print('snippet:')
+            print(str(srcSnippet))
+            self.printers(b, tpe, srcSnippet)
+            
 
     # def println(self, b, args):
         # self.printers(b, args[0], args[1])

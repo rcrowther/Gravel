@@ -47,10 +47,13 @@ class ROX64(Base):
         self.loc = LocRoot.RODataX64(label)
         self.tpe = tpe
 
-    def accessMk(self):
-        # labels represent assembler -driven addresses.
-        # They do not need address syntax  
+    def accessAddrMk(self):
+        # labels represent assembler-driven addresses.
         return self.loc.lid
+        
+    def accessMk(self):
+        # labels represent assembler-driven addresses.
+        return '[' + self.loc.lid + ']'
     
     def accessDeepMk(self, path):
         return '[' + self.loc.lid + str(self.type.offsetDeep(path)) + ']'        
