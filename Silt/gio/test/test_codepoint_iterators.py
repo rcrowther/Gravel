@@ -5,7 +5,7 @@ from gio.iterators.CodepointIterators import *
 
 
 
-# python3 -m unittest test/tests.py
+# python3 -m unittest gio.test.test_codepoint_iterators
 class TestFileIterator(unittest.TestCase):
     def test_cp_count(self):
         i = 0

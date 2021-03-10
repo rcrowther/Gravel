@@ -3,7 +3,7 @@ import Tokens
 from .reporters.Reporter import Reporter
 from .reporters.Message import Message
 from .reporters.Position import Position
-from .exceptions import LexicalError
+from .exceptions import GIOLexicalError
 
 
 
@@ -92,7 +92,7 @@ class LexerBase():
             self.src.lineByIndex(self.tokenLineCount)
         )
         self.reporter.error(msgKlass)
-        raise LexicalError()
+        raise GIOLexicalError()
         
     def _next(self):
         #print('_nxt')

@@ -4,7 +4,7 @@ import unittest
 from gio.iterators.TrackingIterator import *
 
 
-# python3 -m unittest test/tests.py
+# python3 -m unittest gio.test.test_tracking_iterators
 class TestFileIterator(unittest.TestCase):
     def setUp(self):
         pass

@@ -1,0 +1,50 @@
+== Plain?
+Well, yeh, there's a bit of theorising behind that. For example, once upon a time there was {a() Duffs mechanism}, and it made some code fast. But the micro-ops on modern architectures made that redundant. In other words, assembly language is no different to higher level languages, it's a moving target for performance and readability. You could optimise like mad, Use Duff on old architectures and other solutions on new machines. Or you could accept that plain code is ok, and let people optimise if they want to. At least users will know what they have. That's the Rubble way. 
+
+== Why not write in assembly?
+Well, let's say you want to.
+
+Like most languages, assembly languages such as GAS, MASM, NASM etc. are good at what they do. They are durable, and wouldn't be if they were not. However, most practical assembly language requires a raft of base learning. In practice, it is very easy to start assembly programming, far easier than, say, Java, or Javascript. but you will soon ask yourself if you can make even a simple function. Which is where you may start to think about Rubble.
+
+Ok, I admit that sometimes Rubble is overwrought. Let's move some data into ''rax;,
+
+?rubble
+# Must allocate. Rubble requests this for consistency, even though it generates no instructions,
+RegAlloc(@reg1 regA Bit64) 
+
+# Now define
+Set(reg1 99)
+?
+
+Honestly, the assembly code is more concise, readable, intuitive...
+?nasm
+mov rax, 99
+?
+
+But sometimes Rubble helps. You are developing, and want to call a C function, but protect the registers against corruption? I prefer this,
+?rubble
+protectVolatileRegisters()
+call(printPos)
+protectRegistersEnd()
+?
+
+to this,
+?nasm
+push rdi
+push rsi
+push rdx 
+push rcx 
+push r8 
+push r9
+call printPos
+pop r9
+pop r8 
+pop rcx 
+pop rdx 
+pop rsi
+pop rdi
+?
+But hey, it's your choice.
+
+
+

@@ -2,11 +2,11 @@
 
 import unittest
 from template import *
-import tpl_LocationRoot as Loc
+import tpl_locationRoot as Loc
 
 
 
-#! needs update and rethink
+# python3 -m unittest tests.test_location_root
 class TestInitialization(unittest.TestCase):
     
     def test_roData(self):
@@ -22,7 +22,14 @@ class TestInitialization(unittest.TestCase):
     def test_register_fail(self):
         with self.assertRaises(Exception):
             Loc.RegisterX64('str1')
-                
+
+    def test_registered_address(self):
+        Loc.RegisteredAddressX64('rbx')
+
+    def test_register_address_fail(self):
+        with self.assertRaises(Exception):
+            Loc.RegisteredAddressX64(77)                
+
     def test_stack(self):
         Loc.StackX64(7)
 
@@ -31,30 +38,68 @@ class TestInitialization(unittest.TestCase):
             Loc.StackX64('rbx')        
 
 
-
-class TestToRegister(unittest.TestCase):
-
+class TestValue(unittest.TestCase):
     def test_roData(self):
         loc = Loc.RODataX64('str1')
-        newLoc = loc.toRegister([], 'rax')
-        self.assertEqual(newLoc.lid, 'rax')
+        self.assertEqual(loc.value(), '[str1]')
+
+    def test_register(self):
+        loc = Loc.RegisterX64('rax')
+        self.assertEqual(loc.value(), 'rax')
+
+    def test_registered_address(self):
+        loc = Loc.RegisteredAddressX64('rax')
+        self.assertEqual(loc.value(), '[rax]')
+
+    def test_registered_address(self):
+        loc = Loc.StackX64(3)
+        self.assertEqual(loc.value(), '[rbp-24]')
 
 
-    def test_loc_unrecognised_register(self):
+class TestAddr(unittest.TestCase):
+    def test_roData(self):
         loc = Loc.RODataX64('str1')
-        with self.assertRaises(Exception):
-            loc.toRegister([], 777)      
+        self.assertEqual(loc.address(), 'str1')
 
-    def test_toStackIndex(self):
-        loc = Loc.RegisterX64('rcx')
-        newLoc = loc.toStackIndex([], 5)
-        self.assertEqual(newLoc.lid, 5)
+    def test_register(self):
+        loc = Loc.RegisterX64('rax')
+        with self.assertRaises(Exception): 
+            loc.address()
 
-    def test_toStackIndex_unrecognised_param(self):
-        loc = Loc.RegisterX64('rcx')
-        with self.assertRaises(Exception):
-            loc.toStackIndex([], 'rxx')   
+    def test_registered_address(self):
+        loc = Loc.RegisteredAddressX64('rax')
+        self.assertEqual(loc.address(), 'rax')
+
+    def test_registered_address(self):
+        loc = Loc.StackX64(3)
+        with self.assertRaises(Exception): 
+            loc.address()
+                    
+# class TestToRegister(unittest.TestCase):
+
+    # def test_roData(self):
+        # loc = Loc.RODataX64('str1')
+        # newLoc = loc.toRegister([], 'rax')
+        # self.assertEqual(newLoc.lid, 'rax')
+
+
+    # def test_loc_unrecognised_register(self):
+        # loc = Loc.RODataX64('str1')
+        # with self.assertRaises(Exception):
+            # loc.toRegister([], 777)      
+
+    # def test_toStackIndex(self):
+        # loc = Loc.RegisterX64('rcx')
+        # newLoc = loc.toStackIndex([], 5)
+        # self.assertEqual(newLoc.lid, 5)
+
+    # def test_toStackIndex_unrecognised_param(self):
+        # loc = Loc.RegisterX64('rcx')
+        # with self.assertRaises(Exception):
+            # loc.toStackIndex([], 'rxx')   
         
+        
+###
     # def test_stackByteSize(self):
         # self.assertEqual(self.l.stackByteSize, 8)
 

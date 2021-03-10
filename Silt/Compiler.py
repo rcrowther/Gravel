@@ -1,6 +1,10 @@
 from Syntaxer import Syntaxer
 from tpl_codeBuilder import Builder
-
+from exceptions import (
+    FuncError,
+    FuncWarning,
+    FuncInfo,
+)
 
 #x
 class Env(dict):
@@ -23,9 +27,29 @@ class Compiler(Syntaxer):
         self.envFunc = {}
         self.envGlobal = {}
         self.closureData = []
+        
+        # distance in bytes of the stack pointer from the stack base 
+        # pointer
+        # Measured in bytes.
+        # Is measured positively, though the intel architectures move 
+        # negatively
+        # This is massively useful to know, for compiling, debugging,
+        # even for writing hard offsets as opposed to calculating them.
+        # There is one but... the figure can not be relied on, as coders
+        # may tamper with the stack outside of this code. And we want to
+        # allow that.
+        #?x
+        self.stackSize = 0
         super().__init__(tokenIt)
 
 
+    def stringTypeNamesMk(self, typeList):
+        '''
+        print a list of typenames 
+        '''
+        # Used on argument signatures to tidy error reports
+        return "[" + ", ".join([tpe.__name__ for tpe in typeList]) + "]"
+        
     def argsCheck(self, pos, name, args, argsTypes):
         '''
         Check args for length and type.
@@ -39,14 +63,14 @@ class Compiler(Syntaxer):
         if (len(args) > len(argsTypes)):
             msg = "Too many args. symbol:'{}', expected:{}, args:{}".format(
                  name,                 
-                 argsTypes,
+                 self.stringTypeNamesMk(argsTypes),
                  args
                  )
             self.errorWithPos(pos, msg)
         if (len(args) < len(argsTypes)):
             msg = "Not enough args. symbol:'{}', expected:{}, args:{}".format(
                  name,
-                 argsTypes,
+                 self.stringTypeNamesMk(argsTypes),
                  args,
                  )
             self.errorWithPos(pos, msg)
@@ -55,7 +79,7 @@ class Compiler(Syntaxer):
             if (not(isinstance(arg, argType))):
                 msg = "Arg type not match signature. symbol:'{}', expected:{}, args:{}".format(
                     name,
-                    argsTypes,
+                    self.stringTypeNamesMk(argsTypes),
                     args
                  )
                 self.errorWithPos(pos, msg)
@@ -97,28 +121,53 @@ class Compiler(Syntaxer):
         if name in self.funcNameToArgsType:
             self.argsCheck(posArgs, name, args, self.funcNameToArgsType[name])
                    
-        #? Hefty, but how to dry? return from every func would cut stuff 
-        # down a little, but is obscure
-        #try:
-        if (self.envStd.mustPushData(name)):
-            self.closureData.append(func(self.b, args))                
-        elif (self.envStd.mustPopData(name)):
-            poppedData = self.closureData.pop()
-            func(self.b, poppedData, args)
-        elif (self.envStd.mustSetData(name)):
-            ret = func(self.b, args)                  
-            if(not(self.envStd.isGlobalData)):
-                self.envFunc[ret[0]] = ret[1]
+        try:
+            #? Hefty, but how to dry? return from every func would cut stuff 
+            # down a little, but is obscure
+            if (self.envStd.mustPushData(name)):
+                self.closureData.append(func(self.b, args))                
+            elif (self.envStd.mustPopData(name)):
+                poppedData = self.closureData.pop()
+                func(self.b, poppedData, args)
+            elif (self.envStd.mustSetData(name)):
+                ret = func(self.b, args)                  
+                if(not(self.envStd.isGlobalData)):
+                    self.envFunc[ret[0]] = ret[1]
+                else:
+                    self.envGlobal[ret[0]] = ret[1]
+            #? Umm, this has gone unused because the Syntaxer has been 
+            # typing completed symbols
+            elif (self.envStd.mustGetData(name)):
+                #print(str(poppedData))
+                k = args.pop(0)
+                func(self.b, k, args)
             else:
-                self.envGlobal[ret[0]] = ret[1]  
-        elif (self.envStd.mustGetData(name)):
-            #print(str(poppedData))
-            k = args.pop(0)
-            func(self.b, k, args)
-        else:
-            # Wow--now can do a simple call 
-            func(self.b, args)
-                
+                # Wow--now can do a simple call 
+                func(self.b, args)
+        # Execution of a func can produce many errors and warnings
+        # These arrors are not basic lexer or syntax, they are of
+        # code integrity. 
+        # The code throws rather than passing the reporter funcs
+        # in, to keep function code uncluttered.
+        # The warning and info throws are not raised.
+        except FuncError as e:
+            self.errorWithPos(pos, e.args[0])            
+            # errors currently halt the compiler
+            raise e
+        except FuncWarning:
+                        msg = "Too many args. symbol:'{}', expected:{}, args:{}".format(
+                 name,                 
+                 self.stringTypeNamesMk(argsTypes),
+                 args
+                 )
+            self.warningWithPos(pos, msg)
+        except FuncInfo:
+                        msg = "Too many args. symbol:'{}', expected:{}, args:{}".format(
+                 name,                 
+                 self.stringTypeNamesMk(argsTypes),
+                 args
+                 )
+            self.infoWithPos(pos, msg)
         #! Since args are enow checked, these errors are now code errors
         #! allow to rise?
         # except TypeError:

@@ -1,21 +1,22 @@
 from gio.LexerBase import LexerBase
 from library.encodings.Codepoints import *
-WORD = 3
-PUNCTUATION = 4
+import gio.test.word_tokens as Tokens
+
+
 
 class WordLexer(LexerBase):
 
     def scanWord(self):
         commit = self.isAlphabetic()
         if(commit):
-            self.tok = WORD
-            self._loadUntilWhitespace()
+            self.tok = Tokens.WORD
+            self._loadUntilWhitespaceOrLinefeed()
         return commit
         
     def scanPunctuation(self):
         commit = (self.cp == LINE_FEED or self.cp == COMMA or self.cp == PERIOD)
         if(commit):
-            self.tok = PUNCTUATION
+            self.tok = Tokens.PUNCTUATION
             #self.skipToken()
             self._next()
         return commit

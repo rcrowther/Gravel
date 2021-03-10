@@ -9,6 +9,8 @@ from gio.reporters.Sources import FileSource
 from gio.iterators.TrackingIterator import FileIteratorTracking
 from tpl_style import *
 import nasmFrames
+from gio.exceptions import GIOLexicalError, GIOSynatxError
+# SyntaxError
 
 
 
@@ -28,12 +30,12 @@ def main():
     lxr = Lexer(FileSource(filePath), FileIteratorTracking(filePath), reporter)
     
     # parse input and get builder
-    # try:
-        # compiler.parse(lxr)
-    # except:
-        # print('not done')
-        # sys.exit(1)
-    compiler.parse(lxr)
+    try:
+        compiler.parse(lxr)
+    except (GIOLexicalError, GIOSynatxError):
+        print('not done')
+        sys.exit(1)
+    #compiler.parse(lxr)
     finishedBuilder = compiler.result()
     # print(str(finishedBuilder._code))
 

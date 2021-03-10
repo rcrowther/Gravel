@@ -26,10 +26,25 @@ funcMain()
     #comment('gettin funky')
     frame()
 
-    #stackAllocBytes(@stk1 8)
-    #stackAlloc(@stk2 Array(Bit64, 8))
+
     #heapAllocBytes(@heap1 8)
-    heapAlloc(@heap2 Array(Bit64, 8))
+#--
+    #heapAlloc(@heap2 Bit64)
+    #set(heap2 999)
+    #println(heap2)
+#--
+    #regDefine(@reg1 'rbx' 777 Bit64)
+    #println(reg1)
+#--
+    #stackAllocBytes(@stk1 8)
+    #println(reg1)
+#--
+    stackAlloc(@stk2 1 Bit64)
+    set(stk2 999)
+    println(stk2)
+#--
+    #heapAlloc(@heap2 Array(Bit64, 8))
+    #stackAlloc(@stk2 Array(Bit64, 8))
     #var(@reg1 regc 99)
     #var(@stk2 stack 2 99)
     #var(@hp2 heap 99)
@@ -39,9 +54,8 @@ funcMain()
     #stringHeapAlloc(24)
     #registersVolatilePush('rax' 'rbx' 'rcx')
     #registersVolatilePop()
-    println(ro1)
-    #! get this working
-    #println(heap2)
+    #println(ro1)
+
     #if(AND( LT(stk1 5) NOT(LT(stk1 9)) ))
     #ifEnd()
     printFlush()

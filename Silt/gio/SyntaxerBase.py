@@ -1,14 +1,17 @@
-import sys
-#from gio.TokenIterator import mkTokenIterator
-from Tokens import *
+#import sys
+#from Tokens import *
 from gio.reporters.Position import Position
 from gio.reporters.Message import Message
+from gio.exceptions import GIOSyntaxError
+
 
 
 # All rules should progross to next token if 
-# sucessful
+# successful
 # All rules are optional. If not, name as  ''Fix'
 class SyntaxerBase:
+    tokenToString = {}
+
     '''
     Generates a tree holding the structure of tokens.
     The sole purpose of this class is to extract and organise data from 
@@ -22,8 +25,8 @@ class SyntaxerBase:
         self.it = None
 
 
-        
-    ## reporter helpers  
+
+    ## reporter helpers
     def toPosition(self):
         '''
         Retern a position object
@@ -46,7 +49,7 @@ class SyntaxerBase:
         if (tokenTxt):
             msgKlass.details = ["token text : '{}'".format(tokenTxt)]
         self.reporter.error(msgKlass)
-        raise SyntaxError() 
+        raise GIOSyntaxError() 
                 
     def error(self, msg):
         '''
@@ -59,21 +62,20 @@ class SyntaxerBase:
         if (tokenTxt):
             msgKlass.details = ["token text : '{}'".format(tokenTxt)]
         self.reporter.error(msgKlass)
-        raise SyntaxError() 
-        #sys.exit(1)
+        raise GIOSyntaxError() 
         
     def expectedTokenError(self, ruleName, tok):
          self.error("In rule '{}' expected token '{}' but found '{}'".format(
              ruleName,
-             tokenToString[tok],
-             tokenToString[self.tok]
+             self.tokenToString[tok],
+             self.tokenToString[self.tok]
         ))
 
     def expectedRuleError(self, currentRule, expectedRule):
          self.error("In rule '{}' expected rule '{}'. Current token: '{}'".format(
              currentRule,
              expectedRule,
-             tokenToString[self.tok]
+             self.tokenToString[self.tok]
         ))                       
 
     def warning(self, msg):
@@ -248,11 +250,11 @@ class SyntaxerBase:
             # if we don't get an exception, we do not have grammar 
             # enough to parse the input. I figure that's an error
             self.error('Parsing did not complete: lastToken: {},'.format(
-                tokenToString[self.tok],                
+                self.tokenToString[self.tok],                
             ))
         # Any other exception can float up as an exception i.e. also a 
         # parsing error.
-        # They are either LexicalError, or SyntxError
+        # They are either GIOLexicalError, or GIOSyntxError
         except StopIteration:
             # All ok
             print('parsed')

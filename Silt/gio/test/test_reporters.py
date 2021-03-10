@@ -10,7 +10,7 @@ from gio.reporters.ReporterStreamConsole import ReporterStreamConsole
 
 
 
-# python3 -m unittest test/tests
+# python3 -m unittest gio.test.test_reporters
 class TestMessage(unittest.TestCase):
     def setUp(self):
         self.pos = Position(0, 7)

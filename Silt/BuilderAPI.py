@@ -2,11 +2,11 @@ import architecture
 #x
 #from tpl_LocationRoot import LocationRootRODataX64, LocationRootRegisterX64, LocationRootStackX64
 #x
-import tpl_LocationRoot as LocRoot
+#import tpl_locationRoot as LocRoot
 from tpl_Printers import PrintX64
 import tpl_vars as Var
 import tpl_types as Type
-from asm_db import TypesToASMAbv
+from asm_db import TypesToASMAbv, TypesToASMName
 
 #? dont like this import
 from Syntaxer import ProtoSymbol
@@ -57,13 +57,18 @@ class BuilderAPI():
         'registersVolatilePush': [],
         'registersPop': [],
 
+        ## var action
+        'set': [Var.Base, int],
+        
         ## Allocs
         'ROStringDefine': [ProtoSymbol, str],
         'RODefine': [ProtoSymbol, int, Type.Type],
-        'stackAllocBytes': [ProtoSymbol, int],
-        'stackAlloc': [ProtoSymbol, Type.Type],
+        'regDefine': [ProtoSymbol, str, int, Type.Type],
         'heapAllocBytes': [ProtoSymbol, int],
         'heapAlloc': [ProtoSymbol, Type.Type],
+        'stackAllocBytes': [ProtoSymbol, int],
+        'stackAlloc': [ProtoSymbol, int, Type.Type],
+
         
         ## printers
         'print' : [Var.Base],
@@ -174,6 +179,7 @@ class BuilderAPIX64(BuilderAPI):
             'RODefine',
             #'stringHeapDefine',
             'stackAlloc',
+            'regDefine',
             'heapAlloc',
             #'varHeap',
             #'varStack',
@@ -182,6 +188,9 @@ class BuilderAPIX64(BuilderAPI):
     def mustGetData(self, name):
         return name in [
         ]
+
+    #def stack
+    #    self.stackSize = 0
                 
     #def __init___():
     #    builderAPI = architecture.architectureSolve(architecture.x64)
@@ -210,8 +219,8 @@ class BuilderAPIX64(BuilderAPI):
         '''
         b._code.append(args[0])
         
-        
-                
+
+
     ## Code structure 
     def frame(self, b, args):
         '''
@@ -221,6 +230,7 @@ class BuilderAPIX64(BuilderAPI):
         b._code.append("push {}".format(self.arch['stackBasePointer']))
         # mov rbp, rsp
         b._code.append("mov {}, {}".format(self.arch['stackBasePointer'], self.arch['stackPointer']))
+        self.stackSize = 0
 
     def frameEnd(self, b, args):
         '''
@@ -287,6 +297,10 @@ class BuilderAPIX64(BuilderAPI):
 
     ## Allocs
     def ROStringDefine(self, b, args):
+        '''
+        Define an ASCII string to a label
+            protoSymbol, string
+        '''
         protoSymbolLabel = args[0].toString()
         rodata = protoSymbolLabel + ': db "' + args[1] + '", 0'
         b.rodataAdd(rodata)
@@ -311,38 +325,27 @@ class BuilderAPIX64(BuilderAPI):
             Var.ROX64(protoSymbolLabel, tpe)
         )
                 
-    #! account for data types
-    # and align
-    def stackAllocBytes(self, b, args):
+   
+
+    def regDefine(self, b, args):
         '''
-        Allocate stack storage
-            protoSymbol, slotIndex
-        '''
-        protoSymbolLabel = args[0].toString()
-        byteSize = self.arch['bytesize'] * args[1]
-        b._code.append("sub rsp, {}".format(byteSize)) 
-        index = args[1]
-        return (
-            protoSymbolLabel, 
-            Var.StackX64(index, Type.StrASCII)
-        ) 
-        
-    #! bad thing here, we don't know where stack starts, so only works 
-    # on empty stackframe
-    def stackAlloc(self, b, args):
-        '''
-        Allocate stack storage
-        var
+        Define a value in a register
+            protoSymbol, registerName value type
         '''
         protoSymbolLabel = args[0].toString()
-        tpe = args[1]
-        index = tpe.byteSize
-        b._code.append("sub rsp, {}".format(tpe.byteSize)) 
+        register = args[1]
+        data = args[2]
+        tpe = args[3]
+        b._code.append("mov {}, {}".format(
+            # TypesToASMName[tpe],
+            register, 
+            data
+        ))
         return (
             protoSymbolLabel, 
-            Var.StackX64(index, Type.StrASCII)
-        )    
-                
+            Var.RegX64(register, tpe)
+        )
+                        
     def heapAllocBytes(self, b, args):
         '''
         Allocate bytes to malloc
@@ -373,9 +376,55 @@ class BuilderAPIX64(BuilderAPI):
         #return LocationRootRegisterX64(self.arch['returnRegister']) 
         return (
             protoSymbolLabel, 
-            Var.RegX64(self.arch['returnRegister'], tpe)
+            Var.RegAddrX64(self.arch['returnRegister'], tpe)
         ) 
-                
+
+    #! account for data types
+    # and align
+    def stackAllocBytes(self, b, args):
+        '''
+        Allocate stack storage
+            protoSymbol, slotIndex
+        '''
+        protoSymbolLabel = args[0].toString()
+        byteSize = self.arch['bytesize'] * args[1]
+        b._code.append("sub rsp, {}".format(byteSize)) 
+        index = args[1]
+        return (
+            protoSymbolLabel, 
+            Var.StackX64(index, Type.StrASCII)
+        ) 
+        
+    #! bad thing here, we don't know where stack starts, so only works 
+    # on empty stackframe
+    def stackAlloc(self, b, args):
+        '''
+        Allocate stack storage
+        Resets the Stack pointer register e.g. 'esp' etc. 
+        The calculation is absolute, from the index
+        So set index to a calculated top (unless you are writing trick 
+        code).
+        It's ok to alloc at a slot above the current stack hight, 
+        but an alloc below the stack height will reset the pointer 
+        towards the base pointer. Subsequent action could overwrite
+        required data. 
+            protoSymbol, slotIndex, type
+        '''
+        protoSymbolLabel = args[0].toString()
+        index = args[1]
+        tpe = args[2]
+        #tpe.byteSize
+        #self.arch['bytesize']
+        # We can not account for bytesize, only allocate the slot
+        # must be aligned on 16 bytes?
+        b._code.append("lea rsp, [rbp - {}]".format(
+             self.arch['bytesize'] * index 
+        )) 
+        return (
+            protoSymbolLabel, 
+            Var.StackX64(index, tpe)
+        ) 
+                        
     # def stringHeapDefine(self, b, args):
         # '''
         # Allocate and define a malloced string
@@ -387,7 +436,18 @@ class BuilderAPIX64(BuilderAPI):
         # return LocationRootRegisterX64('rax') 
 
                   
-
+    ## Var action
+    def set(self, b, args):
+        var = args[0]
+        val = args[1]
+        if (isinstance(var, Var.ROX64)):
+            raise ValueError('cant set a RO variable!')
+        #! would only work for singular types. 
+        # Also, variable doesn't know if it's a pointer, or value
+        #print(str(type(var.tpe))) 
+        b._code.append("mov {} {}, {}".format(TypesToASMName[var.tpe], var.toCodeValue(), val))
+        
+            
     ## Printers
     def print(self, b, args):
         '''
@@ -411,14 +471,14 @@ class BuilderAPIX64(BuilderAPI):
             #var.accessDeepMk(path)
             # tpe, offset(lid)
             # tpe.offsetDeep(self, path)
-            srcSnippet = var.accessMk()
+            srcSnippet = var.toCodeValue()
             #! Obviously, very temproary!
             # What we need is probably something that separates string 
             # types from numbers
             #print(str(tpe))
             if (tpe == Type.StrASCII):
                 # For a string, printf wants the address, not the value
-                srcSnippet = var.accessAddrMk()
+                srcSnippet = var.toCodeAddress()
             print('snippet:')
             print(str(srcSnippet))
             self.printers(b, tpe, srcSnippet)

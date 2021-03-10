@@ -5,15 +5,12 @@ from gio.iterators.TrackingIterator import FileIteratorTracking
 from gio.reporters.Sources import FileSource
 from gio.reporters.ReporterStreamConsole import ReporterStreamConsole
 from gio.LexerBase import LexerBase
-from gio.exceptions import LexicalError
+from gio.exceptions import GIOLexicalError
 
 
-# python3 -m unittest test
-#python3 -m unittest test/test_token_iterator.py
-#python3 -m unittest test.TestTokenIterator
-#python3 -m unittest test.test_toke_iterator
 
-class TestTokenIterator(unittest.TestCase):
+#python3 -m unittest gio,test.test_lexer_base
+class TestLexerBase(unittest.TestCase):
     def setUp(self):
         fp = 'gio/test/test_doc_tracker'
         self.it = FileIteratorTracking(fp)
@@ -26,7 +23,7 @@ class TestTokenIterator(unittest.TestCase):
         self.assertEqual(off, 0)
 
     def test_error_print(self):
-        with self.assertRaises(LexicalError):
+        with self.assertRaises(GIOLexicalError):
             self.tkIt.error("Ouch!")
         #self.assertEqual(self.rp.errorCount, 1)
 
@@ -46,7 +43,7 @@ class TestTokenIterator(unittest.TestCase):
         self.tkIt.skipWhitespace()
         self.tkIt.stashOffsets()
         self.tkIt._loadUntil(32)
-        with self.assertRaises(LexicalError):
+        with self.assertRaises(GIOLexicalError):
             self.tkIt.error("Again! With '" + self.tkIt.textOf() + "'")
 
     def test_next(self):

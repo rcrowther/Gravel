@@ -59,7 +59,7 @@ Good question. If you asked, this language is probably not for you.
 
 The author wanted a base for other projects. It's good for that. And the reduced lexicon and syntax make auto-generation of Rubble code easy.
 
-Rubble is also fun for trying and working with assebly language. Rubble will let you access machine code directly. That is, without importing a libray, using weird datatypes or intermediate languages, and drinking only water for a day,
+Rubble is fun for trying and working with assembly language. Rubble will let you access machine code directly. That is, without importing a library, using weird datatypes and intermediate languages, and drinking only water for a day,
 
 
 func('@load-rax')
@@ -68,7 +68,10 @@ raw('mov rax, 99')
 frameEnd()
 endFunc()
 
+Since Rubble aims at predicatable code, you can usually guess what Ribble is doing in the surrounding instructions, so it is simple to insert a few known assembly instructions.
 
+== Why not write in assembly?
+Don't forget, writing in assembly is not the only reason for using Rubble. Perhaps not the main reason. But let's say you want to. Rubble is like any language, sometimeds it's neater, sometimes it's not.
 
 ==  Why not implement in LLVM?
 Most people would be better with LLVM. But LLVM does not support the stated aims of Rubble. LLVM is layered, pipelined, flexible and written in C++. So it is not plain. LLVM is packed with optimisations, so is not predictable.
