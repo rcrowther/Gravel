@@ -10,11 +10,7 @@ import Tokens
 
 
 
-# python3 -m unittest test
-#python3 -m unittest test/test_token_iterator.py
-#python3 -m unittest test.TestTokenIterator
-#python3 -m unittest test.test_toke_iterator
-
+#python3 -m unittest test.test_lexer
 class TestLexer(unittest.TestCase):
     def setUp(self):
         self.fp = 'test/test_doc_rubble'
@@ -30,7 +26,7 @@ class TestLexer(unittest.TestCase):
         i = 0
         for tok in self.tkIt:
             i += 1
-        self.assertEqual(i, 58)
+        self.assertEqual(i, 60)
         
     def test_tok_start(self):
         tkIt = Lexer(FileSource(self.fp), self.it, self.reporter)

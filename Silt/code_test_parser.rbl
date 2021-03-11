@@ -1,8 +1,8 @@
 ## A parser
 #
 
-ROStringDefine(@ro1 ""In a Silent Way")
-#RODefine(@ro1 99 Bit32)
+#ROStringDefine(@ro1 ""In a Silent Way")
+RODefine(@ro2 79 Bit32)
 
 func(@adder)
     frame()
@@ -14,7 +14,7 @@ func(@adder)
 
 func(@looper)
     frame()
-    stackAllocBytes(@loalVars 1)
+    stackAllocBytes(@loalVars 2)
     #regDefine(counter, 'rcx' 9)
     #while(GT(counter 0))
         #dec(counter)
@@ -26,7 +26,11 @@ funcMain()
     #comment('gettin funky')
     frame()
 
-
+#--
+    #println(ro1)
+#--
+    #println(ro2)
+#--
     #heapAllocBytes(@heap1 8)
 #--
     #heapAlloc(@heap2 Bit64)
@@ -36,12 +40,16 @@ funcMain()
     #regDefine(@reg1 'rbx' 777 Bit64)
     #println(reg1)
 #--
+    #?
     #stackAllocBytes(@stk1 8)
-    #println(reg1)
+    #set(heap2 999)
+    #println(stk1)
+#--
+    #stackAlloc(@stk2 2 Bit64)
+    #set(stk2 979)
+    #println(stk2)
 #--
     stackAlloc(@stk2 1 Bit64)
-    set(stk2 999)
-    println(stk2)
 #--
     #heapAlloc(@heap2 Array(Bit64, 8))
     #stackAlloc(@stk2 Array(Bit64, 8))

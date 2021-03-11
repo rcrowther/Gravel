@@ -57,12 +57,13 @@ class SyntaxerBase:
         Full source, position and token detail
         '''
         pos = Position(self.it.tokenLineCount, self.it.tokenStartOffset)
-        msgKlass = Message.withPos(msg, self.src, pos, self.src.lineByIndex(self.it.tokenLineCount))
-        tokenTxt = self.it.textOf()
-        if (tokenTxt):
-            msgKlass.details = ["token text : '{}'".format(tokenTxt)]
-        self.reporter.error(msgKlass)
-        raise GIOSyntaxError() 
+        self.errorWithPos(pos, msg)
+        # msgKlass = Message.withPos(msg, self.src, pos, self.src.lineByIndex(self.it.tokenLineCount))
+        # tokenTxt = self.it.textOf()
+        # if (tokenTxt):
+            # msgKlass.details = ["token text : '{}'".format(tokenTxt)]
+        # self.reporter.error(msgKlass)
+        # raise GIOSyntaxError() 
         
     def expectedTokenError(self, ruleName, tok):
          self.error("In rule '{}' expected token '{}' but found '{}'".format(
@@ -78,17 +79,28 @@ class SyntaxerBase:
              self.tokenToString[self.tok]
         ))                       
 
+    def warningWithPos(self, pos, msg):
+        '''
+        Warning message with explicit position.
+        Full source, position and token detail.
+        Sometimes it may be preferable to hold on to a pos, to report 
+        back after later parsing. This is slightly less convenient. Use
+        error() to report on the current pos.
+        '''
+        msgKlass = Message.withPos(msg, self.src, pos, self.src.lineByIndex(self.it.tokenLineCount))
+        tokenTxt = self.it.textOf()
+        if (tokenTxt):
+            msgKlass.details = ["token text : '{}'".format(tokenTxt)]
+        self.reporter.warning(msgKlass)
+        
     def warning(self, msg):
         '''
         Warning message.
         Full source, position and token detail
         '''
         pos = Position(self.it.tokenLineCount, self.it.tokenStartOffset)
-        msgKlass = Message.withPos(msg, self.src, pos, self.src.lineByIndex(self.it.tokenLineCount))
-        tokenTxt = self.it.textOf()
-        if (tokenTxt):
-            msgKlass.details = ["token text : '{}'".format(tokenTxt)]
-        self.reporter.warning(msgKlass)
+        self.warningWithPos(self, pos, msg)
+
 
     def info(self, msg):
         '''

@@ -9,7 +9,7 @@ from gio.reporters.Sources import FileSource
 from gio.iterators.TrackingIterator import FileIteratorTracking
 from tpl_style import *
 import nasmFrames
-from gio.exceptions import GIOLexicalError, GIOSynatxError
+from gio.exceptions import GIOLexicalError, GIOSyntaxError
 # SyntaxError
 
 
@@ -32,7 +32,7 @@ def main():
     # parse input and get builder
     try:
         compiler.parse(lxr)
-    except (GIOLexicalError, GIOSynatxError):
+    except (GIOLexicalError, GIOSyntaxError):
         print('not done')
         sys.exit(1)
     #compiler.parse(lxr)

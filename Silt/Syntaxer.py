@@ -6,6 +6,8 @@ from tpl_types import typeNameSingularToType, typeNameContainerToType
 from gio.SyntaxerBase import SyntaxerBase
 from library.encodings import Codepoints
 
+
+## Custom argument Types
 class ArgFunc:
     def __init__(self, name, args):
         self.name = name
@@ -16,6 +18,8 @@ class ArgFunc:
             self.name,
             self.args
         )
+
+
 
 class ProtoSymbol():
     def __init__(self, name):
@@ -29,6 +33,8 @@ class ProtoSymbol():
     def toString(self):
         return self.name[1:]
         
+        
+        
 class BooleanOp(ArgFunc):
     def __repr__(self):
         return "BooleanOp(name:'{}',  args:{})".format(
@@ -36,6 +42,7 @@ class BooleanOp(ArgFunc):
             self.args
         )    
 
+        
         
 class Syntaxer(SyntaxerBase):
     '''
@@ -46,6 +53,7 @@ class Syntaxer(SyntaxerBase):
     tokens to an appropriate type i.e. numbers become numeric 
     constructs.  
     '''
+    tokenToString = tokenToString
 
        
     def commentCB(self, text):

@@ -1,10 +1,17 @@
 import architecture
 from tpl_address_builder import AddressBuilder
+from tpl_either import *
 
 
 #! problems here
 #- Arch is all through them
 # - Everything is arch ependant, though x64/x32 will share most the same code
+
+# We need here, too
+arch = architecture.architectureSolve(architecture.x64)
+
+
+
 
 
 #! These could include relaitve address tragets to, but look at other 
@@ -90,7 +97,7 @@ class LocationRootX64():
     def __repr__(self):
         return "{}(lid: '{}')".format(self.__class__.__name__, self.lid)
         
-    def __str__(self):
+    def _b_str__(self):
         return str(self.lid)
 
 
@@ -104,7 +111,7 @@ class RODataX64(LocationRootX64):
     can be awkward for types deeper than one level.
     '''
     def __init__(self, label):
-        assert self._validInitialLID(label)
+        #assert self._validInitialLID(label)
         super().__init__(label)
 
     def _validInitialLID(self, lid):
@@ -149,8 +156,29 @@ class RODataX64(LocationRootX64):
         b += 'lea {}, [{}]'.format(targetRegisterName, self.value())              
         return RegisterX64(targetRegisterName) 
 
+def _validInitialLabel(lid):
+    msg = ''
+    status = NO_MESSAGE
+    if (not (type(lid) == str)):
+        msg = 'LocationRootRODataX64: Parameter must be class "str". arg: "{}"'.format(
+            lid
+        )
+        status = ERROR
+    if (lid in arch['registers']):
+        msg = 'LocationRootRODataX64: Label id must not be in registers. label: "{}" registers:"{}"'.format(
+            type(label),
+            ", ".join(registers)
+        )
+        status = ERROR
+    return (status, msg)
 
-
+def RODataX64Either(label):
+    data = _validInitialLabel(label)
+    loc = RODataX64(label)
+    return Either(data[0], data[1], loc)  
+    
+    
+    
 class RegisterX64(LocationRootX64):
     '''
     Presents data in a register.
@@ -159,7 +187,7 @@ class RegisterX64(LocationRootX64):
     This kind of storage can only represent numbers up to the bitWidth.
     '''
     def __init__(self, register):
-        assert self._validInitialLID(register)
+        #assert self._validInitialLID(register)
         super().__init__(register)    
 
     def _validInitialLID(self, lid):
@@ -198,8 +226,30 @@ class RegisterX64(LocationRootX64):
         else:
             b += 'mov {}, {}'.format(targetRegisterName, self.value())              
         return RegisterX64(targetRegisterName)        
-        
-        
+
+def _validInitialRegister(lid):
+    msg = ''
+    status = NO_MESSAGE
+    if (not (type(lid) == str)):
+        msg = 'LocationRootRegisterX64: Parameter must be class "str". arg: "{}"'.format(
+            lid
+        )
+        status = ERROR
+    if (not (lid in arch['registers'])):
+        msg ='LocationRootRegisterX64: Parameter must be in registers. arg: "{}", registers:"{}"'.format(
+            lid,
+            ", ".join(self.arch['registers'])
+        )
+        status = ERROR
+    return (status, msg)
+    
+def RegisterX64Either(register):
+    data = _validInitialRegister(register)
+    loc = RegisterX64(register)
+    return Either(data[0], data[1], loc)          
+    
+    
+    
         
 class RegisteredAddressX64(RegisterX64):
     '''
@@ -213,6 +263,11 @@ class RegisteredAddressX64(RegisterX64):
         
     def address(self):
         return self.lid         
+         
+def RegisteredAddressX64Either(register):
+    data = _validInitialRegister(register)
+    loc = RegisteredAddressX64(register)
+    return Either(data[0], data[1], loc)       
         
         
         
@@ -226,7 +281,7 @@ class StackX64(LocationRootX64):
     multiple loads).
     '''
     def __init__(self, index):
-        assert self._validInitialLID(index)
+        #assert self._validInitialLID(index)
         super().__init__(index)    
         self.stackByteSize = self.arch['bytesize']
 
@@ -250,6 +305,9 @@ class StackX64(LocationRootX64):
             # stack must be aligned to 16 bytes. So issue a warning. 
             raise TypeError("LocationRootStackX64: Slot has been set to a number not divisible by 2. Later calls will fail. lid: '{}'".format(
                 lid
+            ))
+            LocMessage("LocationRootStackX64: Slot has been set to a number not divisible by 2. Later calls will fail. lid: '{}'".format(
+                 lid
             ))
         return True
             
@@ -276,6 +334,41 @@ class StackX64(LocationRootX64):
         b += 'lea {}, {}'.format(targetRegisterName, self.address())              
         return LocationRootRegisterX64(targetRegisterName)
 
+def _validInitialStackSlot(lid):
+    msg = ''
+    status = NO_MESSAGE
+    if (not (type(lid) == int)):
+        msg = 'LocationRootStackX64: Parameter must be class "int". slot: "{}"'.format(
+            lid
+        )
+        status = ERROR
+    if (lid == 0):
+        msg = "LocationRootStackX64: Slot can not be 0 (stack pointers point to last itemm, slot zero holds a pointer to base ). slot: '{}'".format(
+            lid
+        )
+        status = ERROR
+    if (lid < 0):
+        msg = "LocationRootStackX64: Slot can not be negative. slot: '{}'".format(
+            lid
+        )
+        status = ERROR
+    if (lid & 1):
+        # i.e. not a lid divisable by 2
+        # In this architecture, lid ''slots' are eight bytes. But 
+        # stack must be aligned to 16 bytes. So issue a warning. 
+        msg = "LocationRootStackX64: Slot has been set to a number not divisible by 2. Any calls will fail. slot: '{}'".format(
+            lid
+        )
+        status = WARNING
+    return (status, msg)
+
+def StackX64Either(index):
+    data = _validInitialStackSlot(index)
+    loc = StackX64(index)
+    return Either(data[0], data[1], loc)
+
+
+
 class StackedAddressX64(LocationRootX64):
 
     def value(self):
@@ -288,7 +381,12 @@ class StackedAddressX64(LocationRootX64):
         b = AddressBuilder('rbp')
         b.addOffset(-(self.lid * self.stackByteSize))
         return b.result(True)
-        
+
+def StackedAddressX64Either(index):
+    data = _validInitialStackSlot(index)
+    loc = StackedAddressX64(index)
+    return Either(data[0], data[1], loc)
+            
 # def mkLocationRoot(rawLocation, arch):
     # l = None
     # if (rawLocation in arch['registers']):

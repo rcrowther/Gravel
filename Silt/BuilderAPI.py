@@ -12,8 +12,6 @@ from asm_db import TypesToASMAbv, TypesToASMName
 from Syntaxer import ProtoSymbol
 
 
-
-
 class BuilderAPI():
     '''
     A base for building code.
@@ -34,6 +32,13 @@ class BuilderAPI():
     # Anchor for a seperate API for printing 
     printers = None
 
+    # def error(self, msg):
+        # raise NotImplementedError('error not implemented on this API')
+    # def warning(self, msg):
+        # raise NotImplementedError('error not implemented on this API')
+    # def info(self, msg):
+        # raise NotImplementedError('error not implemented on this API')
+        
     '''
     Type signature of API funcs
     '''
@@ -296,20 +301,11 @@ class BuilderAPIX64(BuilderAPI):
 
 
     ## Allocs
-    def ROStringDefine(self, b, args):
+    def RODefine(self, b, args):
         '''
-        Define an ASCII string to a label
+        Define a numeruc string to a label
             protoSymbol, string
         '''
-        protoSymbolLabel = args[0].toString()
-        rodata = protoSymbolLabel + ': db "' + args[1] + '", 0'
-        b.rodataAdd(rodata)
-        return (
-            protoSymbolLabel, 
-            Var.ROX64(protoSymbolLabel, Type.StrASCII)
-        )
-
-    def RODefine(self, b, args):
         protoSymbolLabel = args[0].toString()
         data = args[1]
         tpe = args[2]
@@ -322,9 +318,23 @@ class BuilderAPIX64(BuilderAPI):
         b.rodataAdd(rodata)
         return (
             protoSymbolLabel, 
-            Var.ROX64(protoSymbolLabel, tpe)
+            #Var.ROX64(protoSymbolLabel, tpe)
+            Var.ROX64Either(protoSymbolLabel, tpe)
         )
-                
+
+    def ROStringDefine(self, b, args):
+        '''
+        Define a numeruc string to a label
+            protoSymbol, string
+        '''
+        protoSymbolLabel = args[0].toString()
+        string = args[1]
+        rodata = protoSymbolLabel + ': db "' + args[1] + '", 0'
+        b.rodataAdd(rodata)
+        return (
+            protoSymbolLabel, 
+            Var.ROX64(protoSymbolLabel, Type.StrASCII)
+        )                
    
 
     def regDefine(self, b, args):
@@ -343,7 +353,8 @@ class BuilderAPIX64(BuilderAPI):
         ))
         return (
             protoSymbolLabel, 
-            Var.RegX64(register, tpe)
+            #Var.RegX64(register, tpe)
+            Var.RegX64Either(register, tpe)
         )
                         
     def heapAllocBytes(self, b, args):
@@ -359,7 +370,8 @@ class BuilderAPIX64(BuilderAPI):
         #return LocRoot.RegisterX64(self.arch['returnRegister'])
         return (
             protoSymbolLabel, 
-            Var.RegX64(self.arch['returnRegister'], tpe)
+            #Var.RegX64(self.arch['returnRegister'], tpe)
+            Var.RegX64Either(self.arch['returnRegister'], tpe)
         ) 
         
     def heapAlloc(self, b, args):
@@ -376,7 +388,8 @@ class BuilderAPIX64(BuilderAPI):
         #return LocationRootRegisterX64(self.arch['returnRegister']) 
         return (
             protoSymbolLabel, 
-            Var.RegAddrX64(self.arch['returnRegister'], tpe)
+            #Var.RegAddrX64(self.arch['returnRegister'], tpe)
+            Var.RegAddrX64Either(self.arch['returnRegister'], tpe)
         ) 
 
     #! account for data types
@@ -392,7 +405,8 @@ class BuilderAPIX64(BuilderAPI):
         index = args[1]
         return (
             protoSymbolLabel, 
-            Var.StackX64(index, Type.StrASCII)
+            #Var.StackX64(index, Type.StrASCII)
+            Var.StackX64Either(index, Type.StrASCII)
         ) 
         
     #! bad thing here, we don't know where stack starts, so only works 
@@ -422,7 +436,8 @@ class BuilderAPIX64(BuilderAPI):
         )) 
         return (
             protoSymbolLabel, 
-            Var.StackX64(index, tpe)
+            #Var.StackX64(index, tpe)
+            Var.StackX64Either(index, tpe)
         ) 
                         
     # def stringHeapDefine(self, b, args):

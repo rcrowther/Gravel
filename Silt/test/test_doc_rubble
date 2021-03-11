@@ -1,5 +1,5 @@
 
-stringRODefine(@ro1 ""In a Silent Way")
+ROStringDefine(@ro1 ""In a Silent Way")
 
 func(@adder)
     frame()
@@ -11,7 +11,7 @@ func(@adder)
 
 func(@looper)
     frame()
-    stackAlloc(3)
+    stackAlloc(@stk1 2 Bit64)
     #regDefine(counter, 'rcx' 9)
     #while(GT(counter 0))
         #dec(counter)

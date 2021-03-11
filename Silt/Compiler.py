@@ -1,10 +1,12 @@
 from Syntaxer import Syntaxer
 from tpl_codeBuilder import Builder
-from exceptions import (
-    FuncError,
-    FuncWarning,
-    FuncInfo,
-)
+from tpl_either import *
+
+# from exceptions import (
+    # FuncError,
+    # FuncWarning,
+    # FuncInfo,
+# )
 
 #x
 class Env(dict):
@@ -24,6 +26,10 @@ class Compiler(Syntaxer):
         self.b = Builder()
         self.envStd = builderAPI
         self.funcNameToArgsType = builderAPI.funcNameToArgsType
+        #self.envStd.error  = self.error
+        #self.envStd.warning  = self.warning
+        #self.envStd.info  = self.info
+
         self.envFunc = {}
         self.envGlobal = {}
         self.closureData = []
@@ -83,7 +89,15 @@ class Compiler(Syntaxer):
                     args
                  )
                 self.errorWithPos(pos, msg)
-                
+
+    def eitherError(self, posArgs, either):
+        if (either.status == ERROR):
+            self.errorWithPos(posArgs, either.msg)
+        if (either.status == WARNING):
+            self.warningWithPos(posArgs, either.msg)
+        if (either.status == INFO):
+            self.info(either.msg)
+            
     def findIdentifier(self, pos, sym):
         if (sym in self.envStd):
             return self.envStd[sym]
@@ -121,53 +135,71 @@ class Compiler(Syntaxer):
         if name in self.funcNameToArgsType:
             self.argsCheck(posArgs, name, args, self.funcNameToArgsType[name])
                    
-        try:
-            #? Hefty, but how to dry? return from every func would cut stuff 
-            # down a little, but is obscure
-            if (self.envStd.mustPushData(name)):
-                self.closureData.append(func(self.b, args))                
-            elif (self.envStd.mustPopData(name)):
-                poppedData = self.closureData.pop()
-                func(self.b, poppedData, args)
-            elif (self.envStd.mustSetData(name)):
-                ret = func(self.b, args)                  
-                if(not(self.envStd.isGlobalData)):
-                    self.envFunc[ret[0]] = ret[1]
-                else:
-                    self.envGlobal[ret[0]] = ret[1]
-            #? Umm, this has gone unused because the Syntaxer has been 
-            # typing completed symbols
-            elif (self.envStd.mustGetData(name)):
-                #print(str(poppedData))
-                k = args.pop(0)
-                func(self.b, k, args)
+        #try:
+        #? Hefty, but how to dry? return from every func would cut stuff 
+        # down a little, but is obscure
+        if (self.envStd.mustPushData(name)):
+            self.closureData.append(func(self.b, args))                
+        elif (self.envStd.mustPopData(name)):
+            poppedData = self.closureData.pop()
+            func(self.b, poppedData, args)
+        elif (self.envStd.mustSetData(name)):
+            ret = func(self.b, args)        
+            print('.........got Eiyther')
+            print(str(ret))
+            label = ret[0]
+            varObj = ret[1]
+            if (isinstance(varObj, Either)):
+                print('.........got Eiyther')
+                # Print any message
+                self.eitherError(posArgs, varObj)
+                
+                # Salvage the object.
+                # If it was no good, code above would Except
+                # Why is this working when it has a new-style Var?
+                # probablly duck-typing
+                varObj = varObj.obj
+                
+            #? has not been used?
+            # Used RO on builder?
+            # Is needed, with main as the outer environment?          
+            if(not(self.envStd.isGlobalData)):
+                self.envFunc[label] = varObj
             else:
-                # Wow--now can do a simple call 
-                func(self.b, args)
+                self.envGlobal[label] = varObj
+        #? Umm, this has gone unused because the Syntaxer has been 
+        # typing completed symbols
+        elif (self.envStd.mustGetData(name)):
+            #print(str(poppedData))
+            k = args.pop(0)
+            func(self.b, k, args)
+        else:
+            # Wow--now can do a simple call 
+            func(self.b, args)
         # Execution of a func can produce many errors and warnings
         # These arrors are not basic lexer or syntax, they are of
         # code integrity. 
         # The code throws rather than passing the reporter funcs
         # in, to keep function code uncluttered.
         # The warning and info throws are not raised.
-        except FuncError as e:
-            self.errorWithPos(pos, e.args[0])            
-            # errors currently halt the compiler
-            raise e
-        except FuncWarning:
-                        msg = "Too many args. symbol:'{}', expected:{}, args:{}".format(
-                 name,                 
-                 self.stringTypeNamesMk(argsTypes),
-                 args
-                 )
-            self.warningWithPos(pos, msg)
-        except FuncInfo:
-                        msg = "Too many args. symbol:'{}', expected:{}, args:{}".format(
-                 name,                 
-                 self.stringTypeNamesMk(argsTypes),
-                 args
-                 )
-            self.infoWithPos(pos, msg)
+        # except FuncError as e:
+            # self.errorWithPos(pos, e.args[0])            
+            # # errors currently halt the compiler
+            # raise e
+        # except FuncWarning:
+                # msg = "Too many args. symbol:'{}', expected:{}, args:{}".format(
+                 # name,                 
+                 # self.stringTypeNamesMk(argsTypes),
+                 # args
+                 # )
+            # self.warningWithPos(pos, msg)
+        # except FuncInfo:
+                        # msg = "Too many args. symbol:'{}', expected:{}, args:{}".format(
+                 # name,                 
+                 # self.stringTypeNamesMk(argsTypes),
+                 # args
+                 # )
+            # self.infoWithPos(pos, msg)
         #! Since args are enow checked, these errors are now code errors
         #! allow to rise?
         # except TypeError:
