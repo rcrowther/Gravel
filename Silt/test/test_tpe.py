@@ -4,7 +4,7 @@ import unittest
 from tpl_types import *
 
 
-class TestTypesSize(unittest.TestCase):
+class TestSize(unittest.TestCase):
 
     def test_pointer(self):
         ptr = Pointer([Bit64])
@@ -28,7 +28,7 @@ class TestTypesSize(unittest.TestCase):
         
         
         
-class TestTypeContainersForBytesize(unittest.TestCase):
+class TestContainersBytesize(unittest.TestCase):
 
     def test_pointer(self):
         ptr = Pointer([Bit64])
@@ -56,81 +56,88 @@ class TestTypeContainersForBytesize(unittest.TestCase):
 
 
         
-class TestTypesElemOffset(unittest.TestCase):
-    # test last element, most prone to error
+class TestElemOffsetTypePair(unittest.TestCase):
+    # # test last element, most prone to error
     
     def test_array(self):
         tpe = Array([Bit64, 3])
-        self.assertEqual(tpe.offset(2), 16)
+        self.assertEqual(tpe.offsetTypePair(2), (16, Bit64))
 
     def test_array_labeled(self):
         tpe = ArrayLabeled([Bit64, 'x', 'y', 'z'])
-        self.assertEqual(tpe.offset('z'), 16)
+        self.assertEqual(tpe.offsetTypePair('z'), (16, Bit64))
 
     def test_clutch(self):
         tpe = Clutch([Bit32, Bit64])
-        self.assertEqual(tpe.offset(1), 4)  
+        self.assertEqual(tpe.offsetTypePair(1), (4, Bit64))  
 
     def test_clutch_labeled(self):
         tpe = ClutchLabeled(['x', Bit32, 'y', Bit32, 'size', Bit8, 'color', Bit64])       
-        self.assertEqual(tpe.offset('color'), 9)
+        self.assertEqual(tpe.offsetTypePair('color'), (9, Bit64))
 
     def test_clutch_in_array(self):
-        tpe = Array([Clutch([Bit32, Bit64]), 7])
-        self.assertEqual(tpe.offset(6), 72)
+        innerType = Clutch([Bit32, Bit64])
+        tpe = Array([innerType, 7])
+        self.assertEqual(tpe.offsetTypePair(6), (72, innerType))
 
 
-
-class TestOffsetDeep(unittest.TestCase):
-    # test last element, most prone to error
-    def setUp(self):
-        innerTpe = ClutchLabeled(['x', Bit32, 'y', Bit32, 'size', Bit8, 'color', Bit64]) 
-        self.tpe = Array([innerTpe, 7])
-                
-    def test_clutch_in_array(self):
-        innerTpe = ClutchLabeled(['x', Bit32, 'y', Bit32, 'size', Bit8, 'color', Bit64]) 
-        tpe = Array([innerTpe, 7])
-        offset = tpe.offsetDeep([6, 'color'])
-        self.assertEqual(111, offset) 
-
-    def test_long_path_error(self):
-        with self.assertRaises(TypePathError):
-            self.tpe.offsetDeep([6, 'color', 9])
-
-    def test_labeled_path_elementt_error(self):
-        with self.assertRaises(TypePathError):
-            self.tpe.offsetDeep(['6', 'color'])
-
-    def test_unlabeled_path_elementt_error(self):
-        with self.assertRaises(TypePathError):
-            self.tpe.offsetDeep([6, 4])                        
                         
-                        
-                        
-class TestTypesElemType(unittest.TestCase):
-    # test last element, most prone to error
+class TestOffsetIters(unittest.TestCase):
+    # # test last element, most prone to error
     
     def test_array(self):
-        tpe = Array([Bit64, 3])
-        self.assertEqual(tpe.elemType(2), Bit64)
+        tpe = Array([Bit64, 2])
+        o = [e for e in tpe.offsetIt()]
+        self.assertEqual(o, [(0, Bit64), (8, Bit64)])
 
     def test_array_labeled(self):
         tpe = ArrayLabeled([Bit64, 'x', 'y', 'z'])
-        self.assertEqual(tpe.elemType('z'), Bit64)
+        o = [e for e in tpe.offsetIt()]
+        self.assertEqual(o, [(0, Bit64), (8, Bit64), (16, Bit64)])
 
     def test_clutch(self):
         tpe = Clutch([Bit32, Bit64])
-        self.assertEqual(tpe.elemType(1), Bit64)  
+        o = [e for e in tpe.offsetIt()]
+        self.assertEqual(o, [(0, Bit32), (4, Bit64)])  
 
     def test_clutch_labeled(self):
-        tpe = ClutchLabeled(['x', Bit32, 'y', Bit32, 'size', Bit8, 'color', Bit64])       
-        self.assertEqual(tpe.elemType('color'), Bit64)
+        tpe = ClutchLabeled(['size', Bit8, 'color', Bit64])       
+        o = [e for e in tpe.offsetIt()]
+        self.assertEqual(o, [(0, Bit8), (1, Bit64)])
 
     def test_clutch_in_array(self):
         innerTpe = Clutch([Bit32, Bit64])
-        tpe = Array([innerTpe, 7])
-        self.assertEqual(tpe.elemType(6), innerTpe)
+        tpe = Array([innerTpe, 2])
+        o = [e for e in tpe.offsetIt()]
+        self.assertEqual(o, [(0, innerTpe), (12, innerTpe)])
         
+
+# class TestOffsetDeep(unittest.TestCase):
+    # # test last element, most prone to error
+    # def setUp(self):
+        # innerTpe = ClutchLabeled(['x', Bit32, 'y', Bit32, 'size', Bit8, 'color', Bit64]) 
+        # self.tpe = Array([innerTpe, 7])
+                
+    # def test_clutch_in_array(self):
+        # innerTpe = ClutchLabeled(['x', Bit32, 'y', Bit32, 'size', Bit8, 'color', Bit64]) 
+        # tpe = Array([innerTpe, 7])
+        # offset = tpe.offsetDeep([6, 'color'])
+        # self.assertEqual(111, offset) 
+
+    # def test_long_path_error(self):
+        # with self.assertRaises(TypePathError):
+            # self.tpe.offsetDeep([6, 'color', 9])
+
+    # def test_labeled_path_elementt_error(self):
+        # with self.assertRaises(TypePathError):
+            # self.tpe.offsetDeep(['6', 'color'])
+
+    # def test_unlabeled_path_elementt_error(self):
+        # with self.assertRaises(TypePathError):
+            # self.tpe.offsetDeep([6, 4])                        
+                        
+                        
+
 
         
         

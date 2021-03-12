@@ -1,5 +1,8 @@
 import math
 from exceptions import TypePathError
+from collections import OrderedDict
+from tpl_offset_iterators import OffsetIteratorIndexedGenerator
+
 
 
 '''
@@ -74,6 +77,12 @@ class Type():
     return
         the bytesize. If the bytesize is varible then None.
     '''
+    #NB this used to contain extensive type analysis code. for example,
+    # children(), depth() etc. However, that kind of self-knowledge
+    # has been abandonded for ad-hoc tests outside the type classes
+    # themselves. Ad-hoc the tests may be, but they are better informed
+    # about surrounding possibilities, such as relative address 
+    # construction, than the types alone can be.
     byteSize = None
 
     
@@ -134,101 +143,101 @@ class Type():
     # repetition. The question is, is this data usable 
     # cross-architecture for example, for relative address detection?
     #! may abandon this for something else
-    def children(self, offsetIndexAndLabels):
-        '''
-        List the children/contained types.
-        Includes the initial type (self).
-        offsetIndextAndLabels
-            [] of indexes and labels for arrays and clutches. Only 
-            labels are used, to trace down types parented/contained in a
-            clutch.
-        return
-            A list of the types. Since they types are pointer to the 
-            type, the first outer type will contain all the contained 
-            types, the next will include all the types it contains, etc. 
-            The types are in order out..in.
-        '''
-        typeMem = []
-        tpe = self
-        olIdx = 0
-        while(tpe):
-            if (not isinstance(tpe, TypeContainerOffset)):
-                typeMem.append(tpe)
-                tpe = tpe.elementType
-            else:
-                if (olIdx >= len(offsetIndexAndLabels)):
-                    raise ValueError('Not enough data in path. tpe:{}, offsetIndexAndLabels:{}'.format(
-                        tpe,
-                        offsetIndexAndLabels
-                    ))
-                offsetOrLabel = offsetIndexAndLabels[olIdx]
-                olIdx += 1
-                if (isinstance(tpe, Array)):
-                    typeMem.append(tpe)
-                    tpe = tpe.elementType
-                elif (isinstance(tpe, Clutch)):
-                    typeMem.append(tpe)
-                    if (not (offsetOrLabel in tpe.elementType)):
-                        raise ValueError('Given label not in Clutch. label:"{}", clutch:{}'.format(
-                            offsetOrLabel,
-                            tpe
-                        ))
-                    tpe = tpe.elementType[offsetOrLabel]
-        #print('typeMem')
-        #print(str(typeMem))
-        return typeMem
+    # def children(self, offsetIndexAndLabels):
+        # '''
+        # List the children/contained types.
+        # Includes the initial type (self).
+        # offsetIndextAndLabels
+            # [] of indexes and labels for arrays and clutches. Only 
+            # labels are used, to trace down types parented/contained in a
+            # clutch.
+        # return
+            # A list of the types. Since they types are pointer to the 
+            # type, the first outer type will contain all the contained 
+            # types, the next will include all the types it contains, etc. 
+            # The types are in order out..in.
+        # '''
+        # typeMem = []
+        # tpe = self
+        # olIdx = 0
+        # while(tpe):
+            # if (not isinstance(tpe, TypeContainerOffset)):
+                # typeMem.append(tpe)
+                # tpe = tpe.elementType
+            # else:
+                # if (olIdx >= len(offsetIndexAndLabels)):
+                    # raise ValueError('Not enough data in path. tpe:{}, offsetIndexAndLabels:{}'.format(
+                        # tpe,
+                        # offsetIndexAndLabels
+                    # ))
+                # offsetOrLabel = offsetIndexAndLabels[olIdx]
+                # olIdx += 1
+                # if (isinstance(tpe, Array)):
+                    # typeMem.append(tpe)
+                    # tpe = tpe.elementType
+                # elif (isinstance(tpe, Clutch)):
+                    # typeMem.append(tpe)
+                    # if (not (offsetOrLabel in tpe.elementType)):
+                        # raise ValueError('Given label not in Clutch. label:"{}", clutch:{}'.format(
+                            # offsetOrLabel,
+                            # tpe
+                        # ))
+                    # tpe = tpe.elementType[offsetOrLabel]
+        # #print('typeMem')
+        # #print(str(typeMem))
+        # return typeMem
                     
 
-    def typePath(self, offsetIndexAndLabels):
-        '''
-        List the children/contained types.
-        Includes the initial type (self).
-        offsetIndextAndLabels
-            [] of indexes and labels for arrays and clutches. Only 
-            labels are used, to trace down types parented/contained in a
-            clutch.
-        return
-            A list of the types. Since they types are pointer to the 
-            type, the first outer type will contain all the contained 
-            types, the next will include all the types it contains, etc. 
-            The types are in order out..in.
-        '''
-        typeMem = []
-        tpe = self
-        olIdx = 0
-        while(tpe):
-            if (not isinstance(tpe, TypeContainerOffset)):
-                typeMem.append(TypepathItem(tpe, None))
-                tpe = tpe.elementType
-            else:
-                if (olIdx >= len(offsetIndexAndLabels)):
-                    raise ValueError('Not enough data in path. tpe:{}, offsetIndexAndLabels:{}'.format(
-                        tpe,
-                        offsetIndexAndLabels
-                    ))
-                offsetOrLabel = offsetIndexAndLabels[olIdx]
-                olIdx += 1
-                typeMem.append(TypepathItem(tpe, offsetOrLabel))
-                if (isinstance(tpe, Array)):
-                    tpe = tpe.elementType
-                elif (isinstance(tpe, Clutch)):
-                    if (not (offsetOrLabel in tpe.elementType)):
-                        raise ValueError('Given label not in Clutch. label:"{}", clutch:{}'.format(
-                            offsetOrLabel,
-                            tpe
-                        ))
-                    tpe = tpe.elementType[offsetOrLabel]
-        #print('typeMem')
-        #print(str(typeMem))
-        return typeMem
+    # def typePath(self, offsetIndexAndLabels):
+        # '''
+        # List the children/contained types.
+        # Includes the initial type (self).
+        # offsetIndextAndLabels
+            # [] of indexes and labels for arrays and clutches. Only 
+            # labels are used, to trace down types parented/contained in a
+            # clutch.
+        # return
+            # A list of the types. Since they types are pointer to the 
+            # type, the first outer type will contain all the contained 
+            # types, the next will include all the types it contains, etc. 
+            # The types are in order out..in.
+        # '''
+        # typeMem = []
+        # tpe = self
+        # olIdx = 0
+        # while(tpe):
+            # if (not isinstance(tpe, TypeContainerOffset)):
+                # typeMem.append(TypepathItem(tpe, None))
+                # tpe = tpe.elementType
+            # else:
+                # if (olIdx >= len(offsetIndexAndLabels)):
+                    # raise ValueError('Not enough data in path. tpe:{}, offsetIndexAndLabels:{}'.format(
+                        # tpe,
+                        # offsetIndexAndLabels
+                    # ))
+                # offsetOrLabel = offsetIndexAndLabels[olIdx]
+                # olIdx += 1
+                # typeMem.append(TypepathItem(tpe, offsetOrLabel))
+                # if (isinstance(tpe, Array)):
+                    # tpe = tpe.elementType
+                # elif (isinstance(tpe, Clutch)):
+                    # if (not (offsetOrLabel in tpe.elementType)):
+                        # raise ValueError('Given label not in Clutch. label:"{}", clutch:{}'.format(
+                            # offsetOrLabel,
+                            # tpe
+                        # ))
+                    # tpe = tpe.elementType[offsetOrLabel]
+        # #print('typeMem')
+        # #print(str(typeMem))
+        # return typeMem
 
-    def typeDepth(self):
-        '''
-        Return the depth of this type i,e, number of subtypes
-        When this function encounters a clutch, it chooses the maximum
-        depth from the available types.
-        '''
-        raise NotImplementedError('This type has no typeDepth implementation');
+    # def typeDepth(self):
+        # '''
+        # Return the depth of this type i,e, number of subtypes
+        # When this function encounters a clutch, it chooses the maximum
+        # depth from the available types.
+        # '''
+        # raise NotImplementedError('This type has no typeDepth implementation');
         
     def __repr__(self):
         raise NotImplementedError('This type has no __repr__ representation');
@@ -236,14 +245,15 @@ class Type():
 
 
 class TypeSingular(Type):
+    pass
     #def foreach(self, f):
     #    f(self)
     
     #def list(self):
     #    return [self]
         
-    def typeDepth(self):
-        return 1
+    # def typeDepth(self):
+        # return 1
         
 # char
 class _Bit8(TypeSingular):
@@ -363,11 +373,11 @@ class TypeContainer(Type):
         #return self.canEqual(other) and self.elementType.equals(other)
         return (type(self) == type(other)) and self.elementType.equals(other.elementType)
         
-    def containsTypeSingular(self):
-        '''
-        Are all child types TypeSingular?
-        '''
-        raise NotImplementedError('This type has no __repr__ representation')
+    # def containsTypeSingular(self):
+        # '''
+        # Are all child types TypeSingular?
+        # '''
+        # raise NotImplementedError('This type has no __repr__ representation')
         
     # def countTypesOffset(self):
         # i = 0
@@ -418,18 +428,18 @@ class Pointer(TypeContainer):
         return self.elementType
         
         
-    def containsTypeSingular(self):
-        return isinstance(self.elementType, TypeSingular)            
+    # def containsTypeSingular(self):
+        # return isinstance(self.elementType, TypeSingular)            
                             
-    def typeDepth(self):
-        return self.elementType.typeDepth() + 1
+    # def typeDepth(self):
+        # return self.elementType.typeDepth() + 1
         
 
 class TypeContainerOffset(TypeContainer):
     #? Consider generalising offset methods through all types.
     #? Should they be NotImplemented (means a catch), or return zero 
     # (spurious code)?
-    def offset(self, lid):
+    def offsetTypePair(self, lid):
         '''
         Get the offet of a contained element
         Only works on the top level type.
@@ -438,45 +448,54 @@ class TypeContainerOffset(TypeContainer):
         '''
         raise NotImplementedError()
 
-    def _typeIsContainer(self, tpe, path):
-            print(str(tpe))
-            if (not isinstance(tpe, TypeContainer)):
-                raise TypePathError('Path accesses type element which is not a container. type:{}, path:{}'.format(
-                    tpe,
-                    path
-                ))
-            return True
-                
-    def _pathElementTypeMatch(self, tpe, lid, path):
-            if (tpe.isLabeled):
-                if (type(lid)!= str):
-                    raise TypePathError('Path element for labeled type is not str. type:{}, path:{}'.format(
-                        tpe,
-                        path
-                    ))  
-            else:
-                if (type(lid)!= int):
-                    raise TypePathError('Path element for unlabeled type is not int. type:{}, path:{}'.format(
-                        tpe,
-                        path
-                    ))           
-            return True
+    def offsetIt(self):
+        '''
+        Iterate the offets of contained elements
+        Only works on the top level type.
+        lid
+            a locating value (either int or label)
+        '''
+        raise NotImplementedError()
         
-    def offsetDeep(self, path):
-        '''
-        Use a path to get the offet of a contained element
-        Can work into a type tree. See offset.
-        path
-            [locationValue1,  locationValue2, ...]
-        '''
-        currTpe = self
-        offset = 0
-        for lid in path:
-            assert self._typeIsContainer(currTpe, path)
-            assert self._pathElementTypeMatch(currTpe, lid, path)
-            offset += currTpe.offset(lid)
-            currTpe = currTpe.elemType(lid)
-        return offset
+    # def _typeIsContainer(self, tpe, path):
+            # print(str(tpe))
+            # if (not isinstance(tpe, TypeContainer)):
+                # raise TypePathError('Path accesses type element which is not a container. type:{}, path:{}'.format(
+                    # tpe,
+                    # path
+                # ))
+            # return True
+                
+    # def _pathElementTypeMatch(self, tpe, lid, path):
+            # if (tpe.isLabeled):
+                # if (type(lid)!= str):
+                    # raise TypePathError('Path element for labeled type is not str. type:{}, path:{}'.format(
+                        # tpe,
+                        # path
+                    # ))  
+            # else:
+                # if (type(lid)!= int):
+                    # raise TypePathError('Path element for unlabeled type is not int. type:{}, path:{}'.format(
+                        # tpe,
+                        # path
+                    # ))           
+            # return True
+        
+    # def offsetDeep(self, path):
+        # '''
+        # Use a path to get the offet of a contained element
+        # Can work into a type tree. See offset.
+        # path
+            # [locationValue1,  locationValue2, ...]
+        # '''
+        # currTpe = self
+        # offset = 0
+        # for lid in path:
+            # assert self._typeIsContainer(currTpe, path)
+            # assert self._pathElementTypeMatch(currTpe, lid, path)
+            # offset += currTpe.offset(lid)
+            # currTpe = currTpe.elemType(lid)
+        # return offset
         
         
 class Array(TypeContainerOffset):
@@ -497,23 +516,29 @@ class Array(TypeContainerOffset):
         self.size = args[1]
         self.byteSize =  elementType.byteSize * self.size
 
-    def elemType(self, lid):
-        return self.elementType
+    #def elemType(self, lid):
+    #    return self.elementType
                 
-    def offset(self, lid):
+    def offsetTypePair(self, lid):
         '''
         Get the offset of a contained element
         lid
             an integer
         '''
         #? Humm. Could precalculate these...
-        return self.elementType.byteSize * lid
-                
-    def containsTypeSingular(self):
-        return isinstance(self.elementType, TypeSingular)
+        return (self.elementType.byteSize * lid, self.elementType,)
 
-    def typeDepth(self):
-        return self.elementType.typeDepth() + 1        
+    def offsetIt(self):
+        return OffsetIteratorIndexedGenerator(
+            self.size,
+            self.elementType,
+        )
+        
+    # def containsTypeSingular(self):
+        # return isinstance(self.elementType, TypeSingular)
+
+    # def typeDepth(self):
+        # return self.elementType.typeDepth() + 1        
 
 
 
@@ -533,26 +558,38 @@ class ArrayLabeled(TypeContainerOffset):
         assert isinstance(elementType, Type), 'ArrayLabeled: first arg not a Type. args: {}'.format(args)
         self.size = len(args)
         super().__init__(elementType)
-        # a cumulative list of byte index.
-        offsets = {}
-        elemByteSize = elementType.byteSize
-        i = 0
-        for label in args:
-            offsets[label] = i
-            i += elemByteSize
-        self.offsets = offsets
-        self.byteSize = i
-
-    def elemType(self, lid):
-        return self.elementType
         
-    def offset(self, lid):
+        # map(label, offset)
+        # and
+        # list(offset, type)
+        labelToPairMap = {}
+        offsetTypePairs = []
+        elemByteSize = elementType.byteSize
+        offsetSum = 0
+        for label in args:
+            pair = (offsetSum, self.elementType,)
+            labelToPairMap[label] = pair
+            offsetTypePairs.append(pair)
+            offsetSum += elemByteSize
+        self.labelToPairMap = labelToPairMap
+        self.offsetTypePairs = offsetTypePairs 
+        #self.offsets = offsetTypePairs        
+        self.byteSize = offsetSum
+
+    #def elemType(self, lid):
+    #    return self.elementType
+        
+    def offsetTypePair(self, lid):
         '''
         Get the offset of a contained element
         lid
             a label
         '''
-        return self.offsets[lid]        
+        return self.labelToPairMap[lid]        
+        
+    def offsetIt(self):
+        return iter(self.offsetTypePairs)
+        
         
         
         
@@ -567,41 +604,46 @@ class Clutch(TypeContainerOffset):
         A list of [type1, type2 ...}
     '''
     def __init__(self, args):
-        super().__init__(args)
-        self.size = len(args)
-        
         # a cumulative list of byte index.
-        offsets = []
-        i = 0
+        #offsets = []
+        offsetTypePairs = []
+        offsetSum = 0
         #? what if the type bytesize is None? That would be the case
         # for dynamic arrays...
         for tpe in args:
             assert isinstance(tpe, Type), 'Clutch: arg not a Type. args:{}, arg: {}'.format(args, tpe)
-            offsets.append(i)
-            i += tpe.byteSize
-        self.offsets = offsets
-        self.byteSize = i
-
-    def elemType(self, lid):
-        return self.elementType[lid]
+            #offsets.append(offsetSum)
+            offsetTypePairs.append((offsetSum, tpe,))
+            offsetSum += tpe.byteSize
+        #self.offsets = offsets
+        self.offsetTypePairs = offsetTypePairs 
+        self.byteSize = offsetSum
+        super().__init__(args)
+        self.size = len(args)
         
-    def offset(self, lid):
-        return self.offsets[lid]
+    #def elemType(self, lid):
+    #    return self.offsetTypePairs[lid][1]
+        
+    def offsetTypePair(self, lid):
+        return self.offsetTypePairs[lid]
+
+    def offsetIt(self):
+        return iter(self.offsetTypePairs)
         
     def subTypes(self):
         return self.elementType
 
-    def containsTypeSingular(self):
-        for tpe in self.subTypes():
-            if (not isinstance(tpe, TypeSingular)):
-                return False 
-        return True
+    # def containsTypeSingular(self):
+        # for tpe in self.subTypes():
+            # if (not isinstance(tpe, TypeSingular)):
+                # return False 
+        # return True
 
-    def typeDepth(self):
-        maxDepth = 0
-        for tpe in self.subTypes():
-            maxDepth = max(maxDepth, tpe.typeDepth())
-        return maxDepth + 1
+    # def typeDepth(self):
+        # maxDepth = 0
+        # for tpe in self.subTypes():
+            # maxDepth = max(maxDepth, tpe.typeDepth())
+        # return maxDepth + 1
         
         
                 
@@ -623,30 +665,36 @@ class ClutchLabeled(TypeContainerOffset):
                 args
             )
 
-        # Make a map of the args
-        elementType = {}
+        # map(label, offset)
+        # and
+        # list(offset, type)
+        labelToPairMap = {}
+        offsetTypePairs = []
+        offsetSum = 0
+        typeList = []
         for i in range(0, len(args), 2):
-            elementType[args[i]] = args[i + 1]
-        super().__init__(elementType)
-        self.size = len(elementType) 
-        
-        # a cumulative list of byte index.
-        offsets = {}
-        i = 0
-        #? what if the type bytesize is None? That would be the case
-        # for dynamic arrays...
-        for label,tpe in elementType.items():
+            label = args[i]
+            tpe = args[i + 1]
             assert isinstance(tpe, Type), 'ClutchLabeled: arg not a Type. args:{}, arg: {}'.format(args, tpe)
-            offsets[label] = i
-            i += tpe.byteSize
-        self.offsets = offsets
-        self.byteSize = i
+            pair = (offsetSum, tpe,)
+            labelToPairMap[label] = pair
+            offsetTypePairs.append(pair)            
+            typeList.append(tpe)
+            offsetSum += tpe.byteSize
+        self.labelToPairMap = labelToPairMap
+        self.offsetTypePairs = offsetTypePairs 
+        self.byteSize = offsetSum
+        super().__init__(typeList)
+        self.size = len(typeList)
 
-    def elemType(self, lid):
-        return self.elementType[lid]
+    #def elemType(self, lid):
+    #    return self.offsetTypePairs[lid][1]
         
-    def offset(self, lid):
-        return self.offsets[lid]
+    def offsetTypePair(self, lid):
+        return self.labelToPairMap[lid]        
+
+    def offsetIt(self):
+        return iter(self.offsetTypePairs)
 
     def subTypes(self):
         return self.elementType.values()
@@ -654,17 +702,17 @@ class ClutchLabeled(TypeContainerOffset):
     def labels(self):
         return self.elementType.keys()
 
-    def containsTypeSingular(self):
-        for tpe in self.subTypes():
-            if (not isinstance(tpe, TypeSingular)):
-                return False 
-        return True
+    # def containsTypeSingular(self):
+        # for tpe in self.subTypes():
+            # if (not isinstance(tpe, TypeSingular)):
+                # return False 
+        # return True
 
-    def typeDepth(self):
-        maxDepth = 0
-        for tpe in self.subTypes():
-            maxDepth = max(maxDepth, tpe.typeDepth())
-        return maxDepth + 1
+    # def typeDepth(self):
+        # maxDepth = 0
+        # for tpe in self.subTypes():
+            # maxDepth = max(maxDepth, tpe.typeDepth())
+        # return maxDepth + 1
 
 #x see also tpl_vars
 def accessSnippet(b, tpe, path):

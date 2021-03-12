@@ -514,8 +514,8 @@ class BuilderAPIX64(BuilderAPI):
         #? protection against rogue pids
         #? Could unroll, with only two elements max?
         for pid in path:
-            addrB.addOffset(tpe.offset(pid))
-            tpe = tpe.elementType
+            offset, tpe = tpe.offsetTypePair(pid)
+            addrB.addOffset(offset)
             if (not(isinstance(tpe, Type.TypeContainer))):
                 break
         return (addrB.result(True), tpe)
@@ -580,10 +580,9 @@ class BuilderAPIX64(BuilderAPI):
         '''
             [ProtoSymbol Var.Base],
         '''
-
         # Get the original var
         var = args[1]
-        #! if it's unrollable
+        #! if it's unrollable type
         # ???
         
         # Will need these bits of info
@@ -592,15 +591,20 @@ class BuilderAPIX64(BuilderAPI):
         
         # Choice of innervar register...
         #! tmp for now
-        register = 'rax'
+        register = 'rcx'
         
-        # Original var...
-
-        # ...then push that data
+        # Original var... then push that data
         self.compiler.closureData.append((protoSymbolLabel, register, var,)) 
                 
         # add a new environment
         #???
+        
+        # set the innervar on it
+        # Not going to work for clutches
+        varObj = Var.RegX64(register, var.tpe.elementType)
+        #! this is on envEverything
+        self.compiler.envFunc[protoSymbolLabel] = varObj
+
            
         # Set up the new builder
         b._code.append('; beginLoop')
@@ -623,21 +627,22 @@ class BuilderAPIX64(BuilderAPI):
         # previous builder
         b = self.compiler.b
 
-        # Dispose of the inner environment too (and rid of innervar)
-        # ???
-        
-        
-                #self.compiler.envFunc[protoSymbolLabel] = Var.RegX64Either(register, tpe)
 
         # get the data
         protoSymbolLabel, register, var = self.compiler.closureData.pop()
+        
+        # Dispose of the inner environment too (and rid of innervar)
+        # ???
+        del self.compiler.envFunc[protoSymbolLabel]
+        
+
         lid = var.loc.lid
         # build the unroll
-        ??? fix offsets good
-        for offset, tpe in var.tpe,offsets.items():
-            # b._code.append("mov {}, [{} + {}]".format(register, lid, offset))
+        #??? fix offsets good
+        for offset, tpe in var.tpe.offsetIt():
+            b._code.append("mov {}, [{} + {}]".format(register, lid, offset))
             # add the innercode
-            # b.addAll(innerCode)    
+            b.addAll(innerCode)    
         b._code.append('; endLoop')
         return MessageOptionNone
 

@@ -48,7 +48,7 @@ class OffsetIteratorMapCached(OffsetIterator):
 
 
 class OffsetIteratorListCached(OffsetIterator):
-    # For indexed Clutchs
+    # For indexed Clutchs 
     # cache should be List(type)
     def __init__(self, cache):
         self.it = iter(cache)

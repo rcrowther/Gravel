@@ -44,9 +44,9 @@ funcMain()
 #--
     heapAlloc(@heap3 Array(Bit64, 8))
     setPath(heap3 [2 'x'] 555)
-    forEach(@x heap3)
-    #println(heap3)
+    forEach(@elem heap3)
     raw('; ...contents...')
+    #println(elem)
     forEachEnd()
 #--
     #?
