@@ -272,7 +272,7 @@ class _Bit16(TypeSingular):
     #def print(self):
     #    pass
     def __repr__(self):
-        return "Bit8"
+        return "Bit16"
 Bit16 = _Bit16()
 
 # int
@@ -316,7 +316,7 @@ class _Bit32F(TypeSingular):
     #def print(self):
     #    pass
     def __repr__(self):
-        return "Bit8"
+        return "Bit32F"
 Bit32F = _Bit32F()
 
 # double
@@ -330,7 +330,7 @@ class _Bit64F(TypeSingular):
     #def print(self):
     #    pass
     def __repr__(self):
-        return "Bit8"
+        return "Bit64F"
 Bit64F = _Bit64F()
 
 #! ignoring long double (128ish)
@@ -340,7 +340,7 @@ class _StrASCII(TypeSingular):
     #def print(self):
     #    pass
     def __repr__(self):
-        return "Bit8"
+        return "StrASCII"
 StrASCII = _StrASCII() 
  
 class _StrUTF8(TypeSingular):
@@ -348,7 +348,7 @@ class _StrUTF8(TypeSingular):
     #def print(self):
     #    pass
     def __repr__(self):
-        return "Bit8"
+        return "StrUTF8"
 StrUTF8 = _StrUTF8() 
 
 

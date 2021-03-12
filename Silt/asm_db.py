@@ -1,5 +1,7 @@
 import tpl_types as Type
 
+
+
 # Strictly speaking, this is NASM database, but I belive it would be 
 # useful for MASM. Anyhow, I only intend to use NASM. Enough is enough, 
 # and no more.

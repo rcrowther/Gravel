@@ -1,8 +1,8 @@
 ## A parser
 #
 
-#ROStringDefine(@ro1 ""In a Silent Way")
-RODefine(@ro2 79 Bit32)
+ROStringDefine(@ro1 ""In a Silent Way")
+#RODefine(@ro2 79 Bit32)
 
 func(@adder)
     frame()
@@ -14,7 +14,7 @@ func(@adder)
 
 func(@looper)
     frame()
-    stackAllocBytes(@loalVars 2)
+    stackAllocBytes(@loalVars 0 2)
     #regDefine(counter, 'rcx' 9)
     #while(GT(counter 0))
         #dec(counter)
@@ -25,9 +25,13 @@ func(@looper)
 funcMain()
     #comment('gettin funky')
     frame()
+    # Not working due to path sacanning...
+    #registersPush('rbx', 'r2')
+    #registersVolatilePush()
+    #registersPop()
 
 #--
-    #println(ro1)
+    println(ro1)
 #--
     #println(ro2)
 #--
@@ -36,22 +40,23 @@ funcMain()
     #regDefine(@reg1 'rbx' 777 Bit64)
     #println(reg1)
 #--
+    #Isnt working because what ''type' is a length of bytes?
     #heapAllocBytes(@heap1 8)
 #--
     #heapAlloc(@heap2 Bit64)
     #set(heap2 799)
     #println(heap2)
 #--
-    heapAlloc(@heap3 Array(Bit64, 8))
-    setPath(heap3 [2 'x'] 555)
-    forEach(@elem heap3)
-    raw('; ...contents...')
+    #heapAlloc(@heap3 Array(Bit64, 8))
+    #setPath(heap3 [2 'x'] 555)
+    #forEach(@elem heap3)
+    #raw('; ...contents...')
     #println(elem)
-    forEachEnd()
+    #forEachEnd()
 #--
-    #?
-    #stackAllocBytes(@stk1 8)
-    #set(heap2 999)
+    #Isnt working because what ''type' is a length of bytes?
+    #stackAllocBytes(@stk1 8, 1)
+    #set(stk1 799)
     #println(stk1)
 #--
     #stackAlloc(@stk2 2 Bit64)

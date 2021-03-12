@@ -24,28 +24,28 @@ class BuilderAPI():
     the base. Subclasses will target an architecture.
     Mostly, it is functions that take a builder followed by a generic
     'args' parameter.
-    Some builder funcs return data. This is so 
-    compilers/interpreters recieve data to store in environments,
-    either for symbol registration or block closure. These functions 
-    must be registered in the (architecture-specific) functions
-    mustPushData, mmustSetData, isGlobalData etc.
+    Some builder funcs return data. Messages to  compilers/interpreters 
+    to adapt environments go through the 'compiler' attribute,
+    Erros are passed back on return to generic code in the 
+    compiler/interpreter.
     '''
     # NB arg checking would not be done here. This assumes args are
-    # correct, it is just a builder
+    # correct signature, it is a builder
+    # For messages, use the MessageOption mechanism and return. It puts
+    # indicators in a better position at te start of args.
+    #! Also, there is now no need for it to carry data. Its a message
+    # not messageOption
+    #! 
     arch = None
     
     # Anchor for a seperate API for printing 
     printers = None
 
-    # tes bizzare, but....
+    # tis bizzare, but....
+    # This is a reference back down to the compiler. It is wired in
+    # on initialisation of the compiler.
     compiler = None
-    # def error(self, msg):
-        # raise NotImplementedError('error not implemented on this API')
-    # def warning(self, msg):
-        # raise NotImplementedError('error not implemented on this API')
-    # def info(self, msg):
-        # raise NotImplementedError('error not implemented on this API')
-    
+
     '''
     Type signature of API funcs
     '''
@@ -84,7 +84,7 @@ class BuilderAPI():
         'regDefine': [ProtoSymbol, str, int, Type.Type],
         'heapAllocBytes': [ProtoSymbol, int],
         'heapAlloc': [ProtoSymbol, Type.Type],
-        'stackAllocBytes': [ProtoSymbol, int],
+        'stackAllocBytes': [ProtoSymbol, int, int],
         'stackAlloc': [ProtoSymbol, int, Type.Type],
 
         
@@ -160,66 +160,7 @@ class BuilderAPIX64(BuilderAPI):
     arch = architecture.architectureSolve(architecture.x64)
     printers = PrintX64()
 
-    # Yuck. Total yuck. Preferably, this data would be on the method as 
-    # an assert. But that means passing spurious information like
-    # position---for the error---and oassing the error method in from 
-    # the compiler.
-    # Data gathering from a method is possible in Python, there are 
-    # decorators and so forth, which are pythonic, so we avoid that.
-    # Inheritance would avoid this, but seems a small reason to generate
-    # potentially many specialised compintler classes, vrs. a setup by 
-    # parameter 
 
-    def isGlobalData(self, name):
-        return name in [
-            'ROStringDefine',
-        ] 
-        
-    def mustPushData(self, name):
-        return name in [
-            'registersPush',
-            'registersVolatilePush',
-            'if',
-            'while',
-            'forEach',
-            'foreEachRoll',            
-        ]
-        
-    def mustPopData(self, name):
-        return name in [
-            'registersPop',
-            'registersVolatilePop',
-            'ifEnd',
-            'whileEnd',
-            'while',
-            'forEachEnd',
-            'foreEachRollEnd', 
-        ]
-
-    def mustSetData(self, name):
-        return name in [
-            'ROStringDefine',
-            'RODefine',
-            #'stringHeapDefine',
-            'stackAllocBytes',
-            'stackAlloc',
-            'regDefine',
-            'heapAlloc',
-            #'varHeap',
-            #'varStack',
-        ]
-
-    def mustGetData(self, name):
-        return name in [
-        ]
-
-    #def stack
-    #    self.stackSize = 0
-                
-    #def __init___():
-    #    builderAPI = architecture.architectureSolve(architecture.x64)
-
-####
     ## basics
     def comment(self, b, args):
         b._code.append("; " + args[0])
@@ -276,6 +217,7 @@ class BuilderAPIX64(BuilderAPI):
         '''
         b._code.append('{}:'.format(args[0].toString()))
         b._code.append('; beginFunc')
+        self.compiler.envAddClosure()
         return MessageOptionNone
 
         
@@ -288,15 +230,18 @@ class BuilderAPIX64(BuilderAPI):
         '''
         End a function with return.
         '''
+        self.compiler.envDelClosure()
         b._code.append('ret')
         b._code.append('; endFunc')
         return MessageOptionNone
 
     def funcMain(self, b, args):
         self.func(b, [ProtoSymbol('@main')])
+        self.compiler.envAddClosure()
         return MessageOptionNone
         
     def funcMainEnd(self, b, args):
+        self.compiler.envDelClosure()
         b._code.append('; endFunc')
         return MessageOptionNone
 
@@ -308,10 +253,12 @@ class BuilderAPIX64(BuilderAPI):
         registerList = args
         for r in registerList:
             b._code.append('push ' + r)
-        return registerList
+        self.compiler.closureDataPush(registerList)
+        return MessageOptionNone
 
-    def registersPop(self, b, popData, args):
-        for r in reversed(popData):
+    def registersPop(self, b, args):
+        registerList = self.compiler.closureDataPop()
+        for r in reversed(registerList):
             b._code.append('pop ' + r)
         return MessageOptionNone
 
@@ -320,11 +267,8 @@ class BuilderAPIX64(BuilderAPI):
         Protect the volatile registers 
         i.e. those used for parameter passing.
         '''
-        return self.registersPush(b, self.arch['cParameterRegisters'].copy())
-
-    #?x
-    #def registersVolatilePop(self, b, popData, args):
-    #    self.registersPop(b, popData, args)
+        self.registersPush(b, self.arch['cParameterRegisters'].copy())
+        return MessageOptionNone
 
 
 
@@ -344,25 +288,36 @@ class BuilderAPIX64(BuilderAPI):
             data
         )
         b.rodataAdd(rodata)
-        return (
+        self.compiler.symbolSetGlobal(
             protoSymbolLabel, 
-            #Var.ROX64(protoSymbolLabel, tpe)
-            Var.ROX64Either(protoSymbolLabel, tpe)
+            Var.ROX64(protoSymbolLabel, tpe)
         )
+        # return (
+            # protoSymbolLabel, 
+            # #Var.ROX64(protoSymbolLabel, tpe)
+            # Var.ROX64Either(protoSymbolLabel, tpe)
+        # )
+        return MessageOptionNone
 
     def ROStringDefine(self, b, args):
         '''
-        Define a numeruc string to a label
+        Define a numeric string to a label
             protoSymbol, string
         '''
+        #! cant be this, must generate a label
         protoSymbolLabel = args[0].toString()
         string = args[1]
         rodata = protoSymbolLabel + ': db "' + args[1] + '", 0'
         b.rodataAdd(rodata)
-        return (
+        self.compiler.symbolSetGlobal(
             protoSymbolLabel, 
-            Var.ROX64(protoSymbolLabel, Type.StrASCII)
-        )                
+            Var.ROX64(protoSymbolLabel,  Type.StrASCII)
+        )
+        # return (
+            # protoSymbolLabel, 
+            # Var.ROX64(protoSymbolLabel, Type.StrASCII)
+        # )                
+        return MessageOptionNone
    
 
     def regDefine(self, b, args):
@@ -375,15 +330,20 @@ class BuilderAPIX64(BuilderAPI):
         data = args[2]
         tpe = args[3]
         b._code.append("mov {}, {}".format(
-            # TypesToASMName[tpe],
+            #TypesToASMName[tpe],
             register, 
             data
         ))
-        return (
+        self.compiler.symbolSetClosure(
             protoSymbolLabel, 
-            #Var.RegX64(register, tpe)
-            Var.RegX64Either(register, tpe)
+            Var.RegX64(register, tpe)
         )
+        # return (
+            # protoSymbolLabel, 
+            # #Var.RegX64(register, tpe)
+            # Var.RegX64Either(register, tpe)
+        # )
+        return MessageOptionNone
                         
     def heapAllocBytes(self, b, args):
         '''
@@ -396,11 +356,12 @@ class BuilderAPIX64(BuilderAPI):
         b._code.append("mov {}, {}".format(self.arch['cParameterRegisters'][0], byteSize))
         b._code.append("call malloc")
         #return LocRoot.RegisterX64(self.arch['returnRegister'])
-        return (
+        # No, it has no ''Type', hence the Loc return abovr
+        self.compiler.symbolSetClosure(
             protoSymbolLabel, 
-            #Var.RegX64(self.arch['returnRegister'], tpe)
-            Var.RegX64Either(self.arch['returnRegister'], tpe)
-        ) 
+            Var.RegX64(self.arch['returnRegister'], Type.StrASCII)
+        )
+        return MessageOptionNone
         
     def heapAlloc(self, b, args):
         '''
@@ -413,29 +374,36 @@ class BuilderAPIX64(BuilderAPI):
         tpe = args[1]
         b._code.append("mov {}, {}".format(self.arch['cParameterRegisters'][0], tpe.byteSize))
         b._code.append("call malloc")
-        #return LocationRootRegisterX64(self.arch['returnRegister']) 
-        return (
+        self.compiler.symbolSetClosure(
             protoSymbolLabel, 
-            #Var.RegAddrX64(self.arch['returnRegister'], tpe)
-            Var.RegAddrX64Either(self.arch['returnRegister'], tpe)
-        ) 
+            Var.RegX64(self.arch['returnRegister'], tpe)
+        )
+        #return LocationRootRegisterX64(self.arch['returnRegister']) 
+        # return (
+            # protoSymbolLabel, 
+            # #Var.RegAddrX64(self.arch['returnRegister'], tpe)
+            # Var.RegAddrX64Either(self.arch['returnRegister'], tpe)
+        # ) 
+        return MessageOptionNone
 
     #! account for data types
     # and align
     def stackAllocBytes(self, b, args):
         '''
         Allocate stack storage
-            protoSymbol, slotIndex
+            protoSymbol, slotIndex, int
         '''
         protoSymbolLabel = args[0].toString()
-        byteSize = self.arch['bytesize'] * args[1]
-        b._code.append("sub rsp, {}".format(byteSize)) 
         index = args[1]
-        return (
-            protoSymbolLabel, 
-            #Var.StackX64(index, Type.StrASCII)
-            Var.StackX64Either(index, Type.StrASCII)
-        ) 
+        allocSpace = args[2]
+        BPRoffset = allocSpace + (self.arch['bytesize'] * index)
+        b._code.append("lea rsp, [rbp - {}]".format(BPRoffset)) 
+        # No, it has no ''Type', hence the Loc return abovr
+        # self.compiler.symbolSetClosure(
+            # protoSymbolLabel, 
+            # Var.StackX64(index, Type.StrASCII)
+        # )
+        return MessageOptionNone
         
     #! bad thing here, we don't know where stack starts, so only works 
     # on empty stackframe
@@ -462,11 +430,16 @@ class BuilderAPIX64(BuilderAPI):
         b._code.append("lea rsp, [rbp - {}]".format(
              self.arch['bytesize'] * index 
         )) 
-        return (
+        self.compiler.symbolSetClosure(
             protoSymbolLabel, 
-            #Var.StackX64(index, tpe)
-            Var.StackX64Either(index, tpe)
-        ) 
+            Var.StackX64(index, tpe)
+        )
+        # return (
+            # protoSymbolLabel, 
+            # #Var.StackX64(index, tpe)
+            # Var.StackX64Either(index, tpe)
+        # ) 
+        return MessageOptionNone
                         
     # def stringHeapDefine(self, b, args):
         # '''
@@ -491,10 +464,12 @@ class BuilderAPIX64(BuilderAPI):
         # By definition, RO is not possible
         if (isinstance(var.loc, Loc.RODataX64)):
             mo = MessageOption.error('Cant set a RO variable!')
+            #self.compiler.error('Cant set a RO variable!')
 
         # Needs a path for deeper peeks
         if (not(isinstance(var.tpe, Type.TypeSingular))):
             mo = MessageOption.error('Need path to set on complex type? var:{}'.format(var))
+            #self.compiler.error('Need path to set on complex type? var:{}'.format(var))
             
         # Only if ok (could throw errors)
         if (mo.isOk()):
@@ -503,6 +478,7 @@ class BuilderAPIX64(BuilderAPI):
                 var.toCodeValue(), 
                 val
             ))
+            
         return mo
 
     #! Utility. Should not be here
@@ -598,13 +574,18 @@ class BuilderAPIX64(BuilderAPI):
                 
         # add a new environment
         #???
-        
+        self.compiler.envAddClosure()
+
         # set the innervar on it
         # Not going to work for clutches
-        varObj = Var.RegX64(register, var.tpe.elementType)
-        #! this is on envEverything
-        self.compiler.envFunc[protoSymbolLabel] = varObj
+        #varObj = Var.RegX64(register, var.tpe.elementType)
 
+        #! this is on envEverything
+        #self.compiler.envFunc[protoSymbolLabel] = varObj
+        self.compiler.symbolSetClosure(
+            protoSymbolLabel, 
+            Var.RegX64(register, var.tpe.elementType)
+        )
            
         # Set up the new builder
         b._code.append('; beginLoop')
@@ -613,7 +594,7 @@ class BuilderAPIX64(BuilderAPI):
         mo = MessageOptionNone
         return mo
         
-    def forEachEnd(self, b, popData, args):
+    def forEachEnd(self, b, args):
         '''
             []
         '''
@@ -633,7 +614,8 @@ class BuilderAPIX64(BuilderAPI):
         
         # Dispose of the inner environment too (and rid of innervar)
         # ???
-        del self.compiler.envFunc[protoSymbolLabel]
+        #del self.compiler.envFunc[protoSymbolLabel]
+        self.compiler.envDelClosure()
         
 
         lid = var.loc.lid
@@ -664,19 +646,19 @@ class BuilderAPIX64(BuilderAPI):
             # printStr(b, ['(' StrASCII])
             # print(b, tpe.foreach(args => print(b, [args])))
             # printStr(b, [')' StrASCII])
-            raise NotImplementedError()
+            raise NotImplementedError('Currently, container type can not be printed')
             # etc.
         else:
             # Figure out what will print or not
             #var.accessMk()
-            #var.accessDeepMk(path)
+            print(str(var))
             # tpe, offset(lid)
             # tpe.offsetDeep(self, path)
             srcSnippet = var.toCodeValue()
             #! Obviously, very temproary!
             # What we need is probably something that separates string 
             # types from numbers
-            #print(str(tpe))
+            print(str(tpe))
             if (tpe == Type.StrASCII):
                 # For a string, printf wants the address, not the value
                 srcSnippet = var.toCodeAddress()
@@ -685,11 +667,6 @@ class BuilderAPIX64(BuilderAPI):
             self.printers(b, tpe, srcSnippet)
         return MessageOptionNone
             
-
-    # def println(self, b, args):
-        # self.printers(b, args[0], args[1])
-        # self.printers.newline(b)
-
     def println(self, b, args):
         '''
         var
