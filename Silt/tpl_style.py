@@ -46,6 +46,9 @@ def builderCode(style, code):
     Return a string of code data, inflected by style
     '''
     styleBase = style['*'].copy()
+    
+    # keep track of previous style options to revert to in a nested 
+    # manner
     styleStack = []
     currentStyle = styleBase
     indent = styleBase['indent']
@@ -54,11 +57,12 @@ def builderCode(style, code):
     selfClose = False
     for line in code:
         b.append('\n') 
-
         if line.endswith(':'):
+            # This is a label declaration
             styleStack.append(currentStyle)            
             currentStyle = style['label']
             indent += currentStyle['indent']
+            
             # Remove the style immediately after the line is written
             selfClose = True
         if line.startswith('; beginFunc'):
@@ -69,9 +73,11 @@ def builderCode(style, code):
             styleStack.append(currentStyle)            
             currentStyle = style['loopBlock']
             indent += currentStyle['indent']
-            
+                        
+        # apply the current style
         b.append(applyStyleToLine(indent, currentStyle, line)) 
 
+        # remove any styles when a cue arrives
         if (line.startswith('; end') or (selfClose)):
             indent -= currentStyle['indent']
             currentStyle = styleStack.pop()

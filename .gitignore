@@ -5,3 +5,6 @@ __pycache__/
 build/
 buildDir/
 *.bck
+doc
+docs
+Docs

@@ -1,6 +1,6 @@
 import architecture
 from tpl_address_builder import AddressBuilder
-from tpl_either import *
+from tpl_either import Either
 
 
 #! problems here
@@ -114,17 +114,17 @@ class RODataX64(LocationRootX64):
         #assert self._validInitialLID(label)
         super().__init__(label)
 
-    def _validInitialLID(self, lid):
-        if (not (type(lid) == str)):
-            raise TypeError('LocationRootRODataX64: Parameter must be class "str". lid: "{}"'.format(
-                lid
-            ))
-        if (lid in self.arch['registers']):
-            raise ValueError('LocationRootRODataX64: Label id must not be in registers. lid: "{}" registers:"{}"'.format(
-                type(label),
-                ", ".join(registers)
-            ))
-        return True
+    # def _validInitialLID(self, lid):
+        # if (not (type(lid) == str)):
+            # raise TypeError('LocationRootRODataX64: Parameter must be class "str". lid: "{}"'.format(
+                # lid
+            # ))
+        # if (lid in self.arch['registers']):
+            # raise ValueError('LocationRootRODataX64: Label id must not be in registers. lid: "{}" registers:"{}"'.format(
+                # type(label),
+                # ", ".join(registers)
+            # ))
+        # return True
         
     def value(self):
         return AddressBuilder(self.lid).result(True)  
@@ -158,18 +158,18 @@ class RODataX64(LocationRootX64):
 
 def _validInitialLabel(lid):
     msg = ''
-    status = NO_MESSAGE
+    status = Either.NO_MESSAGE
     if (not (type(lid) == str)):
         msg = 'LocationRootRODataX64: Parameter must be class "str". arg: "{}"'.format(
             lid
         )
-        status = ERROR
+        status = Either.ERROR
     if (lid in arch['registers']):
         msg = 'LocationRootRODataX64: Label id must not be in registers. label: "{}" registers:"{}"'.format(
             type(label),
             ", ".join(registers)
         )
-        status = ERROR
+        status = Either.ERROR
     return (status, msg)
 
 def RODataX64Either(label):
@@ -189,19 +189,7 @@ class RegisterX64(LocationRootX64):
     def __init__(self, register):
         #assert self._validInitialLID(register)
         super().__init__(register)    
-
-    def _validInitialLID(self, lid):
-        if (not (type(lid) == str)):
-            raise TypeError('LocationRootRegisterX64: Parameter must be class "str". lid: "{}"'.format(
-                lid
-            ))
-        if (not (lid in self.arch['registers'])):
-            raise ValueError('LocationRootRegisterX64: Parameter must be in registers. lid: "{}", registers:"{}"'.format(
-                lid,
-                ", ".join(self.arch['registers'])
-            ))
-        return True
-                
+     
     def value(self):
         return self.lid
         
@@ -229,18 +217,18 @@ class RegisterX64(LocationRootX64):
 
 def _validInitialRegister(lid):
     msg = ''
-    status = NO_MESSAGE
+    status = Either.NO_MESSAGE
     if (not (type(lid) == str)):
         msg = 'LocationRootRegisterX64: Parameter must be class "str". arg: "{}"'.format(
             lid
         )
-        status = ERROR
+        status = Either.ERROR
     if (not (lid in arch['registers'])):
         msg ='LocationRootRegisterX64: Parameter must be in registers. arg: "{}", registers:"{}"'.format(
             lid,
             ", ".join(self.arch['registers'])
         )
-        status = ERROR
+        status = Either.ERROR
     return (status, msg)
     
 def RegisterX64Either(register):
@@ -285,32 +273,6 @@ class StackX64(LocationRootX64):
         super().__init__(index)    
         self.stackByteSize = self.arch['bytesize']
 
-
-    def _validInitialLID(self, lid):
-        if (not (type(lid) == int)):
-            raise TypeError('LocationRootStackX64: Parameter must be class "int". lid: "{}"'.format(
-                lid
-            ))
-        if (lid == 0):
-            raise TypeError("LocationRootStackX64: Slot can not be 0 (stack pointers point to last itemm, slot zero holds a pointer to base ). lid: '{}'".format(
-                lid
-            ))
-        if (lid < 0):
-            raise TypeError("LocationRootStackX64: Slot can not be negative. lid: '{}'".format(
-                lid
-            ))
-        if (lid & 1):
-            # i.e. not a lid divisable by 2
-            # In this architecture, lid ''slots' are eight bytes. But 
-            # stack must be aligned to 16 bytes. So issue a warning. 
-            raise TypeError("LocationRootStackX64: Slot has been set to a number not divisible by 2. Later calls will fail. lid: '{}'".format(
-                lid
-            ))
-            LocMessage("LocationRootStackX64: Slot has been set to a number not divisible by 2. Later calls will fail. lid: '{}'".format(
-                 lid
-            ))
-        return True
-            
     def value(self):
         b = AddressBuilder('rbp')
         b.addOffset(-(self.lid * self.stackByteSize))
@@ -336,30 +298,30 @@ class StackX64(LocationRootX64):
 
 def _validInitialStackSlot(lid):
     msg = ''
-    status = NO_MESSAGE
+    status = Either.NO_MESSAGE
     if (not (type(lid) == int)):
         msg = 'LocationRootStackX64: Parameter must be class "int". slot: "{}"'.format(
             lid
         )
-        status = ERROR
+        status = Either.ERROR
     if (lid == 0):
         msg = "LocationRootStackX64: Slot can not be 0 (stack pointers point to last itemm, slot zero holds a pointer to base ). slot: '{}'".format(
             lid
         )
-        status = ERROR
+        status = Either.ERROR
     if (lid < 0):
         msg = "LocationRootStackX64: Slot can not be negative. slot: '{}'".format(
             lid
         )
-        status = ERROR
+        status = Either.ERROR
     if (lid & 1):
         # i.e. not a lid divisable by 2
         # In this architecture, lid ''slots' are eight bytes. But 
         # stack must be aligned to 16 bytes. So issue a warning. 
-        msg = "LocationRootStackX64: Slot has been set to a number not divisible by 2. Any calls will fail. slot: '{}'".format(
+        msg = "LocationRootStackX64: Slot number not divisible by 2. Calls in this frame will fail. slot: '{}'".format(
             lid
         )
-        status = WARNING
+        status = Either.WARNING
     return (status, msg)
 
 def StackX64Either(index):
@@ -387,16 +349,5 @@ def StackedAddressX64Either(index):
     loc = StackedAddressX64(index)
     return Either(data[0], data[1], loc)
             
-# def mkLocationRoot(rawLocation, arch):
-    # l = None
-    # if (rawLocation in arch['registers']):
-        # l = LocationRootRegisterX64(rawLocation)
-    # elif(type(rawLocation) == str):
-        # l = LocationRootRODataX64(rawLocation)
-    # elif(type(rawLocation) == int):
-        # l = LocationRootStackX64(rawLocation)
-    # else:
-        # raise NotImplementedError('mkLocationRoot: Parameter must be an int or str. type(rawLocation): {}'.format(type(rawLocation)))
-    # return l
     
     

@@ -1,60 +1,77 @@
 
 
-NO_MESSAGE = 0
-ERROR = 1
-WARNING = 2
-INFO = 3
 
-statusToStr = [
-    "NO_MESSAGE",
-    "ERROR",
-    "WARNING",
-    "INFO"
-]
+class Option():
+    NO_MESSAGE = 0
+    ERROR = 1
+    WARNING = 2
+    INFO = 3
 
-#from collections import namedtuple
-'''
-Well, it's not really an Either, it's got a status too.
-Faily cheap
-Use 
-if (either.obj is None): 
-to test
-'''
-# Either = namedtuple('Either', ['status', 'message', 'obj'])
+    statusToStr = [
+        "NO_MESSAGE",
+        "ERROR",
+        "WARNING",
+        "INFO"
+    ]
 
-# def mk(status, message, obj):
-    # return Either(status, message, obj)
+        
+
+class MessageOption(Option):
+
+    @classmethod
+    def error(cls, msg):
+        '''
+        MessageOption for error
+        '''
+        return cls(cls.ERROR, msg)
+
+    @classmethod
+    def warning(cls, msg):
+        '''
+        MessageOption for warning
+        '''
+        return cls(cls.WARNING, msg)
+
+    @classmethod
+    def info(cls, msg):
+        '''
+        MessageOption for info
+        '''
+        return cls(cls.INFO, msg)
+        
+    def __init__(self, status, msg):
+        self.status = status
+        self.msg = msg
+
+    def isOk(self):
+        '''
+        May still have messaage if ok
+        '''
+        # NB. Not not(obj is None). Status wins
+        return (not(self.status == self.ERROR))
     
-# def obj(obj):
-    # '''
-    # When all is good
-    # '''
-    # return Either(NO_MESSAGE, '', obj)
+    def hasMessage(self):
+        return (not(self.status == self.NO_MESSAGE))
 
-# def msg(status, msg):
-    # '''
-    # Message without object
-    # '''
-    # return Either(status, msg, None)
-    
-# def fromEither(other, obj):
-    # '''
-    # Transfer either status and message to a new object
-    # '''
-    # assert (isinstance(other, Either)), "Not an either! other:'{}'".format(other)
-    # return Either(other.status, other.message, obj)
+    def __repr__(self):
+        return 'MessageOption(status:{}, msg:"{}")'.format(
+            self.statusToStr[self.status],
+            self.msg,
+        )
 
-# def isOk(either):
-    # '''
-    # May still have messaage if ok
-    # '''
-    # # NB. Not not(obj is None). Status wins
-    # return (not(either.status == ERROR))
-    
-# def hasMessage(either):
-    # return (not(either.status == NO_MESSAGE))
+    def __str__(self):
+        return "MessageOption({})".format(
+            self.statusToStr[self.status],
+        )
             
-class Either():
+MessageOptionNone = MessageOption(
+    MessageOption.NO_MESSAGE, 
+    '',
+) 
+
+
+#! change to MessageEither            
+class Either(Option):
     '''
     Well, it's not really an Either, it's got a status too.
     '''
@@ -68,14 +85,14 @@ class Either():
         '''
         When all is good
         '''
-        return cls(NO_MESSAGE, '', obj)
+        return cls(cls.NO_MESSAGE, '', obj)
 
     @classmethod
     def error(cls, msg):
         '''
         Message without object
         '''
-        return cls(ERROR, msg, None)
+        return cls(cls.ERROR, msg, None)
 
     @classmethod
     def warning(cls, msg):
@@ -89,7 +106,7 @@ class Either():
         '''
         Message without object
         '''
-        return cls(INFO, msg, None)
+        return cls(cls.INFO, msg, None)
         
     def __init__(self, status, msg, obj):
         self.status = status
@@ -101,19 +118,20 @@ class Either():
         May still have messaage if ok
         '''
         # NB. Not not(obj is None). Status wins
-        return (not(self.status == ERROR))
+        return (not(self.status == self.ERROR))
     
     def hasMessage(self):
-        return (not(self.status == NO_MESSAGE))
+        return (not(self.status == self.NO_MESSAGE))
 
     def __repr__(self):
-        return "Either(status:{}, msg:{}, obj:{})".format(
-            statusToStr[self.status],
+        return 'Either(status:{}, msg:"{}", obj:{})'.format(
+            self.statusToStr[self.status],
             self.msg,
             self.obj
         )
 
     def __str__(self):
         return "Either({})".format(
-            statusToStr[self.status],
+            self.statusToStr[self.status],
         )
+

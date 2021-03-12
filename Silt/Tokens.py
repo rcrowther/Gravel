@@ -19,8 +19,8 @@ tokenBase = {
     45 : ('rbracket' , 'RBRACKET' ),
     # 46 : ('lcurly' , 'LCURLY' ),
     # 47 : ('rcurly' , 'RCURLY' ),
-    # 48 : ('lsquare' , 'LSQUARE' ),
-    # 49 : ('rsquare' , 'RSQUARE' ),
+    48 : ('lsquare' , 'LSQUARE' ),
+    49 : ('rsquare' , 'RSQUARE' ),
     # 50 : ('solidus' , 'SOLIDUS' ),
     51 : ('linefeed' , 'LINEFEED' ),
 }

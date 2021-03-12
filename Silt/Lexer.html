@@ -1,0 +1,170 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<html><head><title>Python: module Lexer</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+</head><body bgcolor="#f0f0f8">
+
+<table width="100%" cellspacing=0 cellpadding=2 border=0 summary="heading">
+<tr bgcolor="#7799ee">
+<td valign=bottom>&nbsp;<br>
+<font color="#ffffff" face="helvetica, arial">&nbsp;<br><big><big><strong>Lexer</strong></big></big></font></td
+><td align=right valign=bottom
+><font color="#ffffff" face="helvetica, arial"><a href=".">index</a><br><a href="file:/home/rob/Code/Gravel/Silt/Lexer.py">/home/rob/Code/Gravel/Silt/Lexer.py</a></font></td></tr></table>
+    <p></p>
+<p>
+<table width="100%" cellspacing=0 cellpadding=2 border=0 summary="section">
+<tr bgcolor="#aa55cc">
+<td colspan=3 valign=bottom>&nbsp;<br>
+<font color="#ffffff" face="helvetica, arial"><big><strong>Modules</strong></big></font></td></tr>
+    
+<tr><td bgcolor="#aa55cc"><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</tt></td><td>&nbsp;</td>
+<td width="100%"><table width="100%" summary="list"><tr><td width="25%" valign=top><a href="Tokens.html">Tokens</a><br>
+</td><td width="25%" valign=top></td><td width="25%" valign=top></td><td width="25%" valign=top></td></tr></table></td></tr></table><p>
+<table width="100%" cellspacing=0 cellpadding=2 border=0 summary="section">
+<tr bgcolor="#ee77aa">
+<td colspan=3 valign=bottom>&nbsp;<br>
+<font color="#ffffff" face="helvetica, arial"><big><strong>Classes</strong></big></font></td></tr>
+    
+<tr><td bgcolor="#ee77aa"><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</tt></td><td>&nbsp;</td>
+<td width="100%"><dl>
+<dt><font face="helvetica, arial"><a href="gio.LexerBase.html#LexerBase">gio.LexerBase.LexerBase</a>(<a href="builtins.html#object">builtins.object</a>)
+</font></dt><dd>
+<dl>
+<dt><font face="helvetica, arial"><a href="Lexer.html#Lexer">Lexer</a>
+</font></dt></dl>
+</dd>
+</dl>
+ <p>
+<table width="100%" cellspacing=0 cellpadding=2 border=0 summary="section">
+<tr bgcolor="#ffc8d8">
+<td colspan=3 valign=bottom>&nbsp;<br>
+<font color="#000000" face="helvetica, arial"><a name="Lexer">class <strong>Lexer</strong></a>(<a href="gio.LexerBase.html#LexerBase">gio.LexerBase.LexerBase</a>)</font></td></tr>
+    
+<tr bgcolor="#ffc8d8"><td rowspan=2><tt>&nbsp;&nbsp;&nbsp;</tt></td>
+<td colspan=2><tt>Iterate&nbsp;comments,&nbsp;identifiers,&nbsp;numerics,&nbsp;etc.<br>
+Very&nbsp;simple,&nbsp;compared&nbsp;to&nbsp;other&nbsp;efforts,&nbsp;but&nbsp;it&nbsp;works.<br>
+zeroOrMore(zeroOrMore(Space)&nbsp;~&nbsp;(<br>
+Comment<br>
+|&nbsp;Number<br>
+|&nbsp;String<br>
+|&nbsp;Punctuation<br>
+|&nbsp;Identifier<br>
+|&nbsp;OperatorIdentifier<br>
+))<br>
+A&nbsp;few&nbsp;notes:<br>
+-&nbsp;Comment&nbsp;can&nbsp;be&nbsp;single&nbsp;or&nbsp;muti-line<br>
+-&nbsp;Numbers&nbsp;can&nbsp;include&nbsp;the&nbsp;dot<br>
+-&nbsp;Punctuation&nbsp;is&nbsp;always&nbsp;single&nbsp;chars<br>
+-&nbsp;Identifier&nbsp;starts&nbsp;with&nbsp;an&nbsp;alphabetic,&nbsp;can&nbsp;be&nbsp;followed&nbsp;by&nbsp;not&nbsp;<br>
+(whitespace&nbsp;or&nbsp;number).<br>
+-&nbsp;OperatorIdentifier&nbsp;starts&nbsp;with&nbsp;any&nbsp;non-whitespace,&nbsp;<br>
+non-alphanumeric.&nbsp;The&nbsp;other&nbsp;major&nbsp;dfference&nbsp;is&nbsp;they&nbsp;will&nbsp;not&nbsp;match<br>
+a&nbsp;numeric.<br>
+&nbsp;<br>
+&nbsp;<br>
+Identifiers&nbsp;stall&nbsp;on&nbsp;punctuation&nbsp;to&nbsp;allow&nbsp;identifiers&nbsp;to&nbsp;push&nbsp;against&nbsp;punctuation.&nbsp;<br>
+Operator&nbsp;identifiers&nbsp;stall&nbsp;on&nbsp;punctuation&nbsp;and&nbsp;also&nbsp;on&nbsp;numbers,&nbsp;to&nbsp;allow&nbsp;'-20'&nbsp;etc.<br>
+&nbsp;<br>
+Any&nbsp;associated&nbsp;data-as-text-of-token&nbsp;(not&nbsp;for&nbsp;punctuation,&nbsp;but&nbsp;every&nbsp;other&nbsp;token)<br>
+can&nbsp;be&nbsp;accessed&nbsp;through&nbsp;<a href="#Lexer-textOf">textOf</a>().<br>
+&nbsp;<br>
+Brackets&nbsp;are&nbsp;stripped&nbsp;from&nbsp;MULTILINE_COMMENT&nbsp;and&nbsp;STRING.&nbsp;Warnings&nbsp;<br>
+are&nbsp;loaded&nbsp;to&nbsp;the&nbsp;Reporter&nbsp;if&nbsp;these&nbsp;brackets&nbsp;are&nbsp;not&nbsp;balanced.<br>
+&nbsp;<br>
+Token&nbsp;iterators&nbsp;are&nbsp;not&nbsp;reusable.&nbsp;See&nbsp;also&nbsp;the&nbsp;factory&nbsp;method<br>
+mkTokenIterator()<br>&nbsp;</tt></td></tr>
+<tr><td>&nbsp;</td>
+<td width="100%"><dl><dt>Method resolution order:</dt>
+<dd><a href="Lexer.html#Lexer">Lexer</a></dd>
+<dd><a href="gio.LexerBase.html#LexerBase">gio.LexerBase.LexerBase</a></dd>
+<dd><a href="builtins.html#object">builtins.object</a></dd>
+</dl>
+<hr>
+Methods defined here:<br>
+<dl><dt><a name="Lexer-getNext"><strong>getNext</strong></a>(self)</dt><dd><tt>To&nbsp;be&nbsp;overridden<br>
+Search&nbsp;for&nbsp;tokens<br>
+Always&nbsp;starts&nbsp;on&nbsp;a&nbsp;non-whiltespace,&nbsp;non-line-end&nbsp;with&nbsp;<br>
+text&nbsp;cleared&nbsp;and&nbsp;offsets&nbsp;loaded.<br>
+return&nbsp;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;true&nbsp;to&nbsp;continue,&nbsp;false&nbsp;to&nbsp;report&nbsp;error&nbsp;and&nbsp;raise<br>
+&nbsp;&nbsp;&nbsp;&nbsp;StopIteration</tt></dd></dl>
+
+<dl><dt><a name="Lexer-isPunctuation"><strong>isPunctuation</strong></a>(self)</dt></dl>
+
+<dl><dt><a name="Lexer-scanComment"><strong>scanComment</strong></a>(self)</dt></dl>
+
+<dl><dt><a name="Lexer-scanIdentifier"><strong>scanIdentifier</strong></a>(self)</dt><dd><tt>[a-z,&nbsp;A-Z]&nbsp;~&nbsp;zeroOrMore(not(WhitespaceOrLinefeed)&nbsp;|&nbsp;not(Punctuation))</tt></dd></dl>
+
+<dl><dt><a name="Lexer-scanNumber"><strong>scanNumber</strong></a>(self)</dt></dl>
+
+<dl><dt><a name="Lexer-scanPunctuation"><strong>scanPunctuation</strong></a>(self)</dt><dd><tt>Matches&nbsp;[punctuation]&nbsp;codepoints.</tt></dd></dl>
+
+<dl><dt><a name="Lexer-scanString"><strong>scanString</strong></a>(self)</dt></dl>
+
+<hr>
+Methods inherited from <a href="gio.LexerBase.html#LexerBase">gio.LexerBase.LexerBase</a>:<br>
+<dl><dt><a name="Lexer-__init__"><strong>__init__</strong></a>(self, src, trackingIterator, reporter)</dt><dd><tt>Initialize&nbsp;self.&nbsp;&nbsp;See&nbsp;help(type(self))&nbsp;for&nbsp;accurate&nbsp;signature.</tt></dd></dl>
+
+<dl><dt><a name="Lexer-__iter__"><strong>__iter__</strong></a>(self)</dt></dl>
+
+<dl><dt><a name="Lexer-__next__"><strong>__next__</strong></a>(self)</dt></dl>
+
+<dl><dt><a name="Lexer-error"><strong>error</strong></a>(self, msg)</dt></dl>
+
+<dl><dt><a name="Lexer-isAlphabetic"><strong>isAlphabetic</strong></a>(self)</dt><dd><tt>Includes&nbsp;underline</tt></dd></dl>
+
+<dl><dt><a name="Lexer-isNumeric"><strong>isNumeric</strong></a>(self)</dt><dd><tt>Match&nbsp;all&nbsp;latin&nbsp;numbers</tt></dd></dl>
+
+<dl><dt><a name="Lexer-isPlusMinus"><strong>isPlusMinus</strong></a>(self)</dt><dd><tt>Match&nbsp;plus/hyphen-minus&nbsp;latin</tt></dd></dl>
+
+<dl><dt><a name="Lexer-isWhitespace"><strong>isWhitespace</strong></a>(self)</dt><dd><tt>Not&nbsp;including&nbsp;linefeed.</tt></dd></dl>
+
+<dl><dt><a name="Lexer-isWhitespaceOrLinefeed"><strong>isWhitespaceOrLinefeed</strong></a>(self)</dt></dl>
+
+<dl><dt><a name="Lexer-skipWhitespace"><strong>skipWhitespace</strong></a>(self)</dt><dd><tt>Not&nbsp;including&nbsp;linefeed.</tt></dd></dl>
+
+<dl><dt><a name="Lexer-source"><strong>source</strong></a>(self)</dt></dl>
+
+<dl><dt><a name="Lexer-stashOffsets"><strong>stashOffsets</strong></a>(self)</dt></dl>
+
+<dl><dt><a name="Lexer-textOf"><strong>textOf</strong></a>(self)</dt><dd><tt>Return&nbsp;the&nbsp;text&nbsp;of&nbsp;each&nbsp;token<br>
+return&nbsp;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;the&nbsp;token&nbsp;as&nbsp;text</tt></dd></dl>
+
+<hr>
+Data descriptors inherited from <a href="gio.LexerBase.html#LexerBase">gio.LexerBase.LexerBase</a>:<br>
+<dl><dt><strong>__dict__</strong></dt>
+<dd><tt>dictionary&nbsp;for&nbsp;instance&nbsp;variables&nbsp;(if&nbsp;defined)</tt></dd>
+</dl>
+<dl><dt><strong>__weakref__</strong></dt>
+<dd><tt>list&nbsp;of&nbsp;weak&nbsp;references&nbsp;to&nbsp;the&nbsp;object&nbsp;(if&nbsp;defined)</tt></dd>
+</dl>
+</td></tr></table></td></tr></table><p>
+<table width="100%" cellspacing=0 cellpadding=2 border=0 summary="section">
+<tr bgcolor="#55aa55">
+<td colspan=3 valign=bottom>&nbsp;<br>
+<font color="#ffffff" face="helvetica, arial"><big><strong>Data</strong></big></font></td></tr>
+    
+<tr><td bgcolor="#55aa55"><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</tt></td><td>&nbsp;</td>
+<td width="100%"><strong>AT</strong> = 64<br>
+<strong>COLON</strong> = 58<br>
+<strong>COMMA</strong> = 44<br>
+<strong>HASH</strong> = 35<br>
+<strong>HYPHEN_MINUS</strong> = 45<br>
+<strong>ICOMMA</strong> = 39<br>
+<strong>ICOMMAS</strong> = 34<br>
+<strong>LEFT_BRACKET</strong> = 40<br>
+<strong>LEFT_CURLY</strong> = 123<br>
+<strong>LEFT_SQR</strong> = 91<br>
+<strong>LINE_FEED</strong> = 10<br>
+<strong>PERIOD</strong> = 46<br>
+<strong>PLUS</strong> = 43<br>
+<strong>RIGHT_BRACKET</strong> = 41<br>
+<strong>RIGHT_CURLY</strong> = 125<br>
+<strong>RIGHT_SQR</strong> = 93<br>
+<strong>SEMI_COLON</strong> = 59<br>
+<strong>SOLIDUS</strong> = 47<br>
+<strong>SPACE</strong> = 32<br>
+<strong>UNDERSCORE</strong> = 95<br>
+<strong>punctuationCodepointToToken</strong> = {10: 51, 40: 44, 41: 45, 44: 41, 58: 42, 91: 48, 93: 49}<br>
+<strong>punctuationCodepoints</strong> = dict_keys([44, 10, 58, 40, 41, 91, 93])</td></tr></table>
+</body></html>

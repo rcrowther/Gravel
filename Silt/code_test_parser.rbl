@@ -31,14 +31,23 @@ funcMain()
 #--
     #println(ro2)
 #--
-    #heapAllocBytes(@heap1 8)
-#--
-    #heapAlloc(@heap2 Bit64)
-    #set(heap2 999)
-    #println(heap2)
+
 #--
     #regDefine(@reg1 'rbx' 777 Bit64)
     #println(reg1)
+#--
+    #heapAllocBytes(@heap1 8)
+#--
+    #heapAlloc(@heap2 Bit64)
+    #set(heap2 799)
+    #println(heap2)
+#--
+    heapAlloc(@heap3 Array(Bit64, 8))
+    setPath(heap3 [2 'x'] 555)
+    forEach(@x heap3)
+    #println(heap3)
+    raw('; ...contents...')
+    forEachEnd()
 #--
     #?
     #stackAllocBytes(@stk1 8)
@@ -49,9 +58,8 @@ funcMain()
     #set(stk2 979)
     #println(stk2)
 #--
-    stackAlloc(@stk2 1 Bit64)
+    #stackAlloc(@stk2 1 Bit64)
 #--
-    #heapAlloc(@heap2 Array(Bit64, 8))
     #stackAlloc(@stk2 Array(Bit64, 8))
     #var(@reg1 regc 99)
     #var(@stk2 stack 2 99)

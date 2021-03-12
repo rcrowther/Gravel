@@ -424,8 +424,7 @@ class Pointer(TypeContainer):
     def typeDepth(self):
         return self.elementType.typeDepth() + 1
         
-        
-        
+
 class TypeContainerOffset(TypeContainer):
     #? Consider generalising offset methods through all types.
     #? Should they be NotImplemented (means a catch), or return zero 

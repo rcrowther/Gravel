@@ -1,6 +1,6 @@
 from Syntaxer import Syntaxer
-from tpl_codeBuilder import Builder
-from tpl_either import *
+from tpl_codeBuilder import Builder, SubBuilder
+from tpl_either import Option
 
 # from exceptions import (
     # FuncError,
@@ -23,8 +23,11 @@ class Env(dict):
 class Compiler(Syntaxer):
 
     def __init__(self, tokenIt, builderAPI):
-        self.b = Builder()
+        self.b = Builder()        
+        self.builderStack = []
+        
         self.envStd = builderAPI
+        self.envStd.compiler = self
         self.funcNameToArgsType = builderAPI.funcNameToArgsType
         #self.envStd.error  = self.error
         #self.envStd.warning  = self.warning
@@ -48,7 +51,25 @@ class Compiler(Syntaxer):
         self.stackSize = 0
         super().__init__(tokenIt)
 
-
+    def builderNew(self):
+        '''
+        Set a new builder as the current builder,
+        For local manipilation of built code, such as repetitions
+        or multiple inserts.
+        '''
+        self.builderStack.append(self.b)
+        self.b = SubBuilder()
+        
+    def builderOld(self):
+        '''
+        Return the current builder as a result. 
+        This will revert the current builder to the previous builder.
+        '''
+        #finishedBuilder = self.b 
+        assert (len(self.builderStack) > 0), "This error should not occur!!! On builderResult builderStack is empty."
+        self.b = self.builderStack.pop(-1)
+        #return finishedBuilder
+        
     def stringTypeNamesMk(self, typeList):
         '''
         print a list of typenames 
@@ -91,11 +112,11 @@ class Compiler(Syntaxer):
                 self.errorWithPos(pos, msg)
 
     def eitherError(self, posArgs, either):
-        if (either.status == ERROR):
+        if (either.status == Option.ERROR):
             self.errorWithPos(posArgs, either.msg)
-        if (either.status == WARNING):
+        if (either.status == Option.WARNING):
             self.warningWithPos(posArgs, either.msg)
-        if (either.status == INFO):
+        if (either.status == Option.INFO):
             self.info(either.msg)
             
     def findIdentifier(self, pos, sym):
@@ -122,7 +143,7 @@ class Compiler(Syntaxer):
         # stacked data protection
         #? assert?
         if ((name == "funcEnd" or name == "funcMainEnd") and len(self.closureData) > 0):
-            msg = "[Error] End of func with unclosed instructions. unused instruction args:{}".format(
+            msg = "End of func with unclosed instructions. unused instruction args:{}".format(
                 self.closureData,
                 )
             self.errorWithPos(pos, msg)
@@ -145,37 +166,47 @@ class Compiler(Syntaxer):
             func(self.b, poppedData, args)
         elif (self.envStd.mustSetData(name)):
             ret = func(self.b, args)        
-            print('.........got Eiyther')
-            print(str(ret))
+
             label = ret[0]
             varObj = ret[1]
-            if (isinstance(varObj, Either)):
-                print('.........got Eiyther')
-                # Print any message
-                self.eitherError(posArgs, varObj)
+            # tmp, checking...
+            if (not(isinstance(varObj, Option))):
+                print('.........not Eiyther')
+                print(str(varObj))  
+                self.error('internal')
                 
-                # Salvage the object.
-                # If it was no good, code above would Except
-                # Why is this working when it has a new-style Var?
-                # probablly duck-typing
-                varObj = varObj.obj
+            # Print any message
+            self.eitherError(posArgs, varObj)
                 
+            # Salvage the object.
+            # If it was no good, code above would Except on message
+            # Why is this working when it has a new-style Var?
+            # probablly duck-typing
+            varObj = varObj.obj
+
             #? has not been used?
             # Used RO on builder?
             # Is needed, with main as the outer environment?          
             if(not(self.envStd.isGlobalData)):
+                print('isGlobalData')
                 self.envFunc[label] = varObj
             else:
                 self.envGlobal[label] = varObj
         #? Umm, this has gone unused because the Syntaxer has been 
         # typing completed symbols
         elif (self.envStd.mustGetData(name)):
-            #print(str(poppedData))
+            print('.........mustGetData')
+            print(str(name))
             k = args.pop(0)
             func(self.b, k, args)
         else:
             # Wow--now can do a simple call 
-            func(self.b, args)
+            msgOption = func(self.b, args)
+            
+            # If an message came from the API, its a kind of ValueError
+            # in the args
+            self.eitherError(posArgs, msgOption)
+
         # Execution of a func can produce many errors and warnings
         # These arrors are not basic lexer or syntax, they are of
         # code integrity. 
@@ -216,6 +247,7 @@ class Compiler(Syntaxer):
             # self.errorWithPos(pos, msg)
                 
     def result(self):
+        assert (len(self.builderStack) == 0), "This error should not occur!!! On Compiler result, builderStack is not empty."
         return self.b
         
 if __name__ == "__main__":

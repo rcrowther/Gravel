@@ -19,6 +19,8 @@ class ArgFunc:
             self.args
         )
 
+class Path(list):
+    pass
 
 
 class ProtoSymbol():
@@ -130,7 +132,24 @@ class Syntaxer(SyntaxerBase):
                     # otherwise it's a dynamically created identifier
                     arg = self.findIdentifier(pos, name)
             argsB.append(arg)
-                
+
+
+    def pathFixed(self, argsB):
+        path = Path()
+        # over the opening bracket
+        self._next() 
+        while (True):
+            if(self.isToken(STRING)):
+                path.append(self.textOf())
+                self._next() 
+            elif(self.isToken(INT_NUM)):
+                path.append(int(self.textOf()))
+                self._next() 
+            else:
+                break
+        self.skipTokenOrError('path', RSQUARE)
+        argsB.append(path)
+                        
     def arg(self, argsB):
         r = False
         #print(tokenToString[self.tok])
@@ -157,6 +176,9 @@ class Syntaxer(SyntaxerBase):
             #self._next()           
             self.argExprOrSymbol(argsB) 
             #BooleanOp
+            r = True
+        elif (self.isToken(LSQUARE)):
+            self.pathFixed(argsB) 
             r = True
             
         # skip trailing commas

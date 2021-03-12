@@ -13,6 +13,8 @@ punctuationCodepointToToken = {
     COLON : Tokens.COLON,
     LEFT_BRACKET : Tokens.LBRACKET,
     RIGHT_BRACKET : Tokens.RBRACKET,
+    LEFT_SQR : Tokens.LSQUARE,
+    RIGHT_SQR : Tokens.RSQUARE,
     }
 
 punctuationCodepoints = punctuationCodepointToToken.keys()
