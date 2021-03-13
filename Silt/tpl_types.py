@@ -505,7 +505,7 @@ class Array(TypeContainerOffset):
     The reason for the unusual and clumsy construction interface is so
     container types can present a consistent interface.
     args
-        the contained type, size
+        [containedType, size]
     '''
     def __init__(self, args):
         # assertions?
@@ -549,7 +549,7 @@ class ArrayLabeled(TypeContainerOffset):
     The reason for the unusual and clumsy construction interface is so
     container types can present a consistent interface.
     args
-        the contained type, label1, label2...]
+        [containedType, label1, label2...]
     '''
     isLabeled = True
 
@@ -601,7 +601,7 @@ class Clutch(TypeContainerOffset):
     The reason for the unusual and clumsy construction interface is so
     container types can present a consistent interface.
     args
-        A list of [type1, type2 ...}
+        [type1, type2 ...]
     '''
     def __init__(self, args):
         # a cumulative list of byte index.
@@ -655,7 +655,7 @@ class ClutchLabeled(TypeContainerOffset):
     The reason for the unusual and clumsy construction interface is so
     container types can present a consistent interface.
     args
-        A list of of [label1, type1, label2, type2 ...}
+        A list of of [label1, type1, label2, type2 ...]
     '''
     isLabeled = True
 

@@ -2,7 +2,12 @@
 from Tokens import *
 #from Position import Position
 #from Message import messageWithPos
-from tpl_types import typeNameSingularToType, typeNameContainerToType
+from tpl_types import (
+    typeNameSingularToType, 
+    typeNameContainerToType,
+    typeNames,
+)
+
 from gio.SyntaxerBase import SyntaxerBase
 from library.encodings import Codepoints
 
@@ -124,7 +129,7 @@ class Syntaxer(SyntaxerBase):
             # cast as a symbol or a Protosymbol.
             if (ord(name[0]) == Codepoints.AT):
                 if (len(name) < 2):
-                    msg = '"@" codepoint stands alone in func args ("@" opens a string to form a variable).' 
+                    msg = '"@" codepoint stands alone in args ("@" opens a string to form a variable).' 
                     self.errorWithPos(pos, msg)
                 arg = ProtoSymbol(name)
             else:
@@ -234,38 +239,26 @@ class Syntaxer(SyntaxerBase):
         if (commit):
             self._next() 
             self.skipTokenOrError('funcBooleanCollation', LBRACKET)
+
             # oneOrMore args
-            # args can be funcBooleanComparison or constants
+            # args can be anythin in funcBoolean i.e. boolean funcs,
+            # constants, symbols
             colArgB = []
+            
+            #? No commas
             self.oneOrMore(self.funcBoolean, colArgB, "funcBoolean")
-            # if (not(
-                # #self.funcBooleanComparison(colArgB) 
-                # #or self.funcBooleanCollation(colArgB)
-                # self.funcBoolean(colArgB)                
-            # )):
-                # self.expectedRuleError(
-                    # "funcBooleanCollation", 
-                    # "funcBooleanComparison or funcBooleanCollation"
-                # )   
-            # run = True
-            # while(run):
-                # run = (
-                    # #self.funcBooleanComparison(colArgB) 
-                    # #or self.funcBooleanCollation(colArgB)
-                    # self.funcBoolean(colArgB)                
-                # )              
-                                            
-            #         self._next() 
             self.skipTokenOrError('funcBooleanCollation', RBRACKET)
+            
             # make type, add to args
             argsB.append(
                 FuncBoolean(name, colArgB)
             )
         return commit
+            
                 
     ## boolean func root
-    ## We do not type the result, as a Boololean Func. 
-    # The inner Types are all ArgFunc.
+    ## We do not type the result exactly. 
+    # The inner Types are all ArgFunc FuncBoolean.
     # This lack of sophistication (the API can unwrap again) disguises
     # a detailed parse that checks funcNames, and argument types and 
     # counts
@@ -296,8 +289,53 @@ class Syntaxer(SyntaxerBase):
             #)
         return commit
         
-        
-        
+    ## Types
+    def typeArgContainer(self, argsB):
+        # args are a fair old mess for container types
+        #
+        # ClutchLabeled: [label1, type1, label2, type2 ...]
+        # Clutch [type1, type2 ...} 
+        # ArrayLabeled [containedType, label1, label2...]
+        # Array [containedType, size]
+        # So we're nob being clever or OCD. If its a arg type thats
+        # acceptable, it's in. But order or signature ignored.
+        # For now.
+        commit = (
+                self.constant(argsB)
+                or self.typeDeclaration(argsB)
+        )
+        return commit
+            
+            
+    def typeDeclaration(self, argsB):
+        name = self.textOf()
+        commit = (
+            self.isToken(IDENTIFIER) and
+            (name in typeNames)
+        )
+        if (commit):
+            #self._next() 
+            #self.skipTokenOrError('funcBoolean', LBRACKET)
+            tpe = None
+            if (name in typeNameSingularToType):
+                #easy
+                self._next() 
+                tpe = typeNameSingularToType[name]
+            elif (name in typeNameContainerToType):
+                # they all are functions with args
+                self._next() 
+                self.skipTokenOrError('typeDeclaration', LBRACKET)
+                tpeArgsB = []
+                #? With this, can't skp commas
+                self.oneOrMore(self.typeArgContainer, tpeArgsB, "typeArgContainer")
+                self.skipTokenOrError('typeDeclaration', RBRACKET)                 
+                tpe = typeNameContainerToType[name](tpeArgsB)
+            argsB.append(
+                tpe
+            )
+        return commit
+
+                    
     ## General args
     def findIdentifier(self, pos, sym):
         raise NotImplemented()
@@ -305,103 +343,90 @@ class Syntaxer(SyntaxerBase):
         
 
     ## general args
-    def argExprOrSymbol(self, argsB):
-        name = self.textOf()        
-        pos = self.toPosition()
-        self._next() 
-        if(self.optionallySkipToken(LBRACKET)):
-            #? If there is a func in a line-level func, it is either a
-            # Boolean op or a datatype 
-            # Constuct an AST to hold data and represent the possible 
-            # nesting
-            # Or a specialism to catch boolops and datatypes?
-            args = self.args()
-            #print('argExp')
-            # This makes typenames
-            if (name in typeNameContainerToType):
-                arg = typeNameContainerToType[name](args)
-            # This makes booleans
-            #elif (name in NamesBooleanFunc):
-            #    arg = funcBooleanRoot[name](args) 
-                #arg = FuncBoolean(name, args)
-            else:
-                #! this is currently an error,.
-                # functions as args can only be condition or data types
-                #temp: make ArgFunc
-                #arg = ArgFunc(name, args)
-                self.error('Only datatypes and booleans allowed as funcs ')
-            self.skipTokenOrError('argExprOrSymbol', RBRACKET)
-            argsB.append(arg)
-        else:
-            #print('argSym:')
-            #print(name)
-            #print(str(ord(name[0]) == Codepoints.AT))
-            # The arg is a standalone identifier. That's a symbol
-            # or a Protosymbol. Type it as that.
-            if (ord(name[0]) == Codepoints.AT):
-                if (len(name) < 2):
-                    msg = '"@" codepoint stands alone in func args ("@" opens a string to form a variable).' 
-                    self.errorWithPos(pos, msg)
-                arg = ProtoSymbol(name)
-            else:
-                # We can lookup all other symbols for code value. 
-                # first, check against singular typenames
-                if (name in typeNameSingularToType):
-                    arg = typeNameSingularToType[name]
+    # def argExprOrSymbol(self, argsB):
+        # name = self.textOf()        
+        # pos = self.toPosition()
+        # self._next()             
+        # if(self.optionallySkipToken(LBRACKET)):
+            # #? If there is a func in a line-level func, it is either a
+            # # Boolean op or a datatype 
+            # # Constuct an AST to hold data and represent the possible 
+            # # nesting
+            # # Or a specialism to catch boolops and datatypes?
+            # args = self.args()
+            # #print('argExp')
+            # # This makes typenames
+            # #if (name in typeNameContainerToType):
+            # #    arg = typeNameContainerToType[name](args)
+            # # This makes booleans
+            # #elif (name in NamesBooleanFunc):
+            # #    arg = funcBooleanRoot[name](args) 
+                # #arg = FuncBoolean(name, args)
+            # #else:
+                # #! this is currently an error,.
+                # # functions as args can only be condition or data types
+                # #temp: make ArgFunc
+                # #arg = ArgFunc(name, args)
+            # self.error('Only datatypes and booleans allowed as funcs ')
+            # self.skipTokenOrError('argExprOrSymbol', RBRACKET)
+            # argsB.append(arg)
+        # else:
+            # #print('argSym:')
+            # #print(name)
+            # #print(str(ord(name[0]) == Codepoints.AT))
+            # # The arg is a standalone identifier. That's a symbol
+            # # or a Protosymbol. Type it as that.
+            # if (ord(name[0]) == Codepoints.AT):
+                # if (len(name) < 2):
+                    # msg = '"@" codepoint stands alone in func args ("@" opens a string to form a variable).' 
+                    # self.errorWithPos(pos, msg)
+                # arg = ProtoSymbol(name)
+            # else:
+                # # We can lookup all other symbols for code value. 
+                # # first, check against singular typenames
+                # if (name in typeNameSingularToType):
+                    # arg = typeNameSingularToType[name]
+                # else:
+                    # # otherwise it's a dynamically created identifier
+                    # arg = self.findIdentifier(pos, name)
+            # argsB.append(arg)
+
+
+    #! I'd need to tokenise for double brackets.
+    # because we cant peek. Gnnnaaarr!
+    def path(self, argsB):
+        commit = self.isToken(LSQUARE)
+        if (commit):
+            # over the opening bracket
+            self._next() 
+            path = Path()
+            while (True):
+                if(self.isToken(STRING)):
+                    path.append(self.textOf())
+                    self._next() 
+                elif(self.isToken(INT_NUM)):
+                    path.append(int(self.textOf()))
+                    self._next() 
                 else:
-                    # otherwise it's a dynamically created identifier
-                    arg = self.findIdentifier(pos, name)
-            argsB.append(arg)
-
-
-    def pathFixed(self, argsB):
-        path = Path()
-        # over the opening bracket
-        self._next() 
-        while (True):
-            if(self.isToken(STRING)):
-                path.append(self.textOf())
-                self._next() 
-            elif(self.isToken(INT_NUM)):
-                path.append(int(self.textOf()))
-                self._next() 
-            else:
-                break
-        self.skipTokenOrError('path', RSQUARE)
-        argsB.append(path)
-
+                    break
+            self.skipTokenOrError('path', RSQUARE)
+            argsB.append(path)
+        return commit
+        
+        
     def arg(self, argsB):
         r = False
-        #print(tokenToString[self.tok])
-        # Args need to be converted to datatypes
-        isConst = (
-            self.isToken(INT_NUM) or 
-            self.isToken(FLOAT_NUM) or 
-            self.isToken(STRING) or 
-            self.isToken(MULTILINE_STRING)
-            )
-        if (isConst):
-            # We can work without errors. We know they parse 
-            # as strings or numbers from the tokeniser
-            v = self.textOf()
-            if (self.isToken(INT_NUM)):
-                v = int(v)
-            if (self.isToken(FLOAT_NUM)):
-                v = float(v)
-            argsB.append(v)
-            self._next()
-            r = True
-        # can do this here, it positively detects token and name
-        elif (self.funcBoolean(argsB)):
-            pass
-        elif (self.isToken(IDENTIFIER)):
-            #argsB.append(self.textOf())
-            #self._next()           
-            self.argExprOrSymbol(argsB) 
-            #BooleanOp
-            r = True
-        elif (self.isToken(LSQUARE)):
-            self.pathFixed(argsB) 
+        
+        #NB all args converted to datatypess
+        if (
+            self.constant(argsB)
+            or self.funcBoolean(argsB)
+            or self.typeDeclaration(argsB)
+            # No expressions allowed nested,
+            # ater booleans and funcs, so identifiers must be a symbol
+            or self.symbol(argsB)
+            or self.path(argsB)
+        ):
             r = True
             
         # skip trailing commas
