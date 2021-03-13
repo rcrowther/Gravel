@@ -2,7 +2,7 @@
 #
 
 ROStringDefine(@ro1 ""In a Silent Way")
-#RODefine(@ro2 79 Bit32)
+RODefine(@ro2 79 Bit32)
 
 func(@adder)
     frame()
@@ -37,7 +37,7 @@ funcMain()
 #--
 
 #--
-    #regDefine(@reg1 'rbx' 777 Bit64)
+    regDefine(@reg1 'rbx' 777 Bit64)
     #println(reg1)
 #--
     #Isnt working because what ''type' is a length of bytes?
@@ -79,6 +79,11 @@ funcMain()
 
     #if(AND( LT(stk1 5) NOT(LT(stk1 9)) ))
     #ifEnd()
+
+#--
+    cmp(reg1 and(not(lt(4 5)) gte(43 5)) )
+#-- 
+    # general exit
     printFlush()
     frameEnd()
     sysExit(0)

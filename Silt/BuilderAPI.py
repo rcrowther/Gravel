@@ -9,7 +9,7 @@ import tpl_types as Type
 from asm_db import TypesToASMAbv, TypesToASMName
 
 #? dont like this imports. They're for arg types though.
-from Syntaxer import ProtoSymbol, Path
+from Syntaxer import ProtoSymbol, Path, FuncBoolean
 from tpl_either import MessageOption, MessageOptionNone
 
 # Humm. Build addresses here, not in locs?
@@ -87,6 +87,8 @@ class BuilderAPI():
         'stackAllocBytes': [ProtoSymbol, int, int],
         'stackAlloc': [ProtoSymbol, int, Type.Type],
 
+        ## boolean
+        'cmp': [Var.Base, FuncBoolean],
         
         ## printers
         'print' : [Var.Base],
@@ -95,49 +97,7 @@ class BuilderAPI():
     #'': [].
     }
     
-    def isGlobalData(self, name):
-        '''
-        Test if a function defines global instructions.
-        return 
-            If True, places in global environment (else data is local) 
-        '''
-        raise NotImplementedError()
 
-        
-    def mustPushData(self, name):
-        '''
-        Test if a function pushes to the stack.
-        return 
-            If True, builder pushes data to the stack (a closure mark)
-        '''
-        raise NotImplementedError()
-
-        
-    def mustPopData(self, name):
-        '''
-        Test if a function pops from the stack.
-        return 
-            If True, builder pops data from the stack (a closure mark)
-        '''
-        raise NotImplementedError()
-
-
-    def mustSetData(self, name):
-        '''
-        Test if a function sets data in an environment.
-        return 
-            If True, builder sets data on the environment (a var symbol).
-        '''
-        raise NotImplementedError()
-
-
-    def mustGetData(self, name):
-        '''
-        Test if a function gets data from an environment.
-        return 
-            If True, builder gets data from the environment (a var symbol).
-        '''
-        raise NotImplementedError()
             
     def byteSize(self, bitsize):
         return bitsize >> 3
@@ -455,6 +415,7 @@ class BuilderAPIX64(BuilderAPI):
     ## Var action
     def set(self, b, args):
         '''
+        Set a var to a value
             [Var.Base, val],
         '''
         var = args[0]
@@ -498,6 +459,7 @@ class BuilderAPIX64(BuilderAPI):
         
     def setPath(self, b, args):
         '''
+        Set a path through a type to a value
             [ Var.Base path val],
         '''
         var = args[0]
@@ -524,6 +486,28 @@ class BuilderAPIX64(BuilderAPI):
         return mo
 
 
+    ###
+    def cmp(self, b, args):
+        var = args[0]
+        var = args[0]
+        booleanFunc = args[1]
+        #print(str(booleanFunc))
+        mo = MessageOptionNone
+        # need two registers?? one for comparision,  current reesult?
+        p1 = 'var???'
+        p2 = 'constant' 
+        b._code.append("cmp {}, {}".format(
+            p1,
+            p2,
+        ))     
+        funcName = booleanFunc.name
+        p2 = '[label]'
+        b._code.append("j{}, {}".format(
+            funcName,
+            p2,
+        ))         
+        return mo
+        
         # rolled would look like
     # a loop...
     # loopLabel = 

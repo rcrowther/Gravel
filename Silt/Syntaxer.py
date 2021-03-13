@@ -7,6 +7,19 @@ from gio.SyntaxerBase import SyntaxerBase
 from library.encodings import Codepoints
 
 
+NamesBooleanComparisons  = [
+    'gt', 'gte', 'lt', 'lte', 'eq', 'neq',
+]
+NamesBooleanCollators = [
+    'and', 'or', 'xor', 
+]
+NamesBooleanFuncs = [
+ 'not',
+]
+NamesBooleanFuncs.extend(NamesBooleanComparisons)
+NamesBooleanFuncs.extend(NamesBooleanCollators)
+
+
 ## Custom argument Types
 class ArgFunc:
     def __init__(self, name, args):
@@ -37,13 +50,20 @@ class ProtoSymbol():
         
         
         
-class BooleanOp(ArgFunc):
+class FuncBoolean(ArgFunc):
     def __repr__(self):
-        return "BooleanOp(name:'{}',  args:{})".format(
+        return "FuncBoolean(name:'{}',  args:{})".format(
             self.name,
             self.args
         )    
 
+    def __str__(self):
+        return "{}({})".format(
+            self.name,
+            self.args
+        )        
+        
+        
         
         
 class Syntaxer(SyntaxerBase):
@@ -58,10 +78,14 @@ class Syntaxer(SyntaxerBase):
     tokenToString = tokenToString
 
        
-    def commentCB(self, text):
-        print('comment with "' + text)
+
 
     ## Rules
+    
+    # Comments
+    def commentCB(self, text):
+        print('comment with "' + text)
+        
     def comment(self):
         commit = (self.isToken(MULTILINE_COMMENT) or self.isToken(COMMENT))
         if (commit):
@@ -85,11 +109,204 @@ class Syntaxer(SyntaxerBase):
         return coloned
 
 
+    ## Some basics
+    def symbol(self, argsB):
+        '''
+        Where it must be a symbol 
+        ... and not the possibility of a function. It must also be 
+        defended against builtin symbol names that need different casts, 
+        such as boolean and type functions.
+        '''
+        commit = (self.isToken(IDENTIFIER))
+        if (commit):
+            name = self.textOf()
+            pos = self.toPosition()
+            # cast as a symbol or a Protosymbol.
+            if (ord(name[0]) == Codepoints.AT):
+                if (len(name) < 2):
+                    msg = '"@" codepoint stands alone in func args ("@" opens a string to form a variable).' 
+                    self.errorWithPos(pos, msg)
+                arg = ProtoSymbol(name)
+            else:
+                # We can lookup all other symbols for code value. 
+                # This is where we would check for builtin symbol names
+                # such as boolean and type names, but this rule should 
+                # be defended
+                # So it's a dynamically created identifier
+                arg = self.findIdentifier(pos, name)
+            argsB.append(arg)
+            self._next() 
+        return commit
+        
+    def constant(self, argsB):
+        commit = (
+            self.isToken(INT_NUM) or 
+            self.isToken(FLOAT_NUM) or 
+            self.isToken(STRING) or 
+            self.isToken(MULTILINE_STRING)
+            )
+        if (commit):
+            # We can work without errors. We know they parse 
+            # as strings or numbers from the tokeniser
+            v = self.textOf()
+            
+            # if not string, cast
+            if (self.isToken(INT_NUM)):
+                v = int(v)
+            if (self.isToken(FLOAT_NUM)):
+                v = float(v)
+            argsB.append(v)
+            self._next()
+        return commit
+            
+    
+
+    ## boolean func parsing
+    #! no commas
+    def funcBooleanNot(self, argsB):
+        name = self.textOf()
+        commit = (
+            self.isToken(IDENTIFIER) and
+            (name == 'not')
+        )    
+        if (commit):
+            self._next() 
+            self.skipTokenOrError('funcBooleanNot', LBRACKET)
+            # must contain two args
+            # args can be Symbols or constants
+            notArgB = []
+            if (not(
+                self.funcBooleanComparison(notArgB) 
+                or self.funcBooleanCollation(notArgB) 
+            )):
+                self.expectedRuleError(
+                    "funcBooleanNot", 
+                    "funcBooleanComparison or funcBooleanCollation"
+                )
+            self.skipTokenOrError('funcBooleanNot', RBRACKET)
+            # make type, add to args
+            argsB.append(
+                FuncBoolean(name, notArgB)
+            )
+        return commit
+                
+    def funcBooleanComparison(self, argsB):
+        name = self.textOf()
+        commit = (
+            self.isToken(IDENTIFIER) and
+            (name in NamesBooleanComparisons)
+        )
+        if (commit):
+            self._next() 
+            self.skipTokenOrError('funcBooleanComparison', LBRACKET)
+            # must contain two args
+            # args can be Symbols or constants
+            cmpArgB = []
+            if(not(
+                self.symbol(cmpArgB) or 
+                self.constant(cmpArgB)
+            )):
+                self.expectedRuleError(
+                    "funcBooleanComparison-arg1", 
+                    "symbol or constant"
+                )
+            if(not(
+                self.symbol(cmpArgB) or 
+                self.constant(cmpArgB)
+            )):
+                self.expectedRuleError(
+                    "funcBooleanComparison-arg2", 
+                    "symbol or constant"
+                )
+            self.skipTokenOrError('funcBooleanComparison', RBRACKET)
+            # make type, add to args
+            argsB.append(
+                FuncBoolean(name, cmpArgB)
+            )
+        return commit
+
+    def funcBooleanCollation(self, argsB):
+        name = self.textOf()
+        commit = (
+            self.isToken(IDENTIFIER) and
+            (name in NamesBooleanCollators)
+        )       
+        if (commit):
+            self._next() 
+            self.skipTokenOrError('funcBooleanCollation', LBRACKET)
+            # oneOrMore args
+            # args can be funcBooleanComparison or constants
+            colArgB = []
+            self.oneOrMore(self.funcBoolean, colArgB, "funcBoolean")
+            # if (not(
+                # #self.funcBooleanComparison(colArgB) 
+                # #or self.funcBooleanCollation(colArgB)
+                # self.funcBoolean(colArgB)                
+            # )):
+                # self.expectedRuleError(
+                    # "funcBooleanCollation", 
+                    # "funcBooleanComparison or funcBooleanCollation"
+                # )   
+            # run = True
+            # while(run):
+                # run = (
+                    # #self.funcBooleanComparison(colArgB) 
+                    # #or self.funcBooleanCollation(colArgB)
+                    # self.funcBoolean(colArgB)                
+                # )              
+                                            
+            #         self._next() 
+            self.skipTokenOrError('funcBooleanCollation', RBRACKET)
+            # make type, add to args
+            argsB.append(
+                FuncBoolean(name, colArgB)
+            )
+        return commit
+                
+    ## boolean func root
+    ## We do not type the result, as a Boololean Func. 
+    # The inner Types are all ArgFunc.
+    # This lack of sophistication (the API can unwrap again) disguises
+    # a detailed parse that checks funcNames, and argument types and 
+    # counts
+    def funcBoolean(self, argsB):
+        name = self.textOf()
+        commit = (
+            self.isToken(IDENTIFIER) and
+            (name in NamesBooleanFuncs)
+        )
+        if (commit):
+            #self._next() 
+            #self.skipTokenOrError('funcBoolean', LBRACKET)
+            funcArgsB = []
+            # should be one of these...
+            if (not(
+                self.funcBooleanComparison(argsB)
+                or self.funcBooleanCollation(argsB)
+                or self.funcBooleanNot(argsB)
+            )):
+                self.expectedRuleError(
+                    "funcBoolean", 
+                    "funcBooleanComparison, funcBooleanCollation or funcBooleanNot"
+                )
+            #self.skipTokenOrError('funcBoolean', RBRACKET)                 
+            # make type, add to args
+            #argsB.append(
+            #    FuncBoolean(name, funcArgsB)
+            #)
+        return commit
+        
+        
+        
+    ## General args
     def findIdentifier(self, pos, sym):
         raise NotImplemented()
         
+        
+
+    ## general args
     def argExprOrSymbol(self, argsB):
-        name = self.textOf()
+        name = self.textOf()        
         pos = self.toPosition()
         self._next() 
         if(self.optionallySkipToken(LBRACKET)):
@@ -103,21 +320,24 @@ class Syntaxer(SyntaxerBase):
             # This makes typenames
             if (name in typeNameContainerToType):
                 arg = typeNameContainerToType[name](args)
-            # This makes conditions
-            #elif (name in ConditionalTypeNames):
-            #    arg = typeNameConditionToType[name](args)                
+            # This makes booleans
+            #elif (name in NamesBooleanFunc):
+            #    arg = funcBooleanRoot[name](args) 
+                #arg = FuncBoolean(name, args)
             else:
-                #! this is currently an error, 
+                #! this is currently an error,.
                 # functions as args can only be condition or data types
-                arg = ArgFunc(name, args)
+                #temp: make ArgFunc
+                #arg = ArgFunc(name, args)
+                self.error('Only datatypes and booleans allowed as funcs ')
             self.skipTokenOrError('argExprOrSymbol', RBRACKET)
             argsB.append(arg)
         else:
             #print('argSym:')
             #print(name)
             #print(str(ord(name[0]) == Codepoints.AT))
-            # It was a standalone identifier as an arg. That's a symbol
-            # is it a Protosymbol? Type it as that.
+            # The arg is a standalone identifier. That's a symbol
+            # or a Protosymbol. Type it as that.
             if (ord(name[0]) == Codepoints.AT):
                 if (len(name) < 2):
                     msg = '"@" codepoint stands alone in func args ("@" opens a string to form a variable).' 
@@ -149,7 +369,7 @@ class Syntaxer(SyntaxerBase):
                 break
         self.skipTokenOrError('path', RSQUARE)
         argsB.append(path)
-                        
+
     def arg(self, argsB):
         r = False
         #print(tokenToString[self.tok])
@@ -171,6 +391,9 @@ class Syntaxer(SyntaxerBase):
             argsB.append(v)
             self._next()
             r = True
+        # can do this here, it positively detects token and name
+        elif (self.funcBoolean(argsB)):
+            pass
         elif (self.isToken(IDENTIFIER)):
             #argsB.append(self.textOf())
             #self._next()           
@@ -196,6 +419,7 @@ class Syntaxer(SyntaxerBase):
         print('expr {}({})'.format(name, args))
         
     def expr(self):
+        #? But not types or booleanFuncs
         commit = (self.isToken(IDENTIFIER))
         if (commit):
             name = self.textOf()

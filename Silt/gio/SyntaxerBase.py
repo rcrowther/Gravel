@@ -196,54 +196,101 @@ class SyntaxerBase:
             
             
     ## Rule helpers
-    #! enable
+    #? issues here: 
+    # - these really need the ability to pass
+    # in trees or args to the rules.
+    # - and to take one or more rules
+    def zeroOrMore(self, rule, ruleArgs):
+        '''
+        Run a rule zero or more times.
+        rule
+            an optional boolean-return function
+        ruleArgs
+            args to supply to the rule
+        '''
+        run = True
+        while(run):
+            run = rule(ruleArgs) 
+                
+
+    def one(self, rule, ruleArgs, expectedRuleName):
+        '''
+        Run a rule one or more times.
+        Throws an expectedRuleError if no match.
+        rule
+            an optional boolean-return function
+        ruleArgs
+            args to supply to the rule
+        '''
+        if (not(rule(ruleArgs))):
+            self.expectedRuleError(
+                "oneOrMore", 
+                expectedRuleName
+            )    
+
+    def oneOrMore(self, rule, ruleArgs, expectedRuleName):
+        '''
+        Run a rule one or more times.
+        Throws an expectedRuleError if no match.
+        rule
+            an optional boolean-return function
+        ruleArgs
+            args to supply to the rule
+        '''               
+        self.one(rule, ruleArgs, expectedRuleName)
+        self.zeroOrMore(rule, ruleArgs)
+        
+        
     # Could be more rigourous, what if delimiter is in rule
     # or rule goes wrong?
-    def zeroOrMoreDelimited(self, ruleFixed, endToken):
-        '''
-        Apply a rule optionally, repeatedly, until an end token.
-        Often easier and more human for list rules to match the 
-        delimiter than to keep checking if contained rules match.
-        Skips the delimiting token.
-        ruleFixed 
-            nust be non-optional 'fixed' (throws error)
-        '''
-        count = 0
-        while(not self.isToken(endToken)):
-            ruleFixed()
-            count += 1
-        self._next()
-        return count
+    #x probably
+    # def zeroOrMoreDelimited(self, ruleFixed, endToken):
+        # '''
+        # Apply a rule optionally, repeatedly, until an end token.
+        # Often easier and more human for list rules to match the 
+        # delimiter than to keep checking if contained rules match.
+        # Skips the delimiting token.
+        # ruleFixed 
+            # nust be non-optional 'fixed' (throws error)
+        # '''
+        # count = 0
+        # while(not self.isToken(endToken)):
+            # ruleFixed()
+            # count += 1
+        # self._next()
+        # return count
 
-    def oneOrMoreDelimited(self, ruleFixed, endToken):
-        '''
-        Apply a rule repeatedly until an end token.
-        Often easier and more human for list rules to match the 
-        delimiter than to keep checking if contained rules match.
-        Skips the delimiting token.
-        ruleFixed 
-            nust be non-optional 'fixed' (throws error)
-        '''
-        count = 0
-        while(True):
-            ruleFixed()
-            count += 1
-            if (self.isToken(endToken)):
-                break
-        #print("count {}".format(count))
-        #! no?
-        self._next()
-        return count
+    # #x probably
+    # def oneOrMoreDelimited(self, ruleFixed, endToken):
+        # '''
+        # Apply a rule repeatedly until an end token.
+        # Often easier and more human for list rules to match the 
+        # delimiter than to keep checking if contained rules match.
+        # Skips the delimiting token.
+        # ruleFixed 
+            # nust be non-optional 'fixed' (throws error)
+        # '''
+        # count = 0
+        # while(True):
+            # ruleFixed()
+            # count += 1
+            # if (self.isToken(endToken)):
+                # break
+        # #print("count {}".format(count))
+        # #! no?
+        # self._next()
+        # return count
         
-    def oneOrError(self, ruleOption, currentRuleName, expectedRuleName):
-        '''
-        Match one rule or throw an error.
-        This helper makes an optional rule into a necesssary rule.
-        ruleOption
-            an opyional rule. 
-        '''
-        if(not ruleOption()):
-            self.expectedRuleError(currentRuleName, expectedRuleName)
+    # #x probably
+    # def oneOrError(self, ruleOption, currentRuleName, expectedRuleName):
+        # '''
+        # Match one rule or throw an error.
+        # This helper makes an optional rule into a necesssary rule.
+        # ruleOption
+            # an opyional rule. 
+        # '''
+        # if(not ruleOption()):
+            # self.expectedRuleError(currentRuleName, expectedRuleName)
             
     ## Rules
 
