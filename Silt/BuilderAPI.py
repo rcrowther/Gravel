@@ -15,6 +15,7 @@ from tpl_either import MessageOption, MessageOptionNone
 # Humm. Build addresses here, not in locs?
 from tpl_address_builder import AddressBuilder
 
+from tpl_label_generators import LabelGen
 
 
 class BuilderAPI():
@@ -45,6 +46,8 @@ class BuilderAPI():
     # This is a reference back down to the compiler. It is wired in
     # on initialisation of the compiler.
     compiler = None
+
+    labelGenerate = LabelGen()
 
     '''
     Type signature of API funcs
@@ -89,6 +92,7 @@ class BuilderAPI():
 
         ## boolean
         'cmp': [Var.Base, FuncBoolean],
+        'ifStart': [FuncBoolean],
         
         ## printers
         'print' : [Var.Base],
@@ -486,7 +490,9 @@ class BuilderAPIX64(BuilderAPI):
         return mo
 
 
-    ###
+    ### compare/if
+    # This has the problem we need a Boolean type, probably.
+    # And to go with it, a compare flag location.
     def cmp(self, b, args):
         var = args[0]
         var = args[0]
@@ -507,7 +513,150 @@ class BuilderAPIX64(BuilderAPI):
             p2,
         ))         
         return mo
+
+            
+    jumpOps = {
+        "lt": "jl",
+        "lte": "jle",
+        "gt": "jg",
+        "gte": "jge",
+        "eq": "je",
+        "neq": "jne",
+    }
+
+    jumpOpsNot = {
+        "lt": "jge",
+        "lte": "jg",
+        "gt": "jle",
+        "gte":"jl",
+        "eq": "jne",
+        "neq": "je",
+    }
+
+    NamesBooleanCollators = [
+        'and', 'or', 'xor', 
+    ]
+
+    def _logicBuilder(
+        self, 
+        b, 
+        logicTree, 
+        invertToFalse, 
+        compareNot,
+        trueLabel, 
+        falseLabel
+    ):
+        '''
+        Build shortcut comparison code from a logicTree.
         
+        The default approch is to invert comparisions and send to false.
+        This is the basic setup for AND functions. invertToFalse has no
+        effect on the comparison, but changes the shortcut, and is used 
+        for OR.
+        logicTree
+            A single instance of FuncBoolean
+        invertToFalse
+            invert comparisons as written, and drirect the jump to
+            the false label (default true)
+        compareNot
+            Parent node is NOT
+        '''
+        #! not hadling XOR
+        #? Tail recurse?
+        if (logicTree.name in self.NamesBooleanCollators):
+            #! with a negate end, invert, etc.
+            collatorIsAND = (logicTree.name == 'and')
+
+            # Now tricks.  Common Assemblty code, so I'm not going 
+            # to stand them as optimisations
+            #
+            # - if we get a NOT into an AND/OR, we use DeMorgans rule 
+            # backwards. We let the NOT trickle into the arguments, but 
+            # must switch AND/OR e.g. NOT(AND(1 2)) = OR(NOT(1) NOT(2))
+            if (compareNot):
+                collatorIsAND = not()
+                
+            # - we set invertToFalse by the function. This 
+            # introduces the shortcut behaviour. AND jumps to the false
+            # label (on failure), OR jumps to the true label (on 
+            # success)
+            invertToFalse = collatorIsAND
+            if (not(collatorIsAND)):
+                # - OR comparisons should formally be followed by 
+                # a jump to false label, since no comparison succeeded.
+                # Otherise, it falls through to executing the block
+                # anyway.
+                # There's another solution, expensive on the compiler
+                # but removing this last jump---invert the last comparison.
+                argsc = logicTree.args.copy()
+                lastArg = argsc.pop()
+                for arg in argsc:
+                    self._logicBuilder(b, arg, False, compareNot, trueLabel, falseLabel)
+                self._logicBuilder(b, lastArg, True, compareNot, trueLabel, falseLabel)                
+            else:    
+                for arg in logicTree.args:
+                    self._logicBuilder(b, arg, invertToFalse, compareNot, trueLabel, falseLabel)
+        elif (logicTree.name == 'not'):
+            self._logicBuilder(b, logicTree.args[0], invertToFalse, not(compareNot), trueLabel, falseLabel)                
+        else:
+            # Must be a Comparison
+            b._code.append("cmp {}, {}".format(logicTree.args[0], logicTree.args[1]))
+            jumpOp = self.jumpOps[logicTree.name]
+            label = trueLabel
+            
+            # Is the test inverted (Not)? Depending on our parameters?
+            # This is XOR logic
+            if (invertToFalse ^ compareNot):
+                jumpOp = self.jumpOpsNot[logicTree.name]
+            if (invertToFalse):
+                label = falseLabel
+            b._code.append("{} {}".format(jumpOp, label))
+            
+    #! shouldn't be here, but for now
+    #! call them subbuilders?
+    def logicBuilder(
+        self, 
+        b, 
+        logicTree,
+        trueLabel, 
+        falseLabel
+    ):
+        '''
+        Build shortcut comparison code from a logicTree.
+        '''
+        # Start with an AND configuration, invertToFalse = True
+        # Start with no enabled NOT, compareNot = False
+        #! Won't work on two literal numbers
+        #! and wont work with literals on first parameter  
+        self._logicBuilder(b, logicTree, True, False, trueLabel, falseLabel)
+                
+            
+            
+            
+    def ifStart(self, b, args):
+        boolLogic = args[0]
+        #??? Now need some booleana logic to get us there...
+        #b._code.append("cmp rax, 4")        
+        falseLabel = self.labelGenerate('ifFalse')
+        trueLabel = self.labelGenerate('ifTrue')
+        #jumpLogic = "jne"
+        #b._code.append(jumpLogic + " " + falseLabel)
+        self.logicBuilder(b, boolLogic, trueLabel, falseLabel)
+        # Put the true label at block start
+        b._code.append(trueLabel + ':')        
+        b._code.append('; beginBlock')        
+        self.compiler.closureDataPush(falseLabel)
+        return MessageOptionNone
+                
+    def ifEnd(self, b, args):
+        # Put the false label at block end
+        falseLabel = self.compiler.closureDataPop()
+        #self.compiler.envDelClosure()
+        b._code.append('; endBlock')
+        b._code.append(falseLabel + ':')        
+        return MessageOptionNone
+        
+    ## loops
         # rolled would look like
     # a loop...
     # loopLabel = 

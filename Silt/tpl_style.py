@@ -73,6 +73,10 @@ def builderCode(style, code):
             styleStack.append(currentStyle)            
             currentStyle = style['loopBlock']
             indent += currentStyle['indent']
+        if line.startswith('; beginBlock'):
+            styleStack.append(currentStyle)            
+            currentStyle = style['codeBlock']
+            indent += currentStyle['indent']
                         
         # apply the current style
         b.append(applyStyleToLine(indent, currentStyle, line)) 

@@ -1,8 +1,10 @@
 ## A parser
 #
 
-ROStringDefine(@ro1 ""In a Silent Way")
-RODefine(@ro2 79 Bit32)
+#ROStringDefine(@ro1 ""In a Silent Way")
+#RODefine(@ro2 79 Bit32)
+ROStringDefine(@roTrue ""  True")
+ROStringDefine(@roQuery ""Query:")
 
 func(@adder)
     frame()
@@ -31,7 +33,7 @@ funcMain()
     #registersPop()
 
 #--
-    println(ro1)
+    #println(ro1)
 #--
     #println(ro2)
 #--
@@ -47,8 +49,8 @@ funcMain()
     #set(heap2 799)
     #println(heap2)
 #--
-    heapAlloc(@heap3 Array(Bit64 8))
-    setPath(heap3 [2 'x'] 555)
+    #heapAlloc(@heap3 Array(Bit64 8))
+    #setPath(heap3 [2 'x'] 555)
     #forEach(@elem heap3)
     #raw('; ...contents...')
     #println(elem)
@@ -81,8 +83,14 @@ funcMain()
     #ifEnd()
 
 #--
-    cmp(reg1 and(not(lt(4 5)) gte(43 5)) )
+    #cmp(reg1 and(not(lt(4 5)) gte(43 5)) )
 #-- 
+
+    println(roQuery)
+    ifStart(and(gt('rbx' 777) lte('rbx' 777)))
+        println(roTrue)
+        ifEnd()
+#--
     # general exit
     printFlush()
     frameEnd()

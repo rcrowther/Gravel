@@ -37,6 +37,21 @@ class ArgFunc:
             self.args
         )
 
+        
+class FuncBoolean(ArgFunc):
+    def __repr__(self):
+        return "FuncBoolean(name:'{}',  args:{})".format(
+            self.name,
+            self.args
+        )    
+
+    def __str__(self):
+        return "{}({})".format(
+            self.name,
+            self.args
+        )        
+        
+        
 class Path(list):
     pass
 
@@ -54,21 +69,7 @@ class ProtoSymbol():
         return self.name[1:]
         
         
-        
-class FuncBoolean(ArgFunc):
-    def __repr__(self):
-        return "FuncBoolean(name:'{}',  args:{})".format(
-            self.name,
-            self.args
-        )    
 
-    def __str__(self):
-        return "{}({})".format(
-            self.name,
-            self.args
-        )        
-        
-        
         
         
 class Syntaxer(SyntaxerBase):
