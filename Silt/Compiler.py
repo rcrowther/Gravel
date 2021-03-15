@@ -78,7 +78,8 @@ class Compiler(Syntaxer):
         print a list of typenames 
         '''
         # Used on argument signatures to tidy error reports
-        return "[" + ", ".join([tpe.__name__ for tpe in typeList]) + "]"
+        #return "[" + ", ".join([tpe.__name__ for tpe in typeList]) + "]"
+        return "[" + ", ".join([argTest.typeString for argTest in typeList]) + "]"
         
     def argsCheck(self, pos, name, args, argsTypes):
         '''
@@ -104,16 +105,27 @@ class Compiler(Syntaxer):
                  args,
                  )
             self.errorWithPos(pos, msg)
-            
-        for argType, arg in zip(argsTypes, args):
-            if (not(isinstance(arg, argType))):
-                msg = "Arg type not match signature. symbol:'{}', expected:{}, args:{}".format(
-                    name,
-                    self._stringTypeNamesMk(argsTypes),
-                    args
+        
+        i = 0
+        for argTest, arg in zip(argsTypes, args):
+            # is it argtype that could be fichanged, to reflect differences?
+            # 
+            #if (not(isinstance(arg, argType))):
+            print(str(argTest))
+            if (not(argTest(arg))):
+                # msg = "Arg type not match signature. symbol:'{}', expected:{}, args:{}".format(
+                    # name,
+                    # self._stringTypeNamesMk(argsTypes),
+                    # args
+                 # )
+                msg = "Arg type not match signature. arg:{}, expected:{}, got:{}".format(
+                    i,
+                    argTest.typeString,
+                    arg
                  )
                 self.errorWithPos(pos, msg)
-
+            i += 1
+            
     def eitherError(self, posArgs, either):
         if (either.status == Option.ERROR):
             self.errorWithPos(posArgs, either.msg)

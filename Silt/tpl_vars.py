@@ -2,7 +2,6 @@ import architecture
 import tpl_locationRoot as LocRoot
 from tpl_either import Either
 
-
 # What's this for?
 # Most computer langauages have a consistent interface for cinstants
 # and variables. A functional language does not care, a constant is
@@ -18,12 +17,25 @@ from tpl_either import Either
 # to capture these distinctions. It needs to be able to say, function X
 # can take VarOrConstant of a type e.g.
 #
-# VarOrConstant(Bit64)
+# Value(Bit64)
 #
 # Or not,
 #
 # Constant(StrASCII)
 #
+# or
+#
+# Var(Bit64)
+#
+# No hang on, the input type is irrelevant. int, float, str will do
+# But the varOrConstant
+# So we need something like 
+# StrConstant() or
+# We could even do with it being based on location
+# RegVar or String
+# And we need Arrays... lists?
+# How are we going to do that?
+
 # At first I was reluctant to type further than using the  
 # types from the language the parser--builder is written in. It means
 # a wrap, and I don't like wraps. But without that, we can't do the
@@ -31,28 +43,39 @@ from tpl_either import Either
 # use a consistent interface for code building. So here it it is, the 
 # Value class.
 
-class Value():
-    '''
-    A value is anything that can be accepted as an argument to a 
-    Rubble main function.
-    It always contains a type, which is they type of the value it can 
-    return
-    ''' 
-    def __init__(self, tpe):
-        self.tpe = tpe
+# class ArgType():
+    # '''
+    # A value is anything that can be accepted as an argument to a 
+    # Rubble main function.
+    # It always contains a type, which is they type of the value it can 
+    # return.
+    # Realised versions also contain either data locations, or data 
+    # values.
+    # ''' 
+    # def __init__(self, tpe):
+        # assert isinstance(tpe, Type), "Parameter not a Type. tpe: '{}'".format(tpe)
+        # self.tpe = tpe
+        
+    # def checkType(self, argVal):
+        # return isinstance(other, Value)
+        
+    # def __repr__(self):
+        # return "ArgType(loc:'{}', tpe:{})".format(
+            # self.tpe
+        # )    
 
-    def canEqual(self, other):
-        return isinstance(other, Value)
+
+# class Literal(ArgValue):
+    # '''
+    # A piece of data that exists existentially.
+    # Existentiallyy meaning, it stands as itself.
+    # '''
+    # def __init__(self, value, tpe):
+        # super().__init__(tpe)
+        # self.value = value
         
-    def equals(self, other):
-        return self.canEqual(other) and self.tpe.equals(other.tpe)
-        
-    def __repr__(self):
-        return "Var(loc:'{}', tpe:{})".format(
-            self.loc,
-            self.tpe
-        )    
-    
+#! this tangle of Base and Var needs fixing.
+# will affect syn_arg_tests also
 class Base():
 
     def value(self):
@@ -67,7 +90,7 @@ class Base():
     def toCodeValue(self):
         '''
         Build a snippet of code to access the var.
-        This acesses to top-level tpye of any goven tpye tree. In the 
+        This acesses to top-level type of any goven tpye tree. In the 
         case of singular types, it will access the value directly. In
         the case of a container, it returns the container. To access  
         values in a container, a path is needed. 

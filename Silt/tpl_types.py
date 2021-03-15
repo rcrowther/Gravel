@@ -55,17 +55,7 @@ We will not type symbols???
 We will not store mutable data like string lengths.
 '''
 
-# A literal is not a type, is it? its a variable... It has a location.
-# class Literal(TypeContainer):
-    # '''
-    # A piece of data that exists existentially.
-    # Existentiallyy meaning, it stands as itself. Though a container, no identity exists elsewhere.
-    # '''
-    # def __init__(self, elementType):
-        # if not(isinstance(elementType, Type)):
-            # raise ValueError('Literal elementType not a Type. elementType: {}'.format(type(elementType)))
-        # super().__init__(elementType)
-        # self.byteSize = self.elementType.byteSize
+
         
 class Encoding():
     def __init__(self, name):
@@ -81,9 +71,8 @@ ASCII = Encoding('ascii')
 UTF8 = Encoding('UTF8')
 
 
-from collections import namedtuple
-
 #?x
+#from collections import namedtuple
 #TypepathItem = namedtuple('TypepathItem', ['tpe', 'offset'])
 
 
@@ -146,9 +135,11 @@ class TypeSingular(Type):
         return self is other
         
         
-        
+class TypeNumeric(TypeSingular):
+    pass
+
 # char
-class _Bit8(TypeSingular):
+class _Bit8(TypeNumeric):
     encoding = Signed
     byteSize = 1
     #def print(self):
@@ -158,7 +149,7 @@ class _Bit8(TypeSingular):
 Bit8 = _Bit8()
 
 # short int
-class _Bit16(TypeSingular):
+class _Bit16(TypeNumeric):
     encoding = Signed
     byteSize = 2
     #def print(self):
@@ -168,7 +159,7 @@ class _Bit16(TypeSingular):
 Bit16 = _Bit16()
 
 # int
-class _Bit32(TypeSingular):
+class _Bit32(TypeNumeric):
     encoding = Signed
     byteSize = 4
     #def print(self):
@@ -178,7 +169,7 @@ class _Bit32(TypeSingular):
 Bit32 = _Bit32()
 
 # long int
-class _Bit64(TypeSingular):
+class _Bit64(TypeNumeric):
     encoding = Signed
     byteSize = 8
     #def print(self):
@@ -188,7 +179,7 @@ class _Bit64(TypeSingular):
 Bit64 = _Bit64()    
 
 # long long int
-class _Bit128(TypeSingular):
+class _Bit128(TypeNumeric):
     encoding = Signed
     byteSize = 8
     #def print(self):
@@ -198,7 +189,7 @@ class _Bit128(TypeSingular):
 Bit128 = _Bit128()    
 
 # float
-class _Bit32F(TypeSingular):
+class _Bit32F(TypeNumeric):
     '''
     A 32bit float
     in C ''float'
@@ -212,7 +203,7 @@ class _Bit32F(TypeSingular):
 Bit32F = _Bit32F()
 
 # double
-class _Bit64F(TypeSingular):
+class _Bit64F(TypeNumeric):
     '''
     A 32bit float
     in C ''double'
@@ -227,7 +218,12 @@ Bit64F = _Bit64F()
 
 #! ignoring long double (128ish)
 
-class _StrASCII(TypeSingular):
+
+
+class TypeString(TypeSingular):
+    pass
+
+class _StrASCII(TypeString):
     encoding = ASCII
     #def print(self):
     #    pass
@@ -235,7 +231,7 @@ class _StrASCII(TypeSingular):
         return "StrASCII"
 StrASCII = _StrASCII() 
  
-class _StrUTF8(TypeSingular):
+class _StrUTF8(TypeString):
     encoding = UTF8
     #def print(self):
     #    pass

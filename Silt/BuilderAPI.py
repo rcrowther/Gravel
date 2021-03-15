@@ -1,4 +1,6 @@
 import architecture
+from syn_arg_tests import *
+
 #x
 #from tpl_LocationRoot import LocationRootRODataX64, LocationRootRegisterX64, LocationRootStackX64
 #x
@@ -118,6 +120,72 @@ class BuilderAPI():
     #'': [].
     }
     
+    
+    funcNameToArgsType = {
+        # basics
+        'comment': [strVal()],
+        'sysExit': [intVal()],
+        'extern': [strVal()],
+        'raw': [strVal()],
+        
+        ## Code structure 
+        'frame': [],
+        'frameEnd': [],
+        'func': [protoSymbolVal()],
+        'funcEnd': [],
+        'funcMain': [],
+        'funcMainEnd': [],
+
+        ## Register utilities
+        'registersPush': [listVal()],
+        'registersVolatilePush': [],
+        'registersPop': [],
+
+        ## var action
+        'set': [anyVar(), intVal()],
+        #!? Path should be a Type. Probably
+        'setPath':  [anyVar(), Path, intVal()],
+        'forEachRoll' : [protoSymbolVal(), anyVar()],
+        'forEachRollEnd': [],
+        'forEach': [protoSymbolVal(), anyVar()],
+        'forEachEnd': [],
+        
+        ## Arithmetic
+        #'dec' : [anyVar()],
+        #'inc' : [anyVar()],
+        #? should be int or float. Anyway...
+        'add' : [anyVar(), intVal()],
+        'sub' : [anyVar(), intVal()],
+        'mul' : [anyVar(), intVal()],
+        'divi' : [anyVar(), intVal()],
+        'div' : [anyVar(), intVal()],
+        
+        ## Allocs
+        'ROStringDefine': [protoSymbolVal(), strVal()],
+        'RODefine': [protoSymbolVal(), intVal(), anyType()],
+        'regDefine': [protoSymbolVal(), strVal(), intVal(), anyType()],
+        'heapAllocBytes': [protoSymbolVal(), intVal()],
+        'heapAlloc': [protoSymbolVal(), anyType()],
+        'stackAllocBytes': [protoSymbolVal(), intVal(), intVal()],
+        'stackAlloc': [protoSymbolVal(), intVal(), anyType()],
+
+        ## boolean
+        'cmp': [anyVar(), booleanFuncVal()],
+        'ifStart': [booleanFuncVal()],
+        'ifEnd': [],
+        
+        ## loops
+        'forRange': [strVal(), intVal(), intOrVarNumeric()],
+        'forRangeEnd': [],
+        'whileStart': [booleanFuncVal()],
+        'whileEnd': [],
+        
+        ## printers
+        'print' : [anyVar()],
+        'println': [anyVar()],
+        'printFlush': [],
+    #'': [].
+    }    
 
             
     def byteSize(self, bitsize):
@@ -725,6 +793,8 @@ class BuilderAPIX64(BuilderAPI):
         #! needs to handle variables etc.
         reg = args[0]
         froom = args[1]
+        
+        # this can now be a numeric variable, so needs resolving
         to = args[2]
         if (froom == to):
             self.compiler.warning("'from' is equal to 'to'. Loop will not be executed.")
