@@ -1,9 +1,17 @@
-
+# Map of shortened Unicode name (or a common alias) to common 
+# codepoints. All codepoints are within the old Latin1 range
 
 SPACE = 32
 LINE_FEED = 10
+
 HASH = 35
+AT = 64
+TILDE = 126
+
 PLUS = 43
+EQUALS = 61
+ASTERISK = 42
+
 HYPHEN_MINUS = 45
 ICOMMAS = 34
 ICOMMA = 39
@@ -11,11 +19,16 @@ PERIOD = 46
 COMMA = 44
 COLON = 58
 SEMI_COLON = 59
+
 SOLIDUS = 47
+REVERSE_SOLIDUS = 92
+
+QUESTION_MARK = 63
+EXCLAMATION_MARK = 33
 UNDERSCORE = 95
+
 LEFT_BRACKET = 40
 RIGHT_BRACKET = 41
-AT = 64
 LEFT_CURLY = 123
 RIGHT_CURLY = 125
 LEFT_SQR = 91

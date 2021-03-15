@@ -85,11 +85,16 @@ funcMain()
 #--
     #cmp(reg1 and(not(lt(4 5)) gte(43 5)) )
 #-- 
-
+    #println(roQuery)
+    #ifStart(and(gt('rbx' 777) lte('rbx' 777)))
+    #    println(roTrue)
+    #    ifEnd()
+#-- 
+    regDefine(@reg1 'rbx' 2 Bit64)
     println(roQuery)
-    ifStart(and(gt('rbx' 777) lte('rbx' 777)))
+    forRange('rbx' 0 -2)
         println(roTrue)
-        ifEnd()
+        forRangeEnd()
 #--
     # general exit
     printFlush()

@@ -81,6 +81,16 @@ class BuilderAPI():
         'forEach': [ProtoSymbol, Var.Base],
         'forEachEnd': [],
         
+        ## Arithmetic
+        #'dec' : [Var.Base],
+        #'inc' : [Var.Base],
+        #? should be int or float. Anyway...
+        'add' : [Var.Base, int],
+        'sub' : [Var.Base, int],
+        'mul' : [Var.Base, int],
+        'divi' : [Var.Base, int],
+        'div' : [Var.Base, int],
+        
         ## Allocs
         'ROStringDefine': [ProtoSymbol, str],
         'RODefine': [ProtoSymbol, int, Type.Type],
@@ -93,6 +103,13 @@ class BuilderAPI():
         ## boolean
         'cmp': [Var.Base, FuncBoolean],
         'ifStart': [FuncBoolean],
+        'ifEnd': [],
+        
+        ## loops
+        'forRange': [str, int, int],
+        'forRangeEnd': [],
+        'whileStart': [FuncBoolean],
+        'whileEnd': [],
         
         ## printers
         'print' : [Var.Base],
@@ -490,6 +507,32 @@ class BuilderAPIX64(BuilderAPI):
         return mo
 
 
+
+    ## arithmetic
+    #! We need something works as var or val?
+    #? Will need widths?
+    def dec(self, b, args):
+        var = args[0]
+        b._code.append("dec {}".format(var))      
+        return MessageOptionNone
+
+    def inc(self, b, args):
+        var = args[0]
+        b._code.append("inc {}".format(var))       
+        return MessageOptionNone
+        
+    #def add(self, b, args):
+
+    #def sub(self, b, args):
+
+    #def mult(self, b, args):
+
+    #def divi(self, b, args):
+
+    #def div(self, b, args):
+
+
+
     ### compare/if
     # This has the problem we need a Boolean type, probably.
     # And to go with it, a compare flag location.
@@ -634,6 +677,9 @@ class BuilderAPIX64(BuilderAPI):
             
             
     def ifStart(self, b, args):
+        '''
+        if...then flow control from boolean logic.
+        '''
         boolLogic = args[0]
         #??? Now need some booleana logic to get us there...
         #b._code.append("cmp rax, 4")        
@@ -656,7 +702,87 @@ class BuilderAPIX64(BuilderAPI):
         b._code.append(falseLabel + ':')        
         return MessageOptionNone
         
+        
+        
     ## loops
+    def forRange(self, b, args):
+        '''
+        Increment or decrement between two numbers.
+        reg
+            the resister to increment on
+        from
+            the number to start on
+        until
+            advances until before this number
+        '''
+        # From a given numeric point to a given numeric point. Beats a 
+        # for...next loop, no probs...
+        #? needs to step (ugly, optional var time. Is there another 
+        # way if things are that awkward?)
+        #! What about until? Humm. This is a feature of 'to' loops
+        # they behave weird at 1 to 1 type rigs.
+        #! double rangers... Got a problem there with fixed vars?
+        #! needs to handle variables etc.
+        reg = args[0]
+        froom = args[1]
+        to = args[2]
+        if (froom == to):
+            self.compiler.warning("'from' is equal to 'to'. Loop will not be executed.")
+        # assessment
+        #? first, are they asessable i.e. given integers?
+        #? if not, we need to do write a calculation for the symbol
+        mustCountDown = (froom >= to)
+            
+        # from will always be oprated on by the counter.
+        # currently sown, so up
+        if (mustCountDown):
+            froom += 1
+        else:
+            froom -= 1
+        trueLabel = self.labelGenerate('forRangeTrue')
+        entryLabel = self.labelGenerate('forRangeEntry')
+        b._code.append('; beginBlock')   
+        b._code.append("mov {}, {}".format(reg, froom))  
+        b._code.append("jmp {}".format(entryLabel))                
+        b._code.append(trueLabel + ':')        
+        self.compiler.closureDataPush((trueLabel, entryLabel, reg, mustCountDown, to))
+        return MessageOptionNone
+                
+    def forRangeEnd(self, b, args):
+        trueLabel, entryLabel, reg, mustCountDown, to = self.compiler.closureDataPop()
+        b._code.append(entryLabel + ':') 
+        # or if using vars we write code to do this?  
+        if (mustCountDown):
+            b._code.append("dec {}".format(reg)) 
+        else:
+            b._code.append("inc {}".format(reg)) 
+        b._code.append("cmp {}, {}".format(reg, to))        
+        if (mustCountDown):
+            b._code.append("jg {}".format(trueLabel))  
+        else:     
+            b._code.append("jl {}".format(trueLabel))        
+        b._code.append('; endBlock')
+        return MessageOptionNone
+
+    # When you need to react to what's in the loop
+    def whileStart(self, b, args):
+        boolLogic = args[0]
+        trueLabel = self.labelGenerate('whileTrue')
+        entryLabel = self.labelGenerate('whileEntry')
+        b._code.append(trueLabel + ':')        
+        b._code.append('; beginBlock')   
+        self.compiler.closureDataPush((entryLabel, boolLogic,))
+        return MessageOptionNone
+                
+    def whileEnd(self, b, args):
+        entryLabel, boolLogic = self.compiler.closureDataPop()
+        b._code.append(entryLabel + ':')          
+        b._code.append('; endBlock')
+        return MessageOptionNone
+
+
+
+        
         # rolled would look like
     # a loop...
     # loopLabel = 

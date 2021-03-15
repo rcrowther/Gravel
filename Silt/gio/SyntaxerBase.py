@@ -38,13 +38,20 @@ class SyntaxerBase:
 
     def errorWithPos(self, pos, msg):
         '''
-        Error message.
+        Error message with explicit pos.
+        This makes it possible to use delayed positions, rather than
+        current position.
         Full source, position and token detail.
         Sometimes it may be preferable to hold on to a pos, to report 
         back after later parsing. This is slightly less convenient. Use
         error() to report on the current pos.
         '''
-        msgKlass = Message.withPos(msg, self.src, pos, self.src.lineByIndex(self.it.tokenLineCount))
+        msgKlass = Message.withSrcPos(
+            msg,
+            self.src,
+            pos,
+            self.src.lineByIndex(self.it.tokenLineCount)
+        )
         tokenTxt = self.it.textOf()
         if (tokenTxt):
             msgKlass.details = ["token text : '{}'".format(tokenTxt)]
@@ -87,7 +94,12 @@ class SyntaxerBase:
         back after later parsing. This is slightly less convenient. Use
         error() to report on the current pos.
         '''
-        msgKlass = Message.withPos(msg, self.src, pos, self.src.lineByIndex(self.it.tokenLineCount))
+        msgKlass = Message.withSrcPos(
+            msg,
+            self.src,
+            pos,
+            self.src.lineByIndex(self.it.tokenLineCount)
+        )
         tokenTxt = self.it.textOf()
         if (tokenTxt):
             msgKlass.details = ["token text : '{}'".format(tokenTxt)]
@@ -99,7 +111,7 @@ class SyntaxerBase:
         Full source, position and token detail
         '''
         pos = Position(self.it.tokenLineCount, self.it.tokenStartOffset)
-        self.warningWithPos(self, pos, msg)
+        self.warningWithPos(pos, msg)
 
 
     def info(self, msg):

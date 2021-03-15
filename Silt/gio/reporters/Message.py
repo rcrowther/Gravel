@@ -34,7 +34,7 @@ class Message:
         return m
 
     @classmethod
-    def withPos(cls, msg, src, pos, lineCode):
+    def withSrcPos(cls, msg, src, pos, lineCode):
         assert (isinstance(src, Source)), 'Not a Source: src:{}'.format(src) 
         assert (isinstance(pos, Position)), 'Not a Position: type:{}'.format(type(pos)) 
         m = cls(msg)
@@ -51,20 +51,18 @@ class Message:
             ' ' * self.pos.offset
             )
             
-    # def toString(self):
-        # return "Message(msg:'{}' src:{} pos:{})".format(
-            # self.msg,
-            # self.src,
-            # self.pos,
-            # )
-            
-    def __str__(self):
-        return 'Message("{}")'.format(self.msg)
-              
+    def toString(self):
+        return "Message(msg:'{}' src:{} pos:{})".format(
+            self.msg,
+            self.src,
+            self.pos,
+            )
+
     def __repr__(self):
         return self.toString()
         
-        
+    def __str__(self):
+        return 'Message("{}")'.format(self.msg)        
         
 #class MessageNoPos(Message):
     #def __init__(self, message):

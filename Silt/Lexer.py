@@ -2,6 +2,9 @@ import Tokens
 from library.encodings.Codepoints import *
 from gio.LexerBase import LexerBase
 
+
+
+
 #punctuationCodepoints = [COLON, LEFT_BRACKET, RIGHT_BRACKET]
 
 # dict of codepoint to token
@@ -27,8 +30,47 @@ class Lexer(LexerBase):
 
     def isPunctuation(self):
         return (self.cp in punctuationCodepoints)
-        
+
+    #! think this is how we make '--' '+' etc into identifiers
+    def dispatchMathSigns(self):
+        '''
+        ['+', '-', '*', '/']
+        followed by IDENTIFIER,
+         ~ zeroOrMore(not(WhitespaceOrLinefeed) | not(Punctuation))
+         or by INT/FLOATNUM,
+         ~ oneOrMore([0-9]) ~ optional('.' ~ oneOrMore([0-9])
+        '''
+        # Load the initial symbol so available in textOf()
+        if (self.isMathematicalSign()):
+            # load this up
+            self.b.append(self.cp)
+
+            # try the next codepoint
+            self._next()
+            if(not self.isNumeric()):
+                # assume this is an identifier
+                # ids starting witth math signs are a speciality,
+                while (True):
+                    self.b.append(self.cp)
+                    self._next()
+                    # allow most codepoints after the alphabetic,
+                    # short of whitespace or punctuation
+                    if (
+                        (self.isWhitespaceOrLinefeed()) or
+                        (self.isPunctuation())
+                     ):
+                        break
+                self.tok = Tokens.IDENTIFIER 
+                return True
+            else:
+                #assume a number
+                self.numberBody()
+
+    #! need to remove plus/minus if go with dispatchMathSigns()
     def scanNumber(self):
+        '''
+        [+=] ~ oneOrMore([0-9]) ~ optional('.' ~ oneOrMore([0-9])
+        '''
         if (self.isNumeric() or self.isPlusMinus()):
             self.tok = Tokens.INT_NUM
             while(True):
@@ -49,8 +91,8 @@ class Lexer(LexerBase):
                 (self.isPunctuation())
              )): 
                 msg = 'Token scanned as a number not ends with whitespace or punctuation'
-                self.error(Message.withPos(msg, self.src, self.start_pos))
-                
+                #self.error(Message.withPos(msg, self.src, self.start_pos))
+                self.error(msg)
             return True
         else:
             return False
@@ -108,14 +150,6 @@ class Lexer(LexerBase):
         [a-z, A-Z] ~ zeroOrMore(not(WhitespaceOrLinefeed) | not(Punctuation))
         '''
         if(self.isAlphabetic() or self.cp == AT):
-            #? isProtoSymbol is a deep speciality of this tokeniser.
-            # If an identifier starts with AT, it is scanned with 
-            # identifier logic, but tokened as a string.
-            # This will feed the syntaxer with a string, to form 
-            # symbols, thus addressing the issue that when a symbol is
-            # formed, the id is really a string, not an initialized
-            # symbol
-            #isProtoSymbol = (self.cp == AT)
             while (True):
                 self.b.append(self.cp)
                 self._next()
@@ -126,13 +160,6 @@ class Lexer(LexerBase):
                     (self.isPunctuation())
                  ):
                     break
-            # if (isProtoSymbol):
-                # self.tok = Tokens.STRING
-                # if (len(self.b) < 2):
-                    # msg = '"@" char stands alone.\n    This codepoint indicates a string intended to create a symbol. Add a name or remove?'
-                    # self.error(msg)
-                # self.b = self.b[1:]
-            # else:
             self.tok = Tokens.IDENTIFIER 
             return True
         else:

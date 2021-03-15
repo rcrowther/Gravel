@@ -85,10 +85,15 @@ class LexerBase():
     #    return self.lineCount
 
     def error(self, msg):
+        '''
+        Send a message with both source and position.
+        Raises GIOLexicalError
+        '''
         pos = Position(self.tokenLineCount, self.tokenStartOffset)
-        msgKlass = Message.withPos(
+        msgKlass = Message.withSrcPos(
             msg, 
-            self.src, pos, 
+            self.src, 
+            pos, 
             self.src.lineByIndex(self.tokenLineCount)
         )
         self.reporter.error(msgKlass)
@@ -156,7 +161,8 @@ class LexerBase():
         while (not(self.isWhitespaceOrLinefeed())):
             self.b.append(self.cp)
             self._next()
-            
+
+    ## a few general matches
     def isAlphabetic(self):
         '''
         Includes underline
@@ -175,6 +181,22 @@ class LexerBase():
         '''
         return (self.cp == 43 or self.cp == 45)
 
+    def isMathematicalSign(self):
+        '''
+        Match plus/hyphen-minus/asterisk/solidus latin.
+        Bear in mind all these codepoints except PLUS have legitimate 
+        use elsewhere.Asterix is not even the proper Unicode codepoint 
+        for multiplication, though now universally accepted as a 
+        substitute. Code may need to differentiate more, for example
+        by context, than using a simple match. 
+        '''
+        return (
+            self.cp == PLUS
+            or self.cp == HYPHEN_MINUS
+            or self.cp == ASTERISK
+            or self.cp == SOLIDUS
+        )
+
                        
     def getNext(self):
         '''
@@ -183,48 +205,16 @@ class LexerBase():
         Always starts on a non-whiltespace, non-line-end with 
         text cleared and offsets loaded.
         return 
-            true to continue, false to report error and raise
-            StopIteration
+            true to continue, false to report generic error (token not 
+            recognised) and raise StopIteration
         '''
-        # This should 
-        # self.clear() 
-        # self.skipWhitespace()
-        # self.stashOffsets()
-        # Then go hunting for a tokens
-        # if fail
-            # msg = 'Input can not be recognised as token; last codepoint:{}'.format(self.cp)
-            # self.error(msg)
-            # raise StopIteration
+        # All nexessary clearing, skipping, and poitioning, is done
+        # in the method that calls this stub.
+        # Code here should go hunting for tokens.
+        # To fail call self.error(msg)
+        # Don't forget a return!
         raise NotImplementedError()
-        # self._clear()
-        # #print("getNext")
-        # # skip to non-whitespace
-        # self.skipWhitespace()
-        # #print("skipped")
-        # self.stashOffsets()
-        # if (self.scanIdentifier()):
-            # pass
-        # elif (self.scanPunctuation()):
-            # pass
-        # elif (self.scanNumber()):
-            # pass
-        # elif (self.scanComment()):
-            # pass
-        # elif (self.scanString()):
-            # pass
-        # # Note, this is anything that is left?
-        # elif (self.scanOperatorIdentifier()):
-            # pass
-        # else:
-            # # Unscanable. Should never be reached.
-            # self.start_pos = Position(
-                # self.src,
-                # self.tokenLineCount, 
-                # self.tokenStartOffset
-                # )
-            # msg = 'Codepoint can not be recognised as token; codepoint:{}'.format(self.cp)
-            # self.reporter.error(Message.withPos(msg, self.src, self.start_pos))
-            # raise StopIteration
+
                 
     def __iter__(self):
         return self
