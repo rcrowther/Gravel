@@ -3,6 +3,56 @@ import tpl_locationRoot as LocRoot
 from tpl_either import Either
 
 
+# What's this for?
+# Most computer langauages have a consistent interface for cinstants
+# and variables. A functional language does not care, a constant is
+# a function that returns itself. I'm beginning to think this is a key
+# mark of a mid---high level language.
+#
+# You see, Assembly languages do care. Some machine code ops can take
+# a constant (an immediate) some can take a location that is abstactedly
+# a variable (e/g/ a register). Some ops only work with one or the 
+# other, or only work with them in certain parameter positions.
+#
+# But it seems Rubble will be close enough to an assembly code to need
+# to capture these distinctions. It needs to be able to say, function X
+# can take VarOrConstant of a type e.g.
+#
+# VarOrConstant(Bit64)
+#
+# Or not,
+#
+# Constant(StrASCII)
+#
+# At first I was reluctant to type further than using the  
+# types from the language the parser--builder is written in. It means
+# a wrap, and I don't like wraps. But without that, we can't do the
+# type checking of args. Further, with that the parserBuilder can then
+# use a consistent interface for code building. So here it it is, the 
+# Value class.
+
+class Value():
+    '''
+    A value is anything that can be accepted as an argument to a 
+    Rubble main function.
+    It always contains a type, which is they type of the value it can 
+    return
+    ''' 
+    def __init__(self, tpe):
+        self.tpe = tpe
+
+    def canEqual(self, other):
+        return isinstance(other, Value)
+        
+    def equals(self, other):
+        return self.canEqual(other) and self.tpe.equals(other.tpe)
+        
+    def __repr__(self):
+        return "Var(loc:'{}', tpe:{})".format(
+            self.loc,
+            self.tpe
+        )    
+    
 class Base():
 
     def value(self):

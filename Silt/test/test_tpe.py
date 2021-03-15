@@ -3,6 +3,81 @@
 import unittest
 from tpl_types import *
 
+#python3 -m unittest test.test_tpe
+class TestComparison(unittest.TestCase):
+    # test last element, most prone to error
+    def test_singular(self):
+        self.assertTrue(Bit32.equals(Bit32))
+
+    def test_singular_fail(self):
+        self.assertFalse(Bit32.equals(Bit64))
+
+    def test_pointer(self):
+        # containers are instances, so make two instances to check
+        typ1 = Pointer([Bit32])
+        tpe2 = Pointer([Bit32])
+        self.assertTrue(typ1.equals(tpe2))
+
+    def test_pointer_fail_subtype(self):
+        # containers are instances, so make two instances to check
+        typ1 = Pointer([Bit32])
+        tpe2 = Pointer([Bit8])
+        self.assertFalse(typ1.equals(tpe2))
+
+    def test_pointer_fail_type(self):
+        # covers all singular/container possibilities
+        typ1 = Pointer([Bit32])
+        tpe2 = Bit8
+        self.assertFalse(typ1.equals(tpe2))
+                                        
+    def test_array(self):
+        typ1 = Array([Bit32, 3])
+        tpe2 = Array([Bit32, 3])
+        self.assertTrue(typ1.equals(tpe2))
+
+    def test_array_different_length(self):
+        typ1 = Array([Bit32, 3])
+        tpe2 = Array([Bit32, 7])
+        self.assertTrue(typ1.equals(tpe2))
+        
+    def test_array_fail_subtype(self):
+        typ1 = Array([Bit8, 3])
+        tpe2 = Array([Bit32, 3])
+        self.assertFalse(typ1.equals(tpe2))
+
+    def test_array_labeled(self):
+        #? Not concerned with label names
+        typ1 = ArrayLabeled([Bit32, 3])
+        tpe2 = ArrayLabeled([Bit32, 3])
+        self.assertTrue(typ1.equals(tpe2))
+                
+    def test_array_labeled_fail_subtype(self):
+        typ1 = ArrayLabeled([Bit8, 3])
+        tpe2 = ArrayLabeled([Bit32, 3])
+        self.assertFalse(typ1.equals(tpe2))
+        
+    def test_clutch(self):
+        typ1 = Clutch([Bit32])
+        tpe2 = Clutch([Bit32])
+        self.assertTrue(typ1.equals(tpe2))
+        
+    def test_clutch_fail_subtype(self):
+        typ1 = Clutch([Bit32])
+        tpe2 = Clutch([Bit8])
+        self.assertFalse(typ1.equals(tpe2))
+
+    def test_clutch_labeled(self):
+        #? Not concerned with label names
+        typ1 = ClutchLabeled(['x', Bit32])
+        tpe2 = ClutchLabeled(['x', Bit32])
+        self.assertTrue(typ1.equals(tpe2))
+        
+    def test_clutch_labeled_fail_subtype(self):
+        typ1 = ClutchLabeled(['x', Bit32])
+        tpe2 = ClutchLabeled(['x', Bit8])
+        self.assertFalse(typ1.equals(tpe2))
+                                
+#        with self.assertRaises(ValueError):
 
 class TestSize(unittest.TestCase):
 
@@ -83,8 +158,7 @@ class TestElemOffsetTypePair(unittest.TestCase):
 
                         
 class TestOffsetIters(unittest.TestCase):
-    # # test last element, most prone to error
-    
+    # test last element, most prone to error
     def test_array(self):
         tpe = Array([Bit64, 2])
         o = [e for e in tpe.offsetIt()]
