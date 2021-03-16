@@ -1,6 +1,11 @@
-from tpl_types import Type, TypeNumeric, TypeString
+from tpl_types import (
+    Type, 
+    TypeNumeric, 
+    TypeString, 
+    TypeContainerOffset
+)
 from Syntaxer import ProtoSymbol, Path, FuncBoolean
-from tpl_vars import Base
+from tpl_vars import Base, Var
 
 
 #? Need a specific type test?
@@ -80,31 +85,41 @@ def listVal():
     return InstanceTest("list (of something)", list) 
     
 def anyVar():
-    return InstanceTest("a Variable", Base) 
+    return InstanceTest("a Variable", Var) 
 
 def anyType():
     return InstanceTest("Compiler Type", Type)
 
 
 
-class VarTypeTest():
-    def __init__(self, typeString, varTpe):
+class VarTypeTypeTest():
+    '''
+    Test for general var type.
+    Such as StringType, or NumericType.
+    '''
+    def __init__(self, typeString, varTypeType):
         self.typeString = typeString
-        self.varTpe = varTpe
+        self.varTypeType = varTypeType
         
     def __call__(self, val):
-        return (hasattr(val, 'tpe') and val.tpe.equals(self.varTpe))
+        return (
+            isinstance(val, Var)
+            and isinstance(val.tpe, self.varTypeType)
+        )
 
     def __str__(self):
-        return "VarTypeTest({})".format(self.typeString)
+        return "VarTypeTypeTest({})".format(self.typeString)
                 
 
 def numericVar():
-    return VarTypeTest("Numeric variable", TypeNumeric)
+    return VarTypeTypeTest("Numeric variable", TypeNumeric)
 
-def strVar():
-    return VarTypeTest("String variable", TypeString)
+def stringVar():
+    return VarTypeTypeTest("String variable", TypeString)
 
+def containerOffsetVar():
+    return VarTypeTypeTest("ContainerOffset variable", TypeContainerOffset)
+    
 #def regVar():
 # need a special test here for Location
 #    return VarTypeTest("Register variable", )

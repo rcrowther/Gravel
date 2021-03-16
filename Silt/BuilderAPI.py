@@ -1,9 +1,8 @@
 import architecture
 from syn_arg_tests import *
 
-#x
-#from tpl_LocationRoot import LocationRootRODataX64, LocationRootRegisterX64, LocationRootStackX64
-#x
+
+
 import tpl_locationRoot as Loc
 from tpl_Printers import PrintX64
 import tpl_vars as Var
@@ -54,71 +53,71 @@ class BuilderAPI():
     '''
     Type signature of API funcs
     '''
-    funcNameToArgsType = {
-        # basics
-        'comment': [str],
-        'sysExit': [int],
-        'extern': [str],
-        'raw': [str],
+    # funcNameToArgsType = {
+        # # basics
+        # 'comment': [str],
+        # 'sysExit': [int],
+        # 'extern': [str],
+        # 'raw': [str],
         
-        ## Code structure 
-        'frame': [],
-        'frameEnd': [],
-        'func': [ProtoSymbol],
-        'funcEnd': [],
-        'funcMain': [],
-        'funcMainEnd': [],
+        # ## Code structure 
+        # 'frame': [],
+        # 'frameEnd': [],
+        # 'func': [ProtoSymbol],
+        # 'funcEnd': [],
+        # 'funcMain': [],
+        # 'funcMainEnd': [],
 
-        ## Register utilities
-        'registersPush': [list],
-        'registersVolatilePush': [],
-        'registersPop': [],
+        # ## Register utilities
+        # 'registersPush': [list],
+        # 'registersVolatilePush': [],
+        # 'registersPop': [],
 
-        ## var action
-        'set': [Var.Base, int],
-        #!? Path should be a Type. Probably
-        'setPath':  [Var.Base, Path, int],
-        'forEachRoll' : [ProtoSymbol, Var.Base],
-        'forEachRollEnd': [],
-        'forEach': [ProtoSymbol, Var.Base],
-        'forEachEnd': [],
+        # ## var action
+        # 'set': [Var.Base, int],
+        # #!? Path should be a Type. Probably
+        # 'setPath':  [Var.Base, Path, int],
+        # 'forEachRoll' : [ProtoSymbol, Var.Base],
+        # 'forEachRollEnd': [],
+        # 'forEach': [ProtoSymbol, Var.Base],
+        # 'forEachEnd': [],
         
-        ## Arithmetic
-        #'dec' : [Var.Base],
-        #'inc' : [Var.Base],
-        #? should be int or float. Anyway...
-        'add' : [Var.Base, int],
-        'sub' : [Var.Base, int],
-        'mul' : [Var.Base, int],
-        'divi' : [Var.Base, int],
-        'div' : [Var.Base, int],
+        # ## Arithmetic
+        # #'dec' : [Var.Base],
+        # #'inc' : [Var.Base],
+        # #? should be int or float. Anyway...
+        # 'add' : [Var.Base, int],
+        # 'sub' : [Var.Base, int],
+        # 'mul' : [Var.Base, int],
+        # 'divi' : [Var.Base, int],
+        # 'div' : [Var.Base, int],
         
-        ## Allocs
-        'ROStringDefine': [ProtoSymbol, str],
-        'RODefine': [ProtoSymbol, int, Type.Type],
-        'regDefine': [ProtoSymbol, str, int, Type.Type],
-        'heapAllocBytes': [ProtoSymbol, int],
-        'heapAlloc': [ProtoSymbol, Type.Type],
-        'stackAllocBytes': [ProtoSymbol, int, int],
-        'stackAlloc': [ProtoSymbol, int, Type.Type],
+        # ## Allocs
+        # 'ROStringDefine': [ProtoSymbol, str],
+        # 'RODefine': [ProtoSymbol, int, Type.Type],
+        # 'regDefine': [ProtoSymbol, str, int, Type.Type],
+        # 'heapAllocBytes': [ProtoSymbol, int],
+        # 'heapAlloc': [ProtoSymbol, Type.Type],
+        # 'stackAllocBytes': [ProtoSymbol, int, int],
+        # 'stackAlloc': [ProtoSymbol, int, Type.Type],
 
-        ## boolean
-        'cmp': [Var.Base, FuncBoolean],
-        'ifStart': [FuncBoolean],
-        'ifEnd': [],
+        # ## boolean
+        # 'cmp': [Var.Base, FuncBoolean],
+        # 'ifStart': [FuncBoolean],
+        # 'ifEnd': [],
         
-        ## loops
-        'forRange': [str, int, int],
-        'forRangeEnd': [],
-        'whileStart': [FuncBoolean],
-        'whileEnd': [],
+        # ## loops
+        # 'forRange': [str, int, int],
+        # 'forRangeEnd': [],
+        # 'whileStart': [FuncBoolean],
+        # 'whileEnd': [],
         
-        ## printers
-        'print' : [Var.Base],
-        'println': [Var.Base],
-        'printFlush': [],
-    #'': [].
-    }
+        # ## printers
+        # 'print' : [Var.Base],
+        # 'println': [Var.Base],
+        # 'printFlush': [],
+    # #'': [].
+    # }
     
     
     funcNameToArgsType = {
@@ -143,7 +142,6 @@ class BuilderAPI():
 
         ## var action
         'set': [anyVar(), intVal()],
-        #!? Path should be a Type. Probably
         'setPath':  [anyVar(), Path, intVal()],
         'forEachRoll' : [protoSymbolVal(), anyVar()],
         'forEachRollEnd': [],
@@ -179,6 +177,8 @@ class BuilderAPI():
         'forRangeEnd': [],
         'whileStart': [booleanFuncVal()],
         'whileEnd': [],
+        'forEach': [strVal(), containerOffsetVar()],
+        'forEachEnd': [],
         
         ## printers
         'print' : [anyVar()],
@@ -234,8 +234,6 @@ class BuilderAPIX64(BuilderAPI):
         '''
         b._code.append(args[0])
         return MessageOptionNone
-        
-
 
     ## Code structure 
     def frame(self, b, args):
@@ -339,7 +337,11 @@ class BuilderAPIX64(BuilderAPI):
         b.rodataAdd(rodata)
         self.compiler.symbolSetGlobal(
             protoSymbolLabel, 
-            Var.ROX64(protoSymbolLabel, tpe)
+            #Var.ROX64(protoSymbolLabel, tpe)
+            Var.Var(
+                LocRoot.RODataX64(protoSymbolLabel),
+                tpe
+            )
         )
         # return (
             # protoSymbolLabel, 
@@ -358,14 +360,11 @@ class BuilderAPIX64(BuilderAPI):
         string = args[1]
         rodata = protoSymbolLabel + ': db "' + args[1] + '", 0'
         b.rodataAdd(rodata)
+        var = Var.Var(Loc.RODataX64(protoSymbolLabel), Type.StrASCII)
         self.compiler.symbolSetGlobal(
             protoSymbolLabel, 
-            Var.ROX64(protoSymbolLabel,  Type.StrASCII)
-        )
-        # return (
-            # protoSymbolLabel, 
-            # Var.ROX64(protoSymbolLabel, Type.StrASCII)
-        # )                
+            var
+        )            
         return MessageOptionNone
    
 
@@ -383,9 +382,11 @@ class BuilderAPIX64(BuilderAPI):
             register, 
             data
         ))
+        var = Var.Var(register, tpe)
         self.compiler.symbolSetClosure(
             protoSymbolLabel, 
-            Var.RegX64(register, tpe)
+            #Var.RegX64(register, tpe)
+            var
         )
         # return (
             # protoSymbolLabel, 
@@ -406,9 +407,10 @@ class BuilderAPIX64(BuilderAPI):
         b._code.append("call malloc")
         #return LocRoot.RegisterX64(self.arch['returnRegister'])
         # No, it has no ''Type', hence the Loc return abovr
+        var = Var.Var(self.arch['returnRegister'], Type.StrASCII)
         self.compiler.symbolSetClosure(
             protoSymbolLabel, 
-            Var.RegX64(self.arch['returnRegister'], Type.StrASCII)
+            var
         )
         return MessageOptionNone
         
@@ -423,9 +425,10 @@ class BuilderAPIX64(BuilderAPI):
         tpe = args[1]
         b._code.append("mov {}, {}".format(self.arch['cParameterRegisters'][0], tpe.byteSize))
         b._code.append("call malloc")
+        var = Var.Var(self.arch['returnRegister'], tpe)
         self.compiler.symbolSetClosure(
             protoSymbolLabel, 
-            Var.RegX64(self.arch['returnRegister'], tpe)
+            var
         )
         #return LocationRootRegisterX64(self.arch['returnRegister']) 
         # return (
@@ -447,7 +450,8 @@ class BuilderAPIX64(BuilderAPI):
         allocSpace = args[2]
         BPRoffset = allocSpace + (self.arch['bytesize'] * index)
         b._code.append("lea rsp, [rbp - {}]".format(BPRoffset)) 
-        # No, it has no ''Type', hence the Loc return abovr
+        # No, it has no ''Type', hence the Loc return above
+        var = Var.Var(index, Type.StrASCII)
         # self.compiler.symbolSetClosure(
             # protoSymbolLabel, 
             # Var.StackX64(index, Type.StrASCII)
@@ -479,15 +483,11 @@ class BuilderAPIX64(BuilderAPI):
         b._code.append("lea rsp, [rbp - {}]".format(
              self.arch['bytesize'] * index 
         )) 
+        var = Var,Var(index, tpe)
         self.compiler.symbolSetClosure(
             protoSymbolLabel, 
-            Var.StackX64(index, tpe)
+            var
         )
-        # return (
-            # protoSymbolLabel, 
-            # #Var.StackX64(index, tpe)
-            # Var.StackX64Either(index, tpe)
-        # ) 
         return MessageOptionNone
                         
     # def stringHeapDefine(self, b, args):
@@ -505,7 +505,7 @@ class BuilderAPIX64(BuilderAPI):
     def set(self, b, args):
         '''
         Set a var to a value
-            [Var.Base, val],
+            [Var, val],
         '''
         var = args[0]
         val = args[1]
@@ -549,7 +549,7 @@ class BuilderAPIX64(BuilderAPI):
     def setPath(self, b, args):
         '''
         Set a path through a type to a value
-            [ Var.Base path val],
+            [ Var path val],
         '''
         var = args[0]
         path = args[1]
@@ -648,6 +648,16 @@ class BuilderAPIX64(BuilderAPI):
         'and', 'or', 'xor', 
     ]
 
+    from tpl_address_builder import AddressBuilder
+
+    def buildDataCode(self, val):
+        if (not(isinstance(val, Var.Var))):
+            # its a constant
+            return val
+        else:
+            return var.loc.value()
+            
+            
     def _logicBuilder(
         self, 
         b, 
@@ -866,7 +876,7 @@ class BuilderAPIX64(BuilderAPI):
      
     def forEachRoll(self, b, args):
         '''
-            [ProtoSymbol Var.Base],
+            [ProtoSymbol Var],
         '''
         innerVar = args[0]
         var = args[1]
@@ -883,7 +893,7 @@ class BuilderAPIX64(BuilderAPI):
 
     def forEach(self, b, args):
         '''
-            [ProtoSymbol Var.Base],
+            [ProtoSymbol Var],
         '''
         # Get the original var
         var = args[1]
@@ -911,9 +921,10 @@ class BuilderAPIX64(BuilderAPI):
 
         #! this is on envEverything
         #self.compiler.envFunc[protoSymbolLabel] = varObj
+        var = Var.Var(register, var.tpe.elementType)
         self.compiler.symbolSetClosure(
             protoSymbolLabel, 
-            Var.RegX64(register, var.tpe.elementType)
+            var
         )
            
         # Set up the new builder

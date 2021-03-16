@@ -134,81 +134,61 @@ class Var(Base):
         self.tpe = tpe
                         
             
-#x
-class ROX64(Base):
-    def __init__(self, label, tpe):
-        self.loc = LocRoot.RODataX64(label)
-        self.tpe = tpe
 
-    # def toCodeAddress(self):
-        # # labels represent assembler-driven addresses.
-        # return self.loc.lid
-        
-    # def toCodeValue(self):
-        # # labels represent assembler-driven addresses.
-        # return '[' + self.loc.lid + ']'
     
-    def accessDeepMk(self, path):
-        return '[' + self.loc.lid + str(self.type.offsetDeep(path)) + ']'        
-                
-def ROX64Either(label, tpe):
-    locEither = LocRoot.RODataX64Either(label)
-    varEither = Either.fromEither(locEither, Var(locEither.obj, tpe))
-    return varEither
-
-            
+    
 #x        
-class RegX64(Base):
-    def __init__(self, register, tpe):
-        self.loc = LocRoot.RegisterX64(register)
-        self.tpe = tpe
+# class RegX64(Base):
+    # def __init__(self, register, tpe):
+        # self.loc = LocRoot.RegisterX64(register)
+        # self.tpe = tpe
 
-    # def accessMk(self):
-        # # registers represent assembler-driven addresses.
-        # # They do not need address syntax  
-        # return self.loc.lid
+    # # def accessMk(self):
+        # # # registers represent assembler-driven addresses.
+        # # # They do not need address syntax  
+        # # return self.loc.lid
     
-    def accessDeepMk(self, path):
-        return '[' + self.loc.lid + '+' + str(self.tpe.offsetDeep(path)) + ']'   
+    # def accessDeepMk(self, path):
+        # return '[' + self.loc.lid + '+' + str(self.tpe.offsetDeep(path)) + ']'   
 
-def RegX64Either(register, tpe):
-    locEither = LocRoot.RegisterX64Either(register)
-    varEither = Either.fromEither(locEither, Var(locEither.obj, tpe))
-    return varEither
+# def RegX64Either(register, tpe):
+    # locEither = LocRoot.RegisterX64Either(register)
+    # varEither = Either.fromEither(locEither, Var(locEither.obj, tpe))
+    # return varEither
         
         
 #x        
-class RegAddrX64(Base):
-    def __init__(self, register, tpe):
-        self.loc = LocRoot.RegisteredAddressX64(register)
-        self.tpe = tpe        
+# class RegAddrX64(Base):
+    # def __init__(self, register, tpe):
+        # self.loc = LocRoot.RegisteredAddressX64(register)
+        # self.tpe = tpe        
         
-def RegAddrX64Either(register, tpe):
-    locEither = LocRoot.RegisteredAddressX64Either(register)
-    varEither = Either.fromEither(locEither, Var(locEither.obj, tpe))
-    return varEither
+# def RegAddrX64Either(register, tpe):
+    # locEither = LocRoot.RegisteredAddressX64Either(register)
+    # varEither = Either.fromEither(locEither, Var(locEither.obj, tpe))
+    # return varEither
     
     
 #x            
-class StackX64(Base):
-    def __init__(self, index, tpe):
-        self.loc = LocRoot.StackX64(index)
-        self.tpe = tpe
+# class StackX64(Base):
+    # def __init__(self, index, tpe):
+        # self.loc = LocRoot.StackX64(index)
+        # self.tpe = tpe
 
-    # def accessMk(self): 
-        # return '[rbp -' + str(self.loc.lid)  + ']' 
+    # # def accessMk(self): 
+        # # return '[rbp -' + str(self.loc.lid)  + ']' 
     
-    def accessDeepMk(self, path): 
-        return '[rbp -' + str(self.loc.lid + self.tpe.offsetDeep(path)) + ']' 
+    # def accessDeepMk(self, path): 
+        # return '[rbp -' + str(self.loc.lid + self.tpe.offsetDeep(path)) + ']' 
 
-def StackX64Either(index, tpe):
-    locEither = LocRoot.StackX64Either(index)
-    varEither = Either.fromEither(locEither, Var(locEither.obj, tpe))
-    return varEither
+# def StackX64Either(index, tpe):
+    # locEither = LocRoot.StackX64Either(index)
+    # varEither = Either.fromEither(locEither, Var(locEither.obj, tpe))
+    # return varEither
 
 
         
-def StackAddrX64Either(index, tpe):
-    locEither = LocRoot.StackedAddressX64Either(index)
-    varEither = Either.fromEither(locEither, Var(locEither.obj, tpe))
-    return varEither
+# def StackAddrX64Either(index, tpe):
+    # locEither = LocRoot.StackedAddressX64Either(index)
+    # varEither = Either.fromEither(locEither, Var(locEither.obj, tpe))
+    # return varEither
