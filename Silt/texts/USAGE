@@ -1,4 +1,26 @@
 = Usage
+
+== Dealbreakers
+All languagues have their oddities. Rubble less than many, I like to think, but it has them. And they are big. Here are the two biggest,
+++
+~ Functions only take one argument
+: ...and one return. You can fiddle with registers to do as you wish. There's functions for protection also. So rubble can be used to pass more arguments of you wish. GCC does summersaults to allow un to twenty, but the only builtin functions account for one argument. Reason is, this policy saves us a swathe of code and unpredictable output.  
+~ There is no if..else
+: Again, you can fiddle with Rubble to provide an if..else if you wish, but there is no builtin function. If..else is splendidly intuitive, and has been provided in high level languages since it's introduction in C. It is also predictable code. But it is a syntactical mass, and a basty twist in output code. It also multiplies problems with prooving code. Rubble can live without it.
++
+
+There's more. which will be explained in greater detail somewhere or other but, quickly,
+++
+~ Functions take a fixed number of parameters
+: There are no vargs. Though there is an ability to pass in arrays
+~ 
+:
++ 
+
+Worth knowing is that there's a general policy, ''Rubble never stops you writing crazy code, if the looseness the code allows also allows you to do good thengs'. There is plenty of protection, warnings, and aftmeasure, but Rubble will not stop you outright.
+
+
+== Base Syntax
 Rubble implemrnts a simple base syntax. Everything is a function (not a ''lambda' or ''proc'). All functions have brackets. Functions are one per line,
 
 ?rubble
@@ -6,23 +28,34 @@ Rubble implemrnts a simple base syntax. Everything is a function (not a ''lambda
 dec()
 ?
 
-Most of Rubbles' functions are pretty close to assembly language nuggets e.g.
+All functions take a fixed number of arguments.
+
+Most of Rubbles' functions are close to assembly language nuggets e.g.
 
 ?rubble
 frame()
+...
 frameEnd()
 ?
 
+Some are highrer level,
 
-
-== How rubble handles brrackets in geneerated code
-Note that bracketing implied in generated code is, in Rubble, explicitly stated 
-?rubblwe
-frame()
-  ...
-  frameEnd()
+?rubble
+forEach(@genVar 'rac' someVar)
+    println(genVar)
+    forEachEnd()
 ?
-implies a bracketed section. This is similar to a Ruby ""do..end" block, or Ada ""func FuncName..endFuncName"
+
+
+== How Rubble handles brackets in generated code
+As you saw above, bracketing in generated code is explicitly stated, 
+?rubble
+frame()
+    ...
+frameEnd()
+?
+implies a bracketed section. This is similar to a Ruby ""do..end" block, or Ada's ""func FuncName..endFuncName".
+
 
 ==== Rationale
 Rubble draws common assembly idoms together. A reduced syntax makes sense, both for academic purpose of generating useful abstracctions, and for potential machine generation of code (use of Rubble as an intermediate language)
@@ -36,7 +69,7 @@ func(name: type)
     ...
     endFunc()
 ? 
-but the spacing is irellevant.
+but whitespace sizing is irellevant.
 
 
 == Arguments
@@ -45,21 +78,22 @@ Every function can have arguments. These are bone-simple.
 134 = number
 5.4 = float (because there's a period. Also 2.0)
 ""goof" = a string. note the double opening quotes
-'doof' = also a sting
+'doof' = also a string
 +
 Types default to the machine base. See later.
 
+
 == Arguments for allocation
 Sometimes you make a variable. What really happenins is that data is returned from a function that will be stored for later use. This data is associated with a label for later use. 
-
 ??
 stringRODefine(@ro1 ""In a Silent Way")
 ?
-Note the ''@' symbol. This says ""Here is some text that will be used as a label for the data next time I use it",. 
+Note the ''@' symbol. It says, ""Here is some text that will be used as a label for the data next time I use it". like this, 
 ??
 stringRODefine(@ro1 ""In a Silent Way")
 println(StrASCII ro1)
 ?
+
 
 ==== Rationale
 Other languages use parsers and alternate syntxes to make symbol  allocation readable. Infixed operators like ''=' would allow the usual cute, high-level, mathematical,
@@ -68,11 +102,17 @@ Other languages use parsers and alternate syntxes to make symbol  allocation rea
 ro1 = "In a Silent Way"
 ?
 
-But Rubble is deliberately low in syntax, so doesn't implement infixed operators. It reuses the function syntax, in a vaguely LISP-like way. The small syntax is seen as more important.
+But Rubble is deliberately low in syntax, so doesn't implement infixed operators. It reuses the function syntax, in a vaguely LISP-like way,
+?ruby
+def ROData(rp1 "In a Silent Way")
+?
 
-Also,  the ''@' syntax is unusual. All languages must resolve the issue that when a ''symbol' is defined, the arrgument given is not the symbol, it is text that will be used to create the symbol. The ''@' solution is just an unambiguaous, easily handled way of doing this (as opposed the the more generral methods of most LISPs, such as unquoting).
+The small syntax is seen as more important.
+
+Also,  the ''@' syntax is unusual. All languages must resolve the issue that when a ''symbol' is defined, the arrgument given is not the symbol, it is text that will be used to create the symbol. The ''@' solution is an unambiguaous, easily parsed, way of doing this (as opposed the the more general methods of most LISPs, such as unquoting).
 
 I agree this is not the most readable solution, but it removes a swathe of complexity from the parser.
+
 
 === Commas
 Rubble treats commas between arguments as whitespace. It will replace them. So mostly you are free to put commas in or not, 
@@ -94,39 +134,46 @@ func(@n,s,e,w 99)
 ?
 That would parse as seperate arguments, and the function return an error.
 
+
 ==== Rationale
 People like to type commas, and many other languages use commas. Rubble is assumed to be a languge which will be used at the same time as other languages, so commas are allowed. Commas may also improve readability.
 
-== Typing
-Rubble includes a notion of type. The types are a small fixed set, they do not extend like in many higher level languages declaring a class creates a new type. Not so in Rubble (there is no notion of class anyway). Types look like this,
 
+== Typing
+Rubble includes a notion of type. In many higher level languages declaring a class creates a new type. Not so in Rubble (there is no notion of class anyway). The types are a small fixed set.
+
+Types look like this,
+??
 Bit8
 
 ASCIIString
 
 Array(Bit8, 4)
+?
 
-=== !Type in Rubble is not for type-checking
-In most computer languages, the idea of type exists so compiler/interpreters can report type changes to the user. these type changes are assumed to be unintentional, so are usually reported as errors. Ok, Users of OCaml and Haskel may have a different notion, and users of Ruby especially (also Python) will be used to ''duck-typing' where the idea of type is avoided (however, it should be noted that types still exist in these languages, they are mostly hidden).
+
+=== Type in Rubble is not for type-checking
+In most computer languages, the idea of type exists so compiler/interpreters can report type changes to the user. these type changes are assumed to be unintentional, so are usually reported as errors. Ok, Users of OCaml and Haskel may have a different notion, and users of Ruby especially (also Python) will be used to ''duck-typing' where the idea of type is avoided (however, it should be noted that types still exist in these languages, they are mostly hidden and, in fairness, they are only assessed as they arrive).
 
 Rubble does not use types for this purpose. The current compiler does not check type consistency agross instructions, not at all through the program, and only moves types about as a convenience to DRY out code in some places. Repeat---Rubble does not check type consistency, and if a Specification is ever published for Rubble, then it will be explicit that type can be checked and changes warned, but must never throw errors.
 
 Why have type expressions then? Because with type expressions Rubble can summaries many assembly-level instructions with one ploy. For example, it is common for an assembly programmer to only move a small number using a part register. This can save quite a few clock cycles. Even on a 64Bit computer, if I know the number will be no bigger than 32 bit, I'd use the 32 bit move,
-
+??
 move eax, 99
-
+?
 not the 64Bit move,
-
+??
 mov rax, 99
-
+?
 (as long as I know the register is zeroed and I won't finish with garbage).
 
 further, on modern chips, there are several kinds of move instruction, this for ???, 
-
-dmov rax
-
+??
+movd rax
+?
 Using a type hint system, Rubble can boil many of these instructions to one instuction, plus a type,
-
+??
+?
 Reduced syntax is a primary aim of Rubble.
  
 
@@ -144,11 +191,12 @@ In C-family languages, alllocation is sometimes separated from definition,
 str1 = "In a Silent Way"
 ?
 
-In Rubble, allocation is (nearly) always separated from definition,
+In Rubble, allocation is often separated from definition,
 ?rubble
 stackAlloc(@str1 ASCII 15)
 set(str1 "In a Silent Way")
 ?
+
 
 ==== Rationale
 High level languages use their parsers and optimisers to resolve what must happen in allocation and dealocation. They will scan a function/proceedure/method to find what space is needed, and where.
@@ -160,3 +208,6 @@ There are two exceptions. First, if an architecture can not handle a given regis
 roDataDefine(@str1 "In a Silent Way")
 ?
 This must be because most such definitions are read-only.
+
+
+

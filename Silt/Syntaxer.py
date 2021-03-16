@@ -51,7 +51,9 @@ class FuncBoolean(ArgFunc):
             self.args
         )        
         
-        
+class ArgList(list):
+    pass
+    
 class Path(list):
     pass
 
@@ -392,7 +394,22 @@ class Syntaxer(SyntaxerBase):
                     # arg = self.findIdentifier(pos, name)
             # argsB.append(arg)
 
-
+    def argList(self, argsB):
+        # only accepts strings, for now
+        commit = self.isToken(LBRACKET)
+        if (commit):
+            self._next() 
+            argList = ArgList()
+            while (True):
+                if(self.isToken(STRING)):
+                    argList.append(self.textOf())
+                    self._next()
+                else:
+                    break
+            self.skipTokenOrError('argList', RBRACKET)
+            argsB.append(argList)
+        return commit                    
+                            
     #! I'd need to tokenise for double brackets.
     # because we cant peek. Gnnnaaarr!
     def path(self, argsB):
@@ -421,11 +438,15 @@ class Syntaxer(SyntaxerBase):
         #NB all args converted to datatypess
         if (
             self.constant(argsB)
+            
+            # Both test identifier names also
             or self.funcBoolean(argsB)
             or self.typeDeclaration(argsB)
+            
             # No expressions allowed nested,
             # ater booleans and funcs, so identifiers must be a symbol
             or self.symbol(argsB)
+            or self.argList(argsB)
             or self.path(argsB)
         ):
             r = True

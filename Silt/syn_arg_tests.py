@@ -4,7 +4,12 @@ from tpl_types import (
     TypeString, 
     TypeContainerOffset
 )
-from Syntaxer import ProtoSymbol, Path, FuncBoolean
+from Syntaxer import (
+    ProtoSymbol,
+    ArgList,
+    Path, 
+    FuncBoolean
+)
 from tpl_vars import Base, Var
 
 
@@ -74,15 +79,19 @@ def strVal():
 def protoSymbolVal():
     return InstanceTest("ProtoSymbol", ProtoSymbol)
 
+def argListVal():
+    return InstanceTest("ArgList (of strings)", ArgList)
+    
 def pathVal():
     return InstanceTest("Path (array of ineces and labels)", Path)
     
 def booleanFuncVal():
     return InstanceTest("(tree of) Boolean logic", FuncBoolean) 
 
-def listVal():
+#def listVal():
     #! With this mechanism, we can test internal types
-    return InstanceTest("list (of something)", list) 
+    # Wgat does the ABOVE MEAN> tthere are no inner lists?
+#    return InstanceTest("list (of something)", list) 
     
 def anyVar():
     return InstanceTest("a Variable", Var) 

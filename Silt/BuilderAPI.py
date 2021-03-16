@@ -136,7 +136,7 @@ class BuilderAPI():
         'funcMainEnd': [],
 
         ## Register utilities
-        'registersPush': [listVal()],
+        'registersPush': [argListVal()],
         'registersVolatilePush': [],
         'registersPop': [],
 
@@ -296,7 +296,12 @@ class BuilderAPIX64(BuilderAPI):
     ## Register utilities
     # #! needs datapush
     def registersPush(self, b, args):
-        registerList = args
+        '''
+            [argList]
+        '''
+        registerList = args[0]
+        if (len(registerList) & 1):
+            self.compiler.warning("Uneven n number of pushes will unbalance the stack?")
         for r in registerList:
             b._code.append('push ' + r)
         self.compiler.closureDataPush(registerList)
@@ -313,7 +318,10 @@ class BuilderAPIX64(BuilderAPI):
         Protect the volatile registers 
         i.e. those used for parameter passing.
         '''
-        self.registersPush(b, self.arch['cParameterRegisters'].copy())
+        self.registersPush(
+            b, 
+            [ArgList(self.arch['cParameterRegisters'].copy())]
+        )
         return MessageOptionNone
 
 
@@ -433,8 +441,8 @@ class BuilderAPIX64(BuilderAPI):
             Loc.RegisterX64(self.arch['returnRegister']), 
             tpe
         )
-        print('huh?')
-        print(str(tpe))
+        #print('huh?')
+        #print(str(tpe))
         self.compiler.symbolSetClosure(
             protoSymbolLabel, 
             var
@@ -932,11 +940,13 @@ class BuilderAPIX64(BuilderAPI):
 
     #? is register really our input?
     #! problems with register clobbering
-    #! protect needs to work
-    #! means fixing Path, use '('')'
-    #! then decide where to put protection, if anyplace
-    #! still need to fix allocation of genVar. Currently, carries the
-    # offset, not the data
+    #? protection round calls, but not automatic, what about multiple 
+    # calls together? Need to think over that
+    #! Weve got three vars kicking about here. Need to make this clear,
+    # - original data root
+    # - counter
+    # - [;ace for results
+    #! then handle clutch data
     #! lot or repetition with forRange()
     def forEach(self, b, args):
         '''
@@ -945,9 +955,12 @@ class BuilderAPIX64(BuilderAPI):
         # InnerVar name...
         protoSymbolLabel = args[0].toString()
 
-        # Choice of innervar register...
+        # Choice of count register...
         #! tmp for now
         register =  args[1]
+        
+        # Choice of innervar register...
+        genVarRegister = 'r12'
                 
         # The original var
         var = args[2]
@@ -960,7 +973,7 @@ class BuilderAPIX64(BuilderAPI):
         #! Not going to work for clutches, as type changes
         # ...but would be type[0]...
         genVar = Var.Var(
-            Loc.RegisterX64(register), 
+            Loc.RegisterX64(genVarRegister), 
             #! for a clutch
             #var.tpe.elementType[0]
             var.tpe.elementType
@@ -983,6 +996,10 @@ class BuilderAPIX64(BuilderAPI):
         b._code.append("mov {}, {}".format(register, froom))  
         b._code.append("jmp {}".format(entryLabel))                
         b._code.append(trueLabel + ':') 
+
+        # alloc to the genvar. Ah, that means we need a counter AND
+        # a genVar place. I'd overlooked that....!
+        b._code.append("mov {}, [{} + {}]".format(genVarRegister, var.loc.lid, register)) 
         
         # push data
         self.compiler.closureDataPush((trueLabel, entryLabel, register, until, step))
@@ -1038,7 +1055,7 @@ class BuilderAPIX64(BuilderAPI):
             #! Obviously, very temproary!
             # What we need is probably something that separates string 
             # types from numbers
-            print(str(tpe))
+            #print(str(tpe))
             if (tpe == Type.StrASCII):
                 # For a string, printf wants the address, not the value
                 srcSnippet = var.loc.address()

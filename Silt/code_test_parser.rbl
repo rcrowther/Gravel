@@ -93,9 +93,12 @@ funcMain()
 #-- forEach
     heapAlloc(@heap3 Array(Bit64 3))
     setPath(heap3 [2 'x'] 555)
-    forEach(@elem 'r12' heap3)
-        println(roTrue)
-        #println(elem)
+    forEach(@elem 'rcx' heap3)
+        registersPush(('rax' 'r12' 'rbx' 'rcx'))
+        #registersVolatilePush()
+        #println(roTrue)
+        println(elem)
+        registersPop()
         forEachEnd()
 #--
     # general exit
