@@ -119,7 +119,7 @@ class BuilderAPI():
     # #'': [].
     # }
     
-    
+    #NB Can get rid of the brackets, but that's Pythonic
     funcNameToArgsType = {
         # basics
         'comment': [strVal()],
@@ -143,10 +143,7 @@ class BuilderAPI():
         ## var action
         'set': [anyVar(), intVal()],
         'setPath':  [anyVar(), Path, intVal()],
-        'forEachRoll' : [protoSymbolVal(), anyVar()],
-        'forEachRollEnd': [],
-        'forEach': [protoSymbolVal(), anyVar()],
-        'forEachEnd': [],
+
         
         ## Arithmetic
         #'dec' : [anyVar()],
@@ -177,9 +174,11 @@ class BuilderAPI():
         'forRangeEnd': [],
         'whileStart': [booleanFuncVal()],
         'whileEnd': [],
-        'forEach': [strVal(), containerOffsetVar()],
+        'forEachUnrolled' : [protoSymbolVal(), strVal(), containerOffsetVar()],
+        'forEachUnrolledEnd': [],
+        'forEach': [protoSymbolVal(), strVal(), containerOffsetVar()],
         'forEachEnd': [],
-        
+                
         ## printers
         'print' : [anyVar()],
         'println': [anyVar()],
@@ -382,10 +381,12 @@ class BuilderAPIX64(BuilderAPI):
             register, 
             data
         ))
-        var = Var.Var(register, tpe)
+        var = Var.Var(
+            Loc.RegisterX64(register), 
+            tpe
+        )
         self.compiler.symbolSetClosure(
             protoSymbolLabel, 
-            #Var.RegX64(register, tpe)
             var
         )
         # return (
@@ -407,7 +408,10 @@ class BuilderAPIX64(BuilderAPI):
         b._code.append("call malloc")
         #return LocRoot.RegisterX64(self.arch['returnRegister'])
         # No, it has no ''Type', hence the Loc return abovr
-        var = Var.Var(self.arch['returnRegister'], Type.StrASCII)
+        var = Var.Var(
+            Loc.RegisterX64(self.arch['returnRegister'],), 
+            Type.StrASCII
+        )
         self.compiler.symbolSetClosure(
             protoSymbolLabel, 
             var
@@ -425,11 +429,17 @@ class BuilderAPIX64(BuilderAPI):
         tpe = args[1]
         b._code.append("mov {}, {}".format(self.arch['cParameterRegisters'][0], tpe.byteSize))
         b._code.append("call malloc")
-        var = Var.Var(self.arch['returnRegister'], tpe)
+        var = Var.Var(
+            Loc.RegisterX64(self.arch['returnRegister']), 
+            tpe
+        )
+        print('huh?')
+        print(str(tpe))
         self.compiler.symbolSetClosure(
             protoSymbolLabel, 
             var
         )
+
         #return LocationRootRegisterX64(self.arch['returnRegister']) 
         # return (
             # protoSymbolLabel, 
@@ -450,12 +460,19 @@ class BuilderAPIX64(BuilderAPI):
         allocSpace = args[2]
         BPRoffset = allocSpace + (self.arch['bytesize'] * index)
         b._code.append("lea rsp, [rbp - {}]".format(BPRoffset)) 
+
         # No, it has no ''Type', hence the Loc return above
-        var = Var.Var(index, Type.StrASCII)
-        # self.compiler.symbolSetClosure(
-            # protoSymbolLabel, 
-            # Var.StackX64(index, Type.StrASCII)
-        # )
+        #? really? this a Location, not a var
+        var = Var.Var(
+            Loc.StackX64(index),
+            #??? 
+            Type.StrASCII
+        )
+        self.compiler.symbolSetClosure(
+            protoSymbolLabel, 
+            var
+        )
+
         return MessageOptionNone
         
     #! bad thing here, we don't know where stack starts, so only works 
@@ -874,63 +891,101 @@ class BuilderAPIX64(BuilderAPI):
     # b._code.append('jgtzo loopLabel')
      
      
-    def forEachRoll(self, b, args):
+    def forEachUnrolled(self, b, args):
         '''
-            [ProtoSymbol Var],
+            [ProtoSymbol containerOffsetVar],
         '''
         innerVar = args[0]
         var = args[1]
+
+        # Set up the new builder
+        b._code.append('; beginLoop')
+
+        self.compiler.builderNew()
         mo = MessageOptionNone
         return mo
 
         
-    def forEachRolleEnd(self, b, args):
+    def forEachUnrolledEnd(self, b, args):
         '''
             []
         '''
+        # The passed builder is the subbuilder
+        innerCode = b.result()
+
+        
+        # Make tha builder revertion explicit by setting 'b' to the 
+        # previous builder
+        b = self.compiler.b        
+
+        # Revert builders in the compiler
+        self.compiler.builderOld()
+
+        #! for an aeeay 
+        #??? fix offsets good
+        for offset, tpe in var.tpe.offsetIt():
+            b._code.append("mov {}, [{} + {}]".format(register, lid, offset))
+            # add the innercode
+            b.addAll(innerCode)            
         b._code.append('; endForEach')
         return MessageOptionNone
 
+    #? is register really our input?
+    #! problems with register clobbering
+    #! protect needs to work
+    #! means fixing Path, use '('')'
+    #! then decide where to put protection, if anyplace
+    #! still need to fix allocation of genVar. Currently, carries the
+    # offset, not the data
+    #! lot or repetition with forRange()
     def forEach(self, b, args):
         '''
-            [ProtoSymbol Var],
-        '''
-        # Get the original var
-        var = args[1]
-        #! if it's unrollable type
-        # ???
-        
-        # Will need these bits of info
+            [ProtoSymbol register containerOffsetVar],
+        '''        
         # InnerVar name...
         protoSymbolLabel = args[0].toString()
-        
+
         # Choice of innervar register...
         #! tmp for now
-        register = 'rcx'
-        
-        # Original var... then push that data
-        self.compiler.closureData.append((protoSymbolLabel, register, var,)) 
+        register =  args[1]
                 
+        # The original var
+        var = args[2]
+
         # add a new environment
-        #???
         self.compiler.envAddClosure()
 
-        # set the innervar on it
-        # Not going to work for clutches
-        #varObj = Var.RegX64(register, var.tpe.elementType)
-
-        #! this is on envEverything
-        #self.compiler.envFunc[protoSymbolLabel] = varObj
-        var = Var.Var(register, var.tpe.elementType)
+        # create the new generated innervar
+        # set on the new env
+        #! Not going to work for clutches, as type changes
+        # ...but would be type[0]...
+        genVar = Var.Var(
+            Loc.RegisterX64(register), 
+            #! for a clutch
+            #var.tpe.elementType[0]
+            var.tpe.elementType
+        )
         self.compiler.symbolSetClosure(
             protoSymbolLabel, 
-            var
+            genVar
         )
-           
-        # Set up the new builder
-        b._code.append('; beginLoop')
-        self.compiler.builderNew()
 
+        # loop start
+        #! array
+        step = var.tpe.elementType.byteSize
+        froom = -(step)
+        until = var.tpe.byteSize
+        trueLabel = self.labelGenerate('forEachTrue')
+        entryLabel = self.labelGenerate('forEachEP')
+               
+        # build
+        b._code.append('; beginLoop')
+        b._code.append("mov {}, {}".format(register, froom))  
+        b._code.append("jmp {}".format(entryLabel))                
+        b._code.append(trueLabel + ':') 
+        
+        # push data
+        self.compiler.closureDataPush((trueLabel, entryLabel, register, until, step))
         mo = MessageOptionNone
         return mo
         
@@ -938,34 +993,19 @@ class BuilderAPIX64(BuilderAPI):
         '''
             []
         '''
-        # The passed builder is the subbuilder
-        innerCode = b.result()
-        
-        # Revert builders in the compiler
-        self.compiler.builderOld()
-        
-        # Make tha builder revertion explicit by setting 'b' to the 
-        # previous builder
-        b = self.compiler.b
-
-
         # get the data
-        protoSymbolLabel, register, var = self.compiler.closureData.pop()
-        
-        # Dispose of the inner environment too (and rid of innervar)
-        # ???
-        #del self.compiler.envFunc[protoSymbolLabel]
-        self.compiler.envDelClosure()
-        
+        trueLabel, entryLabel, register, until, step  = self.compiler.closureData.pop()
 
-        lid = var.loc.lid
-        # build the unroll
-        #??? fix offsets good
-        for offset, tpe in var.tpe.offsetIt():
-            b._code.append("mov {}, [{} + {}]".format(register, lid, offset))
-            # add the innercode
-            b.addAll(innerCode)    
+        # build the loop
+        #! for an array
+        b._code.append(entryLabel + ':') 
+        b._code.append("add {}, {}".format(register, step)) 
+        b._code.append("cmp {}, {}".format(register, until))        
+        b._code.append("jl {}".format(trueLabel))  
         b._code.append('; endLoop')
+
+        # Dispose of the inner environment too (and rid of innervar)
+        self.compiler.envDelClosure()
         return MessageOptionNone
 
         
@@ -991,17 +1031,17 @@ class BuilderAPIX64(BuilderAPI):
         else:
             # Figure out what will print or not
             #var.accessMk()
-            print(str(var))
+            #print(str(var))
             # tpe, offset(lid)
             # tpe.offsetDeep(self, path)
-            srcSnippet = var.toCodeValue()
+            srcSnippet = var.loc.value()
             #! Obviously, very temproary!
             # What we need is probably something that separates string 
             # types from numbers
             print(str(tpe))
             if (tpe == Type.StrASCII):
                 # For a string, printf wants the address, not the value
-                srcSnippet = var.toCodeAddress()
+                srcSnippet = var.loc.address()
             print('snippet:')
             print(str(srcSnippet))
             self.printers(b, tpe, srcSnippet)

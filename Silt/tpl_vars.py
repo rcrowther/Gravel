@@ -1,5 +1,6 @@
 import architecture
-import tpl_locationRoot as LocRoot
+from tpl_locationRoot import LocationRootX64
+from tpl_types import Type
 from tpl_either import Either
 
 # What's this for?
@@ -41,38 +42,8 @@ from tpl_either import Either
 # a wrap, and I don't like wraps. But without that, we can't do the
 # type checking of args. Further, with that the parserBuilder can then
 # use a consistent interface for code building. So here it it is, the 
-# Value class.
+# Value class. 
 
-# class ArgType():
-    # '''
-    # A value is anything that can be accepted as an argument to a 
-    # Rubble main function.
-    # It always contains a type, which is they type of the value it can 
-    # return.
-    # Realised versions also contain either data locations, or data 
-    # values.
-    # ''' 
-    # def __init__(self, tpe):
-        # assert isinstance(tpe, Type), "Parameter not a Type. tpe: '{}'".format(tpe)
-        # self.tpe = tpe
-        
-    # def checkType(self, argVal):
-        # return isinstance(other, Value)
-        
-    # def __repr__(self):
-        # return "ArgType(loc:'{}', tpe:{})".format(
-            # self.tpe
-        # )    
-
-
-# class Literal(ArgValue):
-    # '''
-    # A piece of data that exists existentially.
-    # Existentiallyy meaning, it stands as itself.
-    # '''
-    # def __init__(self, value, tpe):
-        # super().__init__(tpe)
-        # self.value = value
         
 #! this tangle of Base and Var needs fixing.
 # will affect syn_arg_tests also
@@ -87,39 +58,39 @@ class Base():
     def toRegister(self, b, targetRegisterName):
         self.loc = self.loc.toRegister(b, targetRegisterName)
 
-    def toCodeValue(self):
-        '''
-        Build a snippet of code to access the var.
-        This acesses to top-level type of any goven tpye tree. In the 
-        case of singular types, it will access the value directly. In
-        the case of a container, it returns the container. To access  
-        values in a container, a path is needed. 
-        This method should always succeed???
-        For access to containers see accessBPathuilder()
-        '''
-        return self.loc.value()
+    # def toCodeValue(self):
+        # '''
+        # Build a snippet of code to access the var.
+        # This acesses to top-level type of any goven tpye tree. In the 
+        # case of singular types, it will access the value directly. In
+        # the case of a container, it returns the container. To access  
+        # values in a container, a path is needed. 
+        # This method should always succeed???
+        # For access to containers see accessBPathuilder()
+        # '''
+        # return self.loc.value()
 
-    def toCodeAddress(self):
-        '''
-        Build a snippet of code to access the var.
-        This acesses to top-level tpye of any goven tpye tree. In the 
-        case of singular types, it will access the value directly. In
-        the case of a container, it returns the container. To access  
-        values in a container, a path is needed. 
-        This method should always succeed???
-        For access to containers see accessBPathuilder()
-        '''
-        return self.loc.address()
+    # def toCodeAddress(self):
+        # '''
+        # Build a snippet of code to access the var.
+        # This acesses to top-level tpye of any goven tpye tree. In the 
+        # case of singular types, it will access the value directly. In
+        # the case of a container, it returns the container. To access  
+        # values in a container, a path is needed. 
+        # This method should always succeed???
+        # For access to containers see accessBPathuilder()
+        # '''
+        # return self.loc.address()
         
-    def accessPartialDeep(self):
-        '''
-        Build a snippet of code to access a value in a var.
-        This accesses a position in a type tree. To do this, it needs a 
-        path. The method may error, refusing direct access if the path
-        os too deep for the architecture to handle.
-        For simple acess to singular types, see accessBuilder()
-        '''
-        return NotImplementedError()
+    # def accessPartialDeep(self):
+        # '''
+        # Build a snippet of code to access a value in a var.
+        # This accesses a position in a type tree. To do this, it needs a 
+        # path. The method may error, refusing direct access if the path
+        # os too deep for the architecture to handle.
+        # For simple acess to singular types, see accessBuilder()
+        # '''
+        # return NotImplementedError()
                 
     def __repr__(self):
         return "Var(loc:'{}', tpe:{})".format(
@@ -127,9 +98,15 @@ class Base():
             self.tpe
         )
 
+    def __str__(self):
+        return "Var({})".format(
+            self.loc.lid,
+        )
 
 class Var(Base):
     def __init__(self, loc, tpe):
+        assert isinstance(loc, LocationRootX64), "Parameter not a LocRoot. loc: '{}'".format(loc)
+        assert isinstance(tpe, Type), "Parameter not a Type. tpe: '{}'".format(tpe)
         self.loc = loc
         self.tpe = tpe
                         

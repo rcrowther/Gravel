@@ -48,13 +48,7 @@ funcMain()
     #heapAlloc(@heap2 Bit64)
     #set(heap2 799)
     #println(heap2)
-#--
-    #heapAlloc(@heap3 Array(Bit64 8))
-    #setPath(heap3 [2 'x'] 555)
-    #forEach(@elem heap3)
-    #raw('; ...contents...')
-    #println(elem)
-    #forEachEnd()
+
 #--
     #Isnt working because what ''type' is a length of bytes?
     #stackAllocBytes(@stk1 8, 1)
@@ -84,17 +78,25 @@ funcMain()
 
 #--
     #cmp(reg1 and(not(lt(4 5)) gte(43 5)) )
-#-- 
+#-- if
     #println(roQuery)
     #ifStart(and(gt('rbx' 777) lte('rbx' 777)))
     #    println(roTrue)
     #    ifEnd()
-#-- 
-    regDefine(@reg1 'rbx' 2 Bit64)
-    println(roQuery)
-    forRange('rbx' 0 -2)
+#-- loops
+#-- forRange
+    #regDefine(@reg1 'rbx' 2 Bit64)
+    #println(roQuery)
+    #forRange('rbx' 0 -2)
+    #    println(roTrue)
+    #    forRangeEnd()
+#-- forEach
+    heapAlloc(@heap3 Array(Bit64 3))
+    setPath(heap3 [2 'x'] 555)
+    forEach(@elem 'r12' heap3)
         println(roTrue)
-        forRangeEnd()
+        #println(elem)
+        forEachEnd()
 #--
     # general exit
     printFlush()

@@ -125,10 +125,12 @@ class RODataX64(LocationRootX64):
                 # ", ".join(registers)
             # ))
         # return True
-        
+
+    #? toCodeValue(self)
     def value(self):
         return AddressBuilder(self.lid).result(True)  
 
+    #? toCodeAddress(self)
     def address(self):
         return self.lid        
         #raise NotImplementedError('value: a value can not be acessed from a stack offset.If required, location{}\nTransfer to a register first'.format(

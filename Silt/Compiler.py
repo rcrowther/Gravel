@@ -148,6 +148,10 @@ class Compiler(Syntaxer):
 
             
     ## environments
+    #! it would maybe be faster to make this mutable
+    # Then put an env on tracking new vars
+    # Then delete the new vars at the end.
+    # This would be a lot faster, actually, rather than the copy()
     def envAddClosure(self):
         newEnv = {}
         if (self.envClosure):
