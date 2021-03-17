@@ -829,8 +829,6 @@ class BuilderAPIX64(BuilderAPI):
         # for...next loop, no probs...
         #? needs to step (ugly, optional var time. Is there another 
         # way if things are that awkward?)
-        #! What about until? Humm. This is a feature of 'to' loops
-        # they behave weird at 1 to 1 type rigs.
         #! double rangers... Got a problem there with fixed vars?
         #! needs to handle variables etc.
         reg = args[0]
@@ -908,15 +906,56 @@ class BuilderAPIX64(BuilderAPI):
      
     def forEachUnrolled(self, b, args):
         '''
-            [ProtoSymbol containerOffsetVar],
-        '''
-        innerVar = args[0]
-        var = args[1]
 
-        # Set up the new builder
+            [ProtoSymbol register containerOffsetVar]
+        '''
+        protoSymbolLabel = args[0].toString()
+
+        # Choice of genvar register...
+        varGenRegister =  args[1]
+
+        # The original var
+        varData = args[2]
+        if(varGenRegister == varData.loc.lid):
+            self.compiler.error("genVar is the same register as dataVar. register:'{}'".format(varGenRegister))
+
+        #NB no need for regCount
+
+        # add a new environment
+        self.compiler.envAddClosure()
+
+        # create the varGen
+        # This needs to be registered at the start so parsing of the
+        # susequent functions can reference the var from the 
+        # environment.
+        # As it happens, the loc will stay the same. The type is 
+        # anything, maybe different for each unroll. It's set later.
+        varGen = Var.Var(
+            Loc.RegisterX64(varGenRegister),
+            Type.NoType
+        )
+        
+        # important, varGen on the env
+        self.compiler.symbolSetClosure(
+            protoSymbolLabel,
+            varGen
+        )
+
+        #NB so far, similar
+        
+        #NB ignore loop setup
+        
+        # build
+        #NB stripped
         b._code.append('; beginLoop')
 
-        self.compiler.builderNew()
+        #NB ignore Alloc to varGen
+        
+        # push data
+        self.compiler.closureDataPush((varGen, varData, varGenRegister))
+
+        # Capture instructions until loop end
+        self.compiler.instructionsStore()
         mo = MessageOptionNone
         return mo
 
@@ -925,31 +964,61 @@ class BuilderAPIX64(BuilderAPI):
         '''
             []
         '''
-        # The passed builder is the subbuilder
-        innerCode = b.result()
+        # The passed builder is the subbuilder. Ignore it.
+        # Revert builders and 
+        # get content data
+        loopContents = self.compiler.instructionsGet()
+
+        # get the data
+        varGen, varData, varGenRegister = self.compiler.closureData.pop()
+
+        #print(protoSymbolLabel)
 
         
-        # Make tha builder revertion explicit by setting 'b' to the 
-        # previous builder
-        b = self.compiler.b        
+        # build the loop
+        for offset, elemTpe in varData.tpe.offsetIt():
+            # change the varGen type, if necessary
+            # The vargen is pushed to the env. Do we change the env, or replace?
 
-        # Revert builders in the compiler
-        self.compiler.builderOld()
+            # create the vargen and set in the environment
+            # this looks expensive. it probably is. It creates a new vargen,
+            # despite the location not changing, for the sake of the type changing.
+            # It then overwrites on the environment.
+            # It's got stuff all to do with mutability. I don't like
+            # poking the contents of a structure like env. 
+            #??? cqant change here. Its lookg for it AS WE PARSE
+            #?? so we must modify it, because thats the one the syntaxer found.
+            #?? and we must set it first, or it will not be present
+            varGen.tpe = elemTpe
+            
+            #self.compiler.envPrint()            
+            #Alloc to varGen
+            srcB = AccessValue(varData.loc)
+            srcB.addOffset(offset)
 
-        #! for an aeeay 
-        #??? fix offsets good
-        for offset, tpe in var.tpe.offsetIt():
-            b._code.append("mov {}, [{} + {}]".format(register, lid, offset))
-            # add the innercode
-            b.addAll(innerCode)            
-        b._code.append('; endForEach')
+            b._code.append("mov {}, {}".format(
+                # shortcut. It's always a register, got to be the lid.
+                varGen.loc.lid, 
+                srcB.result()
+            ))
+            
+            # replay instructions
+            self.compiler.instructionsPlay(loopContents)
+           
+        b._code.append('; endLoop')
+        
+        # Dispose of the inner environment (goodbye varGen)
+        self.compiler.envDelClosure()
         return MessageOptionNone
 
 
                 
     #? What about multiple calls together? Need to think over that
     #! then handle clutch data
-    ???
+    #???
+    #For a clutch, we need the offset stored in *code output* someplace.
+    #They can not be calculated from the root, unless unrolling.
+    #Does that mean we unroll them all?
     #! lot of repetition with forRange()
     def forEach(self, b, args):
         '''
@@ -1028,9 +1097,9 @@ class BuilderAPIX64(BuilderAPI):
         #print()
         b._code.append("mov {}, {}".format(
             varGen.loc.lid, 
-            #self.generateAccessValueRegister(varData, countReg)
             srcB.result()
         ))
+        
         # push data
         self.compiler.closureDataPush((trueLabel, entryLabel, countReg, until, step))
         mo = MessageOptionNone
@@ -1051,7 +1120,7 @@ class BuilderAPIX64(BuilderAPI):
         b._code.append("jl {}".format(trueLabel))  
         b._code.append('; endLoop')
 
-        # Dispose of the inner environment too (and rid of innervar)
+        # Dispose of the inner environment too (goodbye varGen)
         self.compiler.envDelClosure()
         return MessageOptionNone
 

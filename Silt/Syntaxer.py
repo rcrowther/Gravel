@@ -70,6 +70,8 @@ class ProtoSymbol():
     def toString(self):
         return self.name[1:]
         
+    def __str__(self):
+        return self.name
         
 
         

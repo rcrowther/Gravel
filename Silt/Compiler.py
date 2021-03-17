@@ -8,7 +8,9 @@ class Compiler(Syntaxer):
 
     def __init__(self, tokenIt, builderAPI):
         self.b = Builder()        
-        self.builderStack = []
+        self.instructionStack = []
+        self.instructionsStoreTrigger = False
+        
         
         # EnvStd is builtin symbol definitions
         self.envStd = builderAPI
@@ -54,24 +56,36 @@ class Compiler(Syntaxer):
         self.closureData = []
         super().__init__(tokenIt)
 
-    def builderNew(self):
+    def instructionsStore(self):
         '''
         Set a new builder as the current builder,
         For local manipilation of built code, such as repetitions
         or multiple inserts.
         '''
-        self.builderStack.append(self.b)
-        self.b = SubBuilder()
+        self.instructionStack.append([])
+        self.instructionsStoreTrigger = True
         
-    def builderOld(self):
+    def instructionsGet(self):
         '''
         Return the current builder as a result. 
         This will revert the current builder to the previous builder.
         '''
-        #finishedBuilder = self.b 
-        assert (len(self.builderStack) > 0), "This error should not occur!!! On builderResult builderStack is empty."
-        self.b = self.builderStack.pop(-1)
-        #return finishedBuilder
+        #assert (len(self.instructionStack) > 0), "This error should not occur!!! On builderResult instructionStack is empty."
+        return self.instructionStack.pop(-1)
+
+    def instructionsPlay(self, instructions):
+        '''
+        Play stored instructions
+        '''
+        #! currently works on the current env and builder, which is just wrong
+        # what about embedded loops, huh?
+        for ins in instructions:
+            # Aye, unPythonic
+            pos = ins[0]
+            posArgs = ins[1]
+            name = ins[2]
+            args = ins[3]
+            self.exprCB(pos, posArgs, name, args)
         
     def _stringTypeNamesMk(self, typeList):
         '''
@@ -163,8 +177,23 @@ class Compiler(Syntaxer):
         assert(self.envClosure and (len(self.envClosure) > 0)), "Symbol offered, but no envClosure. protoSymbol:{}".format(
             protoSymbol
         )
+        #print('setting: ' + protoSymbol)
         self.envClosure[-1][protoSymbol] = value
         
+    def symbolChangeType(self, name, tpe):
+        '''
+        A brute mutation of a already registered type
+        Used for genVars
+        '''
+        self.envClosure[-1][name].tpe = tpe
+
+    def envPrint(self):
+        #! oh so yes! Sadly, the same bad defaults noted in exprCB()
+        #print(str(self.envClosure[-1]))
+        print('env:')
+        for k,v in self.envClosure[-1].items():
+            print(k + ': ' + str(v))
+            
     def symbolSetGlobal(self, protoSymbol, value):
         # Used in RO on builder
         #? Do a value test, or not 
@@ -181,7 +210,8 @@ class Compiler(Syntaxer):
         # last shot, globals
         if (sym in self.envGlobal):        
             return self.envGlobal[sym]
-        #print(str(self.envStd))
+        print('findIdentifier')
+        self.envPrint()
         msg = "Symbol requested but not found in scope. symbol '{}'".format(
              sym
              )
@@ -195,33 +225,53 @@ class Compiler(Syntaxer):
 
     def exprCB(self, pos, posArgs, name, args):
         #! such a useful print---enhance and be part of a debug?
-        print('Compiler expr {}({})'.format(name, args))
-        func = self.findIdentifier(pos, name)
-        
-        # stacked data protection
-        #? assert?
-        if ((name == "funcEnd" or name == "funcMainEnd") and len(self.closureData) > 0):
-            msg = "End of func with unclosed instructions. unused instruction args:{}".format(
-                self.closureData,
-                )
-            self.errorWithPos(pos, msg)
+        # printing a list always REPRs, think this is due a change in 
+        # 3.7 I prefer the string marks to a gross repr. So the 
+        # list comprehension. 
+        print('Compiler expr {}({!s})'.format(
+            name, 
+            [str(a) for a in args]
+        ))
+        if (self.instructionsStoreTrigger):
             
-        # Test args for type and/or count
-        if name in self.funcNameToArgsType:
-            self.argsCheck(posArgs, name, args, self.funcNameToArgsType[name])
-                   
-        # Wow--now can do a simple call 
-        msgOption = func(self.b, args)
-        
-        # If an message came from the API, its an integrity
-        # error from the args (not a format issue)
-        # Outright throws are throws. Throws to be caught are in custom 
-        # exceptions of this code.
-        self.eitherError(posArgs, msgOption)
+            #! need something more general than this hardcode
+            # I do want to control this, because it will lead to incomprehensible arrors,
+            # so catch whenever, hardcoded? e.g.
+            # if (name in storeCloseFuncs):
+            if (name == 'forEachUnrolledEnd'):
+                self.instructionsStoreTrigger = False
+                
+                # play the end instruction
+                self.exprCB(pos, posArgs, name, args)
+            else:
+                self.instructionStack[-1].append((pos, posArgs, name, args,))
+        else:
+            func = self.findIdentifier(pos, name)
+            
+            # stacked data protection
+            #? assert?
+            if ((name == "funcEnd" or name == "funcMainEnd") and len(self.closureData) > 0):
+                msg = "End of func with unclosed instructions. unused instruction args:{}".format(
+                    self.closureData,
+                    )
+                self.errorWithPos(pos, msg)
+                
+            # Test args for type and/or count
+            if name in self.funcNameToArgsType:
+                self.argsCheck(posArgs, name, args, self.funcNameToArgsType[name])
+                       
+            # Wow--now can do a simple call 
+            msgOption = func(self.b, args)
+            
+            # If an message came from the API, its an integrity
+            # error from the args (not a format issue)
+            # Outright throws are throws. Throws to be caught are in custom 
+            # exceptions of this code.
+            self.eitherError(posArgs, msgOption)
 
                 
     def result(self):
-        assert (len(self.builderStack) == 0), "This error should not occur!!! On Compiler result, builderStack is not empty."
+        assert (len(self.instructionStack) == 0), "This error should not occur!!! On Compiler result, instructionStack is not empty. len:{}".format(len(self.instructionStack))
         return self.b
         
 if __name__ == "__main__":

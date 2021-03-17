@@ -39,7 +39,7 @@ funcMain()
 #--
 
 #--
-    regDefine(@reg1 'rbx' 777 Bit64)
+    #regDefine(@reg1 'rbx' 777 Bit64)
     #println(reg1)
 #--
     #Isnt working because what ''type' is a length of bytes?
@@ -91,16 +91,30 @@ funcMain()
     #    println(roTrue)
     #    forRangeEnd()
 #-- forEach
-    heapAlloc(@heap3 Array(Bit64 3))
-    setPath(heap3 [0] 555)
-    setPath(heap3 [2] 999)
-    forEach(@elem 'r12' heap3)
-        registersPush(('rax' 'r12' 'rbx' 'rcx'))
+    #heapAlloc(@heap3 Array(Bit64 3))
+    #setPath(heap3 [0] 555)
+    #setPath(heap3 [2] 999)
+    #forEach(@elem 'r12' heap3)
+        #registersPush(('rax' 'r12' 'rbx' 'rcx'))
         #registersVolatilePush()
-        #println(roTrue)
+        #println(elem)
+        #registersPop()
+        #forEachEnd()
+
+#-- forEachUnrolled
+    heapAlloc(@heap3 Clutch(Bit64 Bit8 Bit64))
+    raw('mov qword[rax], 999')
+    raw('mov qword[rax + 8], 5')
+    raw('mov qword[rax + 9], 777')
+    #setPath(heap3 [7] 3)
+    #setPath(heap3 [9] 999)
+    forEachUnrolled(@elem 'r12' heap3)
+        #raw('; ...Unrolled contents...')
+        raw('; ...Unrolled cont...')
+        registersPush(('rax' 'r12'))
         println(elem)
         registersPop()
-        forEachEnd()
+        forEachUnrolledEnd()
 #--
     # general exit
     printFlush()

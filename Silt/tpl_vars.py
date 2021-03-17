@@ -99,8 +99,9 @@ class Base():
         )
 
     def __str__(self):
-        return "Var({})".format(
+        return "Var({}, {})".format(
             self.loc.lid,
+            self.tpe
         )
 
 class Var(Base):

@@ -128,6 +128,16 @@ class Type():
         #return "{}".format(self.__class__.__name__) #+ ('instance')
 
 
+class _NoType(Type):
+    def __repr__(self):
+        return "NoType"
+'''
+A type of no substance.
+Useful if a Type is required, but never want to interact with it. 
+For example, a currently unknown type. Or empty return.
+'''
+NoType = _NoType()
+
 class TypeSingular(Type):
     def equals(self, other):
         # singular types are instances, so all we need to know is this
@@ -266,7 +276,7 @@ class TypeContainer(Type):
         return "{}(elementType:{})".format(self.__class__.__name__, self.elementType)
 
     def __str__(self):
-        return "{}[{}]".format(self.__class__.__name__, self.elementType)
+        return "{}({})".format(self.__class__.__name__, self.elementType)
         
 
             
