@@ -108,16 +108,7 @@ class Compiler(Syntaxer):
         
         i = 0
         for argTest, arg in zip(argsTypes, args):
-            # is it argtype that could be fichanged, to reflect differences?
-            # 
-            #if (not(isinstance(arg, argType))):
-            print(str(argTest))
             if (not(argTest(arg))):
-                # msg = "Arg type not match signature. symbol:'{}', expected:{}, args:{}".format(
-                    # name,
-                    # self._stringTypeNamesMk(argsTypes),
-                    # args
-                 # )
                 msg = "Arg type not match signature. arg:{}, expected:{}, got:{}".format(
                     i,
                     argTest.typeString,

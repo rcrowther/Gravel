@@ -14,9 +14,11 @@ arch = architecture.architectureSolve(architecture.x64)
 
 
 
-#! These could include relaitve address tragets to, but look at other 
-# architectures first
-#!? get position for errors
+#! This Statice return needs looking at becausse it includes the 
+# parameter protection.
+#! such errors need to be asserts to fit in with the other template
+# helpers. See the AccessBuilders. 
+#!? (can be added later if we throw a message up) get position for errors
 class LocationRootX64():
     '''
     Present data as a location within various CPU constructs.
@@ -241,7 +243,7 @@ def RegisterX64Either(register):
     
     
         
-class RegisteredAddressX64(RegisterX64):
+class RegisteredAddressX64(LocationRootX64):
     '''
     Presents data where the address is in a register.
     The lid is a register, the value is used as an address.
@@ -335,6 +337,11 @@ def StackX64Either(index):
 
 class StackedAddressX64(LocationRootX64):
 
+    def __init__(self, index):
+        #assert self._validInitialLID(index)
+        super().__init__(index)    
+        self.stackByteSize = self.arch['bytesize']
+        
     def value(self):
         # needs LEA
         raise NotImplementedError('A StackedAddressX64 can not be treated as an value. Transfer to a register first rootStorage:{}'.format(

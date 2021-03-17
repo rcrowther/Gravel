@@ -14,11 +14,18 @@ from Syntaxer import ProtoSymbol, Path, FuncBoolean
 from tpl_either import MessageOption, MessageOptionNone
 
 # Humm. Build addresses here, not in locs?
+#?x many not left
 from tpl_address_builder import AddressBuilder
+from tpl_access_builders import AccessValue, AccessAddress
 
 from tpl_label_generators import LabelGen
 
+                    
 
+
+
+
+            
 class BuilderAPI():
     '''
     A base for building code.
@@ -438,7 +445,7 @@ class BuilderAPIX64(BuilderAPI):
         b._code.append("mov {}, {}".format(self.arch['cParameterRegisters'][0], tpe.byteSize))
         b._code.append("call malloc")
         var = Var.Var(
-            Loc.RegisterX64(self.arch['returnRegister']), 
+            Loc.RegisteredAddressX64(self.arch['returnRegister']), 
             tpe
         )
         #print('huh?')
@@ -560,6 +567,7 @@ class BuilderAPIX64(BuilderAPI):
     #? Currently only on registers
     #? and only two deep
     # etc.
+    #x?
     def _toCodeAccessDeep(self, lid, path, tpe):
         addrB = AddressBuilder(lid)
         #? protection against rogue pids
@@ -569,7 +577,7 @@ class BuilderAPIX64(BuilderAPI):
             addrB.addOffset(offset)
             if (not(isinstance(tpe, Type.TypeContainer))):
                 break
-        return (addrB.result(True), tpe)
+        return (addrB.asAddress(), tpe)
         
     def setPath(self, b, args):
         '''
@@ -673,7 +681,6 @@ class BuilderAPIX64(BuilderAPI):
         'and', 'or', 'xor', 
     ]
 
-    from tpl_address_builder import AddressBuilder
 
     def buildDataCode(self, val):
         if (not(isinstance(val, Var.Var))):
@@ -938,71 +945,94 @@ class BuilderAPIX64(BuilderAPI):
         b._code.append('; endForEach')
         return MessageOptionNone
 
-    #? is register really our input?
-    #! problems with register clobbering
-    #? protection round calls, but not automatic, what about multiple 
-    # calls together? Need to think over that
-    #! Weve got three vars kicking about here. Need to make this clear,
-    # - original data root
-    # - counter
-    # - [;ace for results
+
+                
+    #? What about multiple calls together? Need to think over that
     #! then handle clutch data
-    #! lot or repetition with forRange()
+    ???
+    #! lot of repetition with forRange()
     def forEach(self, b, args):
         '''
             [ProtoSymbol register containerOffsetVar],
         '''        
-        # InnerVar name...
+        #NB so what we are saying is, the generated variable is
+        # assembled froma protosymbol and a reg. Is that so bad? No.
+        # Onwards. 
+        # We can't have the varData and the varGen both off-register 
+        # because of the move. 
+        # So
+        # the varGen is in a register. Maybe not forever, but for 
+        # now. 
+        # So the DataVar is allowed to be anywhere. 
+        # The counter and the varGen in seperate registers. They could 
+        # be push/pulled, but that's tweaky.
         protoSymbolLabel = args[0].toString()
 
-        # Choice of count register...
-        #! tmp for now
-        register =  args[1]
-        
-        # Choice of innervar register...
-        genVarRegister = 'r12'
+        # Choice of genvar register...
+        varGenRegister =  args[1]
                 
         # The original var
-        var = args[2]
+        varData = args[2]
+        if(varGenRegister == 'rcx'):
+            self.compiler.warning("Defence required, forEach uses 'rcx'")
+        if(varGenRegister == varData.loc.lid):
+            self.compiler.error("genVar is the same register as dataVar. register:'{}'".format(varGenRegister))
+        
+        # Choice of count register...
+        countReg = 'rcx'
 
         # add a new environment
         self.compiler.envAddClosure()
 
-        # create the new generated innervar
+        # create the varGen
         # set on the new env
         #! Not going to work for clutches, as type changes
-        # ...but would be type[0]...
-        genVar = Var.Var(
-            Loc.RegisterX64(genVarRegister), 
+        # ...but would start type[0]...
+        varGen = Var.Var(
+            Loc.RegisterX64(varGenRegister), 
             #! for a clutch
             #var.tpe.elementType[0]
-            var.tpe.elementType
+            varData.tpe.elementType
         )
         self.compiler.symbolSetClosure(
             protoSymbolLabel, 
-            genVar
+            varGen
         )
 
         # loop start
         #! array
-        step = var.tpe.elementType.byteSize
+        step = varData.tpe.elementType.byteSize
         froom = -(step)
-        until = var.tpe.byteSize
+        until = varData.tpe.byteSize
         trueLabel = self.labelGenerate('forEachTrue')
         entryLabel = self.labelGenerate('forEachEP')
                
         # build
         b._code.append('; beginLoop')
-        b._code.append("mov {}, {}".format(register, froom))  
+        b._code.append("mov {}, {}".format(countReg, froom))  
         b._code.append("jmp {}".format(entryLabel))                
         b._code.append(trueLabel + ':') 
 
-        # alloc to the genvar. Ah, that means we need a counter AND
-        # a genVar place. I'd overlooked that....!
-        b._code.append("mov {}, [{} + {}]".format(genVarRegister, var.loc.lid, register)) 
-        
+        # alloc to the varGen.
+        #! this is crude. It should be generated from the vars. 
+        # Especially, one could be on the stack (but not both).
+        # The varData especially could be on the stack.
+        # b._code.append("mov {}, [{} + {}]".format(
+            # varGen.loc.lid, 
+            # varData.loc.lid, 
+            # countReg
+        # ))
+        #? compact generalisation of above
+        srcB = AccessValue(varData.loc)
+        srcB.addRegister(countReg)
+        #print()
+        b._code.append("mov {}, {}".format(
+            varGen.loc.lid, 
+            #self.generateAccessValueRegister(varData, countReg)
+            srcB.result()
+        ))
         # push data
-        self.compiler.closureDataPush((trueLabel, entryLabel, register, until, step))
+        self.compiler.closureDataPush((trueLabel, entryLabel, countReg, until, step))
         mo = MessageOptionNone
         return mo
         
@@ -1011,13 +1041,13 @@ class BuilderAPIX64(BuilderAPI):
             []
         '''
         # get the data
-        trueLabel, entryLabel, register, until, step  = self.compiler.closureData.pop()
+        trueLabel, entryLabel, countReg, until, step  = self.compiler.closureData.pop()
 
         # build the loop
         #! for an array
         b._code.append(entryLabel + ':') 
-        b._code.append("add {}, {}".format(register, step)) 
-        b._code.append("cmp {}, {}".format(register, until))        
+        b._code.append("add {}, {}".format(countReg, step)) 
+        b._code.append("cmp {}, {}".format(countReg, until))        
         b._code.append("jl {}".format(trueLabel))  
         b._code.append('; endLoop')
 
