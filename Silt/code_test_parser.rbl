@@ -38,13 +38,14 @@ funcMain()
     #println(ro2)
 #--
 
-#--
+#-- define
     #regDefine(@reg1 'rbx' 777 Bit64)
     #println(reg1)
 #--
     #Isnt working because what ''type' is a length of bytes?
     #heapAllocBytes(@heap1 8)
-#--
+
+#-- heapAlloc
     #heapAlloc(@heap2 Bit64)
     #set(heap2 799)
     #println(heap2)
@@ -66,19 +67,28 @@ funcMain()
     #println(Bit64 stk2)
     #println(stk2)
     #stringHeapAlloc(24)
+
+#-- reg push
     #registersVolatilePush('rax' 'rbx' 'rcx')
     #registersVolatilePop()
-    #println(ro1)
 
-    #if(AND( LT(stk1 5) NOT(LT(stk1 9)) ))
-    #ifEnd()
+#-- arithmetic
+#-- dec/inc
+    heapAlloc(@dec1 Bit64)
+    set(dec1 777)
+
+    #regDefine(@dec1 'rbx' 77 Bit64)
+    #inc(dec1)
+    dec(dec1)
+    println(dec1)
+
 
 #-- cmp
-    regDefine(@rbx1 'rbx' 77 Bit64)
-    regDefine(@rcx2 'rcx' 3 Bit64)
-    #cmp(reg1 and(not(lt(rbx 5)) gte(43 5)) )
-    cmp(rbx1 lt(rcx2 5) )
-    println(rbx1)
+    #regDefine(@rbx1 'rbx' 77 Bit64)
+    #regDefine(@rcx2 'rcx' 3 Bit64)
+    #cmp(rbx1 lt(rcx2 5) )
+    #println(rbx1)
+
 #-- if
     #println(roQuery)
     #ifStart(and(gt('rbx' 777) lte('rbx' 777)))
@@ -92,6 +102,7 @@ funcMain()
     #forRange('rbx' 0 -2)
     #    println(roTrue)
     #    forRangeEnd()
+
 #-- forEach
     #heapAlloc(@heap3 Array(Bit64 3))
     #setPath(heap3 [0] 555)

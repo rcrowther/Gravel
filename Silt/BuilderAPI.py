@@ -15,7 +15,7 @@ from tpl_either import MessageOption, MessageOptionNone
 
 # Humm. Build addresses here, not in locs?
 #?x many not left
-from tpl_address_builder import AddressBuilder
+#from tpl_address_builder import AddressBuilder
 from tpl_access_builders import AccessValue, AccessAddress
 
 from tpl_label_generators import LabelGen
@@ -24,8 +24,23 @@ from tpl_label_generators import LabelGen
 
 
 
-
-            
+# https://www.felixcloutier.com/x86/index.html
+# shidt
+# casts
+# dec. inx
+# deeper types
+# union
+# breeak
+# null
+# excepts
+# inline
+# parameters
+# UTF8
+# unsigned
+# float
+# switch
+# switch loop
+# alignmant
 class BuilderAPI():
     '''
     A base for building code.
@@ -87,8 +102,8 @@ class BuilderAPI():
 
         
         ## Arithmetic
-        #'dec' : [anyVar()],
-        #'inc' : [anyVar()],
+        'dec' : [anyVar()],
+        'inc' : [anyVar()],
         #? should be int or float. Anyway...
         'add' : [anyVar(), intVal()],
         'sub' : [anyVar(), intVal()],
@@ -491,7 +506,7 @@ class BuilderAPIX64(BuilderAPI):
         if (mo.isOk()):
             b._code.append("mov {} {}, {}".format(
                 TypesToASMName[var.tpe], 
-                var.toCodeValue(), 
+                AccessValue(var.loc).result(),
                 val
             ))
             
@@ -502,8 +517,19 @@ class BuilderAPIX64(BuilderAPI):
     #? and only two deep
     # etc.
     #x?
+    # def _toCodeAccessDeep(self, lid, path, tpe):
+        # addrB = AddressBuilder(lid)
+        # #? protection against rogue pids
+        # #? Could unroll, with only two elements max?
+        # for pid in path:
+            # offset, tpe = tpe.offsetTypePair(pid)
+            # addrB.addOffset(offset)
+            # if (not(isinstance(tpe, Type.TypeContainer))):
+                # break
+        # return (addrB.asAddress(), tpe)
+
     def _toCodeAccessDeep(self, lid, path, tpe):
-        addrB = AddressBuilder(lid)
+        addrB = AccessValue(var.loc).result()
         #? protection against rogue pids
         #? Could unroll, with only two elements max?
         for pid in path:
@@ -511,7 +537,7 @@ class BuilderAPIX64(BuilderAPI):
             addrB.addOffset(offset)
             if (not(isinstance(tpe, Type.TypeContainer))):
                 break
-        return (addrB.asAddress(), tpe)
+        return (addrB.result(), tpe)        
         
     def setPath(self, b, args):
         '''
@@ -547,14 +573,28 @@ class BuilderAPIX64(BuilderAPI):
     #! We need something works as var or val?
     #? Will need widths?
     def dec(self, b, args):
+        '''
+        [anyVar()]
+        '''
+        # Yes works with relative addresses
         var = args[0]
-        b._code.append("dec {}".format(var))      
+        b._code.append("dec {} {}".format(
+            TypesToASMName[var.tpe],
+            AccessValue(var.loc).result()
+        ))      
         return MessageOptionNone
 
     def inc(self, b, args):
+        '''
+        [anyVar()]
+        '''
         var = args[0]
-        b._code.append("inc {}".format(var))       
+        b._code.append("inc {} {}".format(
+            TypesToASMName[var.tpe],
+            AccessValue(var.loc).result()
+        ))       
         return MessageOptionNone
+        
         
     #def add(self, b, args):
 
@@ -569,7 +609,6 @@ class BuilderAPIX64(BuilderAPI):
 
 
     ### compare/if
-
             
     jumpOps = {
         "lt": "jl",
@@ -738,6 +777,7 @@ class BuilderAPIX64(BuilderAPI):
     # Like an it
     # This has the problem we need a Boolean type, probably.
     # And to go with it, a compare flag location.
+    # Howsoever, it is working
     def cmp(self, b, args):
         '''
         Move a comparison reault to a var
@@ -1110,14 +1150,18 @@ class BuilderAPIX64(BuilderAPI):
             #print(str(var))
             # tpe, offset(lid)
             # tpe.offsetDeep(self, path)
-            srcSnippet = var.loc.value()
+
+            #srcSnippet = var.loc.value()
+            srcSnippet = AccessValue(var.loc).result()
             #! Obviously, very temproary!
             # What we need is probably something that separates string 
             # types from numbers
             #print(str(tpe))
+            
             if (tpe == Type.StrASCII):
                 # For a string, printf wants the address, not the value
-                srcSnippet = var.loc.address()
+                #srcSnippet = var.loc.address()
+                srcSnippet = AccessAddress(var.loc).result()
             #print('snippet:')
             #print(str(srcSnippet))
             self.printers(b, tpe, srcSnippet)
