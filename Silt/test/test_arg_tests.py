@@ -6,6 +6,10 @@ import tpl_types as Type
 from tpl_locationRoot import *
 from Syntaxer import ProtoSymbol, Path, FuncBoolean
 from tpl_vars import Base, Var
+from tpl_locationRoot import (
+    RegisterX64, 
+    RegisteredAddressX64
+)
 
 
 
@@ -90,5 +94,20 @@ class TestArgTests(unittest.TestCase):
         val = "9"
         self.assertFalse(intOrVarNumeric()(val))
                 
+                
+                
+                
+class TestVarLocTests(unittest.TestCase):
+    def test_regvar(self):
+        val = Var(RegisterX64('r12'), Type.Bit64)
+        self.assertTrue(regVar()(val))
+
+    def test_regvar_fail(self):
+        val = Var(RegisteredAddressX64('r12'), Type.Bit64)
+        self.assertFalse(regVar()(val))
+        
+        
+        
+        
 if __name__ == '__main__':
     unittest.main()

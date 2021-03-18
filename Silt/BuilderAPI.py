@@ -60,72 +60,6 @@ class BuilderAPI():
     '''
     Type signature of API funcs
     '''
-    # funcNameToArgsType = {
-        # # basics
-        # 'comment': [str],
-        # 'sysExit': [int],
-        # 'extern': [str],
-        # 'raw': [str],
-        
-        # ## Code structure 
-        # 'frame': [],
-        # 'frameEnd': [],
-        # 'func': [ProtoSymbol],
-        # 'funcEnd': [],
-        # 'funcMain': [],
-        # 'funcMainEnd': [],
-
-        # ## Register utilities
-        # 'registersPush': [list],
-        # 'registersVolatilePush': [],
-        # 'registersPop': [],
-
-        # ## var action
-        # 'set': [Var.Base, int],
-        # #!? Path should be a Type. Probably
-        # 'setPath':  [Var.Base, Path, int],
-        # 'forEachRoll' : [ProtoSymbol, Var.Base],
-        # 'forEachRollEnd': [],
-        # 'forEach': [ProtoSymbol, Var.Base],
-        # 'forEachEnd': [],
-        
-        # ## Arithmetic
-        # #'dec' : [Var.Base],
-        # #'inc' : [Var.Base],
-        # #? should be int or float. Anyway...
-        # 'add' : [Var.Base, int],
-        # 'sub' : [Var.Base, int],
-        # 'mul' : [Var.Base, int],
-        # 'divi' : [Var.Base, int],
-        # 'div' : [Var.Base, int],
-        
-        # ## Allocs
-        # 'ROStringDefine': [ProtoSymbol, str],
-        # 'RODefine': [ProtoSymbol, int, Type.Type],
-        # 'regDefine': [ProtoSymbol, str, int, Type.Type],
-        # 'heapAllocBytes': [ProtoSymbol, int],
-        # 'heapAlloc': [ProtoSymbol, Type.Type],
-        # 'stackAllocBytes': [ProtoSymbol, int, int],
-        # 'stackAlloc': [ProtoSymbol, int, Type.Type],
-
-        # ## boolean
-        # 'cmp': [Var.Base, FuncBoolean],
-        # 'ifStart': [FuncBoolean],
-        # 'ifEnd': [],
-        
-        # ## loops
-        # 'forRange': [str, int, int],
-        # 'forRangeEnd': [],
-        # 'whileStart': [FuncBoolean],
-        # 'whileEnd': [],
-        
-        # ## printers
-        # 'print' : [Var.Base],
-        # 'println': [Var.Base],
-        # 'printFlush': [],
-    # #'': [].
-    # }
-    
     #NB Can get rid of the brackets, but that's Pythonic
     funcNameToArgsType = {
         # basics
@@ -172,7 +106,7 @@ class BuilderAPI():
         'stackAlloc': [protoSymbolVal(), intVal(), anyType()],
 
         ## boolean
-        'cmp': [anyVar(), booleanFuncVal()],
+        'cmp': [regVar(), booleanFuncVal()],
         'ifStart': [booleanFuncVal()],
         'ifEnd': [],
         
@@ -635,28 +569,6 @@ class BuilderAPIX64(BuilderAPI):
 
 
     ### compare/if
-    # This has the problem we need a Boolean type, probably.
-    # And to go with it, a compare flag location.
-    def cmp(self, b, args):
-        var = args[0]
-        var = args[0]
-        booleanFunc = args[1]
-        #print(str(booleanFunc))
-        mo = MessageOptionNone
-        # need two registers?? one for comparision,  current reesult?
-        p1 = 'var???'
-        p2 = 'constant' 
-        b._code.append("cmp {}, {}".format(
-            p1,
-            p2,
-        ))     
-        funcName = booleanFunc.name
-        p2 = '[label]'
-        b._code.append("j{}, {}".format(
-            funcName,
-            p2,
-        ))         
-        return mo
 
             
     jumpOps = {
@@ -753,7 +665,18 @@ class BuilderAPIX64(BuilderAPI):
             self._logicBuilder(b, logicTree.args[0], invertToFalse, not(compareNot), trueLabel, falseLabel)                
         else:
             # Must be a Comparison
-            b._code.append("cmp {}, {}".format(logicTree.args[0], logicTree.args[1]))
+            # Resolve whatever has been sent
+            #! MUST be a more appropriate place to place this little stunt
+            # The stunt is, either pass the value, but if its a Var, run through
+            # the builder---without any offsets or register relative addressing
+            arg0 = logicTree.args[0]
+            arg1 = logicTree.args[1]
+            if isinstance(arg0, Var.Var):
+                arg0 = AccessValue(arg0.loc).result()
+            if isinstance(arg1, Var.Var):
+                arg1 = AccessValue(logicTree.args[1].loc).result()
+            b._code.append("cmp {}, {}".format(arg0, arg1))            
+            #b._code.append("cmp {}, {}".format(logicTree.args[0], logicTree.args[1]))
             jumpOp = self.jumpOps[logicTree.name]
             label = trueLabel
             
@@ -789,15 +712,15 @@ class BuilderAPIX64(BuilderAPI):
     def ifStart(self, b, args):
         '''
         if...then flow control from boolean logic.
+            [booleanFuncVal()]
         '''
         boolLogic = args[0]
-        #??? Now need some booleana logic to get us there...
-        #b._code.append("cmp rax, 4")        
+        
+        # Now need some booleana logic to get us there...
         falseLabel = self.labelGenerate('ifFalse')
         trueLabel = self.labelGenerate('ifTrue')
-        #jumpLogic = "jne"
-        #b._code.append(jumpLogic + " " + falseLabel)
         self.logicBuilder(b, boolLogic, trueLabel, falseLabel)
+        
         # Put the true label at block start
         b._code.append(trueLabel + ':')        
         b._code.append('; beginBlock')        
@@ -811,6 +734,53 @@ class BuilderAPIX64(BuilderAPI):
         b._code.append('; endBlock')
         b._code.append(falseLabel + ':')        
         return MessageOptionNone
+
+    # Like an it
+    # This has the problem we need a Boolean type, probably.
+    # And to go with it, a compare flag location.
+    def cmp(self, b, args):
+        '''
+        Move a comparison reault to a var
+            [anyVar(), booleanFuncVal()]
+        '''
+        #! insist targetVar is a varReg
+        # ZF is what we want Flag -> reg
+        targetVar = args[0]
+        booleanFunc = args[1]
+
+        # zero the targetVar
+        b._code.append('xor {}, {}'.format(
+            targetVar.loc.lid,
+            targetVar.loc.lid
+        ))
+
+        # Now need some boolean logic to get us a result...
+        falseLabel = self.labelGenerate('ifFalse')
+        trueLabel = self.labelGenerate('ifTrue')
+        self.logicBuilder(b, booleanFunc, trueLabel, falseLabel)
+        
+        # Put the true label at block start
+        b._code.append(trueLabel + ':')        
+        b._code.append('; beginBlock') 
+
+        # if true, set targetVar to one
+        b._code.append('mov {}, 1'.format(targetVar.loc.lid))
+        
+        # Then end it
+        b._code.append('; endBlock')
+        b._code.append(falseLabel + ':')  
+        
+        ## Test
+        #Load FLAGS into AH register. AH is xAX high
+        # b._code.append('lahf')
+        # b._code.append("shr rax, 14")
+        # nask that bit
+        # b._code.append("and rax, 0x01")
+        # move to the var.
+        # b._code.append("mov rbx, rax")
+       
+        mo = MessageOptionNone
+        return mo
         
         
         
@@ -876,6 +846,10 @@ class BuilderAPIX64(BuilderAPI):
 
     # When you need to react to what's in the loop
     def whileStart(self, b, args):
+        '''
+            [booleanFuncVal()]
+        '''
+        #! undone
         boolLogic = args[0]
         trueLabel = self.labelGenerate('whileTrue')
         entryLabel = self.labelGenerate('whileEntry')
@@ -891,22 +865,8 @@ class BuilderAPIX64(BuilderAPI):
         return MessageOptionNone
 
 
-
-        
-        # rolled would look like
-    # a loop...
-    # loopLabel = 
-    #innerCode = 
-    # b._code.append(':' + loopLabel)
-    # b._code.append(innerCode)
-    # b._code.append('dec rcx')
-    # b._code.append('cmp rcx, 0')
-    # b._code.append('jgtzo loopLabel')
-     
-     
     def forEachUnrolled(self, b, args):
         '''
-
             [ProtoSymbol register containerOffsetVar]
         '''
         protoSymbolLabel = args[0].toString()
@@ -1158,8 +1118,8 @@ class BuilderAPIX64(BuilderAPI):
             if (tpe == Type.StrASCII):
                 # For a string, printf wants the address, not the value
                 srcSnippet = var.loc.address()
-            print('snippet:')
-            print(str(srcSnippet))
+            #print('snippet:')
+            #print(str(srcSnippet))
             self.printers(b, tpe, srcSnippet)
         return MessageOptionNone
             

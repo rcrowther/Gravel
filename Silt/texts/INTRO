@@ -8,39 +8,92 @@ Rubble is a computer language.
 ~ It's made by someone who doesn't know what they are doing
 : The author has no books on assembly programming, and does not work as a programmer
 ~ It's not supported by any expertese or community
-: The author is not famous. And the author has no weight of Google/Mozilla/finance/government behind him. Please bear in mind how important celebrity, authority, and review are to computing
+: The author is not famous. And the author has no weight of Google, finance, or government behind him. Please bear in mind how important celebrity, authority, and review are to computing
 +
 
-== What kind of language is Rubble?
-Attempts to provide teasers for languages are usually inaccurate, but one description of Rubble might be, ""To generate prodictable, plain assembly code using (relatively) high-level means".
+== Guide to Rubble for categories of programmers
+If you are a,
+++
+: Beginner
+~ Rubble will damage your reputation
+: Average Joe
+~ Rubble will damage your expertese
+: Expert
+~ Rubble will damage your expertese and reputation
++
 
-The reasons are more complicated than that, and have not much to do with assembly code. But ""predicatable, plain assembly code" is a target that achieves those ends.
+If you are a,
++dl
+~ Low-level programmer (Assembly languages)
+: Rubble is a speck in your expensively-aquired learning
+~ Mid-level programmer (pointers, but abstracted variables)
+: Rubble is a useless tool, and unreliable
+~ High-level programmer (metacode)
+: Here, there is no point
++
+
+
+== What kind of language is Rubble?
+One description of Rubble might be, ""To generate prodictable, plain assembly code using (relatively) high-level means". The reasons are more complicated than that, and have not much to do with assembly code.
 
 
 == Come again? What's it like?
-A little Lispy, verbose and dumb.
- 
-Oh, ok. A string of simple functions. Sometimes it is like a base language, like Microsoft's CLI, or Java bytecode. You deal with registers and the stack directly, not abstracted variable binding,
-
+A sequence of simple functions. Sometimes Rubble is like an intermediate language. You deal with registers and the stack directly, not abstracted variable bindings,
+?rbl
 frame()
 
 frameEnd()
+?
+Sometimes Rubble is more like languages of higher abstraction,
 
-The Rubble policy is that we will build as abstracted as possible, as long as this does not force undue optimisations, or conceal machine code process. So sometimes Rubble is more like languages of higher abstraction,
+?rbl
+forEach(@generated-var 'rbx' some-var)
+    print(generated-var)
+?
 
-if(NOT(some-var))
-    print(another-var)
-ifEnd()
 
-== Machine code! Rubble must be fast? Is Rubble one of those super-tuned specialist-purpose languages?
-No. Read the above. Rubble generates plain, predictable machine code. It does not use it's involvement in machine code to do tricks or obscure actions.
-
-One result of aiming for predictable machine code is thatt Rubble avoids optimisation. Yoou read that correct---Rubble avoids optimisation. The only ''optimisations' in Rubble are when a feature/abstraction within CPU architectures forces Rubble to make a choice. This might include, for example, where to store data (stack, executable section allocation, heap etc.). Even then, Rubble will work to offer these choices in a plain way, rather than by automatic choice. Here and there features/abstractions within the language can force Rubble to make decisions. But Rubble tries to avoid such abstractions, and where it soes not, usually offers the choice to the programmer.
+== Machine code! Rubble must be fast?
+No. Read the above. Rubble generates plain, predictable machine code. It does not use it's involvement in machine code to do tricks or obscure actions. It is a policy of Rubble development to avoid optimisation.
   
+
 == How ''powerful' is Rubble?
-Never an easy question to answer. One measure would be to ask ""how many machine-code ops does a language produce per instruction, averaged over the lexical/syntactic set?". That measue ignore levels of abstraction, but is quantifiable. In which case Rubble is above assembler, but far below C. 
+Hard to measure. Rubble is a crude abstraction of basic Assembly code, far below C. 
+
 
 == What is similar to Rubble?
+Autogeneration of Rubble should be easy. So maybe BCPL, the precursor to C, though BCPL is far more elegant. Some bytecodes, though Rubble is more involved and has a verbose interface. Maybe a Hardware Description Language, but for CPU ops.
+
+
+== Why would I use it?
+Because you asked, this language is probably not for you.
+
+
+== Why not write in an Assembly language?
+Go ahead.
+
+
+==  Why not implement in LLVM?
+LLVM is layered, pipelined, flexible and written in C++. So LLVM is not plain, is packed with optimisations, and is not predictable. LLVM does not support the stated aims of Rubble.
+
+
+== What's written in Rubble?
+Nothing of cosmic importance. Nothing much of anything.
+
+
+==========
+Attempts to provide teasers for languages are usually inaccurate, but o
+==
+The Rubble policy is that we will build as abstracted as possible, as long as this does not force undue optimisations, or conceal machine code process. So 
+
+
+ But ""predicatable, plain assembly code" is a target that achieves those ends.
+
+One result of aiming for predictable machine code is thatt Rubble avoids optimisation. Yoou read that correct---Rubble avoids optimisation. The only ''optimisations' in Rubble are when a feature/abstraction within CPU architectures forces Rubble to make a choice. This might include, for example, where to store data (stack, executable section allocation, heap etc.). Even then, Rubble will work to offer these choices in a plain way, rather than by automatic choice. Here and there features/abstractions within the language can force Rubble to make decisions. But Rubble tries to avoid such abstractions, and where it soes not, usually offers the choice to the programmer.
+
+Never an easy question to answer. One measure would be to ask ""how many machine-code ops does a language produce per instruction, averaged over the lexical/syntactic set?". That measue ignore levels of abstraction, but is quantifiable. In which case Rubble is above assembler, but far below C.
+
+
+==
 The BCPL language, the precursor to C, was designed to be a base for writing compilers. As a small language, easily implemented over many architectures, with a distillation of general computer concepts, and intended as a basis for other languages, it has some of the same aims, and/or perhaps occupies some of the saame expressive territory, as Rubble.
 
 Rubble is not like a bytecode. Bytecodes are designed to be near-one-to-one representations of assembly instructions with enough abstraction to become portable. Rubble allows gathering of instructions into small concepts. Bytecodes are designed to be small (''byte'-code). Rubble has a small syntex, but is a parsed language. Bytecodes are designed as one-off instructions. Rubble enables codeblocks and other concepts where instructions can interact and influence each other. Bytecodes are written/executed in steady streams. Rubble needs to be interpreted/compiled in some way. However, it would be true that writing in bytecode needs a similar level of conceptual knowlege as Rubble.
@@ -53,10 +106,7 @@ Aside from BCPL, which is very different to Rubble, the only language I've come 
 >>
 Creates a language that generates assembly language. Now defunct, it seems to be unecessary nowadays.
 >
-
-== Why would I use it?
-Good question. If you asked, this language is probably not for you.
-
+==
 The author wanted a base for other projects. It's good for that. And the reduced lexicon and syntax make auto-generation of Rubble code easy.
 
 Rubble is fun for trying and working with assembly language. Rubble will let you access machine code directly. That is, without importing a library, using weird datatypes and intermediate languages, and drinking only water for a day,
@@ -70,15 +120,5 @@ endFunc()
 
 Since Rubble aims at predicatable code, you can usually guess what Ribble is doing in the surrounding instructions, so it is simple to insert a few known assembly instructions.
 
-== Why not write in assembly?
+==
 Don't forget, writing in assembly is not the only reason for using Rubble. Perhaps not the main reason. But let's say you want to. Rubble is like any language, sometimeds it's neater, sometimes it's not.
-
-==  Why not implement in LLVM?
-Most people would be better with LLVM. But LLVM does not support the stated aims of Rubble. LLVM is layered, pipelined, flexible and written in C++. So it is not plain. LLVM is packed with optimisations, so is not predictable.
-
-== What's written in Rubble?
-Nothing of cosmic importance. And not much, yet.
-
-
- 
-

@@ -11,8 +11,16 @@ from Syntaxer import (
     FuncBoolean
 )
 from tpl_vars import Base, Var
+from tpl_locationRoot import RegisterX64
 
 
+
+#! Umm, the unused base
+class ArgTest():
+    def __call__(self, val):
+        raise NotImplementedError()
+        
+        
 #? Need a specific type test?
 class ValOrVarTypeTest():
     def __init__(self, typeString, valType, varTpe):
@@ -128,7 +136,22 @@ def stringVar():
 
 def containerOffsetVar():
     return VarTypeTypeTest("ContainerOffset variable", TypeContainerOffset)
-    
-#def regVar():
-# need a special test here for Location
-#    return VarTypeTest("Register variable", )
+
+
+
+class VarLocTest():
+    def __init__(self, typeString, locType):
+        self.typeString = typeString
+        self.locType = locType
+        
+    def __call__(self, val):
+        return (
+            (isinstance(val, Var))
+            and (isinstance(val.loc, self.locType))
+        )
+
+    def __str__(self):
+        return "VarLocTest({})".format(self.typeString)    
+
+def regVar():
+    return VarLocTest("Register variable", RegisterX64)

@@ -77,7 +77,7 @@ class Compiler(Syntaxer):
         '''
         Play stored instructions
         '''
-        #! currently works on the current env and builder, which is just wrong
+        #! currently works on new env but current builder, which is wrong
         # what about embedded loops, huh?
         for ins in instructions:
             # Aye, unPythonic
