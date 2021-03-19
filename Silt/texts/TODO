@@ -3,9 +3,11 @@ Like, a novel, but anyhow...
 # https://www.felixcloutier.com/x86/index.html
 # arithmetic 
  well, need a divide strategy
-# shift
+
+# shifts
+ Thats ok
+
 # casts
-# dec. inx
 # deeper types
 # union
 # breeak
@@ -14,8 +16,16 @@ Like, a novel, but anyhow...
 # inline
 # parameters
 # UTF8
+CU - International Components for Unicode
+ ICU4C
+libicu60
+https://unicode-org.github.io/icu-docs/apidoc/released/icu4c/utypes_8h.html
+Truth is, I want something like this, in Gnone
+https://developer.gnome.org/glib/stable/glib-Unicode-Manipulation.html
+
 # unsigned
 # float
 # switch
 # switch loop
 # alignmant
+# freeing (or auto-freeing) mallocs

@@ -102,10 +102,12 @@ class BuilderAPI():
         
         ## Allocs
         'ROStringDefine': [protoSymbolVal(), strVal()],
+        'ROStringUTF8Define': [protoSymbolVal(), strVal()],
         'RODefine': [protoSymbolVal(), intVal(), anyType()],
         'regDefine': [protoSymbolVal(), strVal(), intVal(), anyType()],
         'heapAllocBytes': [protoSymbolVal(), intVal()],
         'heapAlloc': [protoSymbolVal(), anyType()],
+        'heapAlloc': [protoSymbolVal(), anyType()],        
         'stackAllocBytes': [protoSymbolVal(), intVal(), intVal()],
         'stackAlloc': [protoSymbolVal(), intVal(), anyType()],
 
@@ -130,6 +132,7 @@ class BuilderAPI():
         'printFlush': [],
     #'': [].
     }    
+
 
             
     def byteSize(self, bitsize):
@@ -167,6 +170,9 @@ class BuilderAPIX64(BuilderAPI):
             return AccessValue(varOrConstant.loc).result(),
 
             
+  
+
+
     ## basics
     def comment(self, b, args):
         b._code.append("; " + args[0])
@@ -317,12 +323,13 @@ class BuilderAPIX64(BuilderAPI):
 
     def ROStringDefine(self, b, args):
         '''
-        Define a numeric string to a label
-            protoSymbol, string
+        Define a byte-width string to a label
+            [protoSymbolVal(), strVal()]
         '''
-        #! cant be this, must generate a label
         protoSymbolLabel = args[0].toString()
         string = args[1]
+        
+        # Trailing zero, though I believe NASM padds to align anyway
         rodata = protoSymbolLabel + ': db "' + args[1] + '", 0'
         b.rodataAdd(rodata)
         var = Var.Var(Loc.RODataX64(protoSymbolLabel), Type.StrASCII)
@@ -331,6 +338,35 @@ class BuilderAPIX64(BuilderAPI):
             var
         )            
         return MessageOptionNone
+        
+    def ROStringUTF8Define(self, b, args):
+        '''
+        Define a byte-width string to a label
+            [protoSymbolVal(), strVal()]
+        '''
+        #! this is not a plain API. Just DefineStrEscapable()?
+        # The difference here:
+        # - the string is put in backquotes, NASM syntax. This allows
+        # C style string escaping.
+        # The delimiting zero is still there to work with C-type 
+        # strings, though the encoding may have nothing to say about 
+        # that.
+        # NASM allows us also to convert to fixed-width using 
+        # __?utf32?__. Do we want to do that? How does printf etc. work?
+        # Have a look at how Glib implements its functions, which are 
+        # pretty much what we would like 
+        # https://developer.gnome.org/glib/stable/glib-Unicode-Manipulation.html
+        protoSymbolLabel = args[0].toString()
+        string = args[1]
+        rodata = protoSymbolLabel + ": db `" + args[1] + "`, 0"
+        b.rodataAdd(rodata)
+        var = Var.Var(Loc.RODataX64(protoSymbolLabel), Type.StrUTF8)
+        self.compiler.symbolSetGlobal(
+            protoSymbolLabel, 
+            var
+        )            
+        return MessageOptionNone
+
    
 
     def regDefine(self, b, args):
@@ -365,7 +401,7 @@ class BuilderAPIX64(BuilderAPI):
     def heapAllocBytes(self, b, args):
         '''
         Allocate bytes to malloc
-            protoSymbol, slotIndex
+            [protoSymbolVal(), intVal()]
         '''
         self.extern(b, ['malloc'])
         protoSymbolLabel = args[0].toString()
@@ -387,7 +423,7 @@ class BuilderAPIX64(BuilderAPI):
     def heapAlloc(self, b, args):
         '''
         Alloc space for a type on the heap
-        protosymbol, type
+            [protoSymbolVal(), anyType()]
         '''
         self.extern(b, ['malloc'])
         #! but malloc works in bytes?
@@ -414,6 +450,42 @@ class BuilderAPIX64(BuilderAPI):
         # ) 
         return MessageOptionNone
 
+    ## Unicode?
+    # No I think what this might be about is not, how to creat a UTF 
+    # string But more, what will our string handling be like?
+    # Note the import utypes
+    # https://unicode-org.github.io/icu-docs/apidoc/released/icu4c/utypes_8h.html
+    # def heapDefineStringUtf8(self, b, args):
+        # '''
+        # Alloc space for a type on the heap
+            # [protoSymbolVal(), strVal()]
+        # '''
+        # protoSymbolLabel = args[0].toString()
+        # string = args[1]
+        
+        # self.extern(b, ['utypes'])
+
+        # self.raw(b, ['; UTF here'])
+        # # temp, until figure stringlen
+        # var = self.heapAllocBytes( b, [args[0], 20])
+        
+        # # can I have a 'immediate' string in unicode?
+        # # can it go to malloced, or do we copy?
+        # # scanf("%s", stringa1);
+        # # fgets( stringa1, n + 1, stdin );b
+        # # strlen(s);
+        # #       for(i=0;i<len;i++) 
+        # #{
+        # #  copy[i]=s[i];  //copy characters               
+        # #}
+        # # p[i] = '\0';
+        # #memcpy( p, s, len );
+        # #strcpy():
+        # #strdup():
+       
+        # self.raw(b, ['; UTF unhere'])
+        # return MessageOptionNone
+            
     #! account for data types
     # and align
     def stackAllocBytes(self, b, args):
@@ -1240,16 +1312,14 @@ class BuilderAPIX64(BuilderAPI):
             # tpe, offset(lid)
             # tpe.offsetDeep(self, path)
 
-            #srcSnippet = var.loc.value()
             srcSnippet = AccessValue(var.loc).result()
-            #! Obviously, very temproary!
-            # What we need is probably something that separates string 
-            # types from numbers
-            #print(str(tpe))
-            
-            if (tpe == Type.StrASCII):
+            #NB if I moved to widechar for strlen() and the like,
+            # I'd need to use a different format string.
+            if (
+                tpe == Type.StrASCII
+                or tpe == Type.StrUTF8
+            ):
                 # For a string, printf wants the address, not the value
-                #srcSnippet = var.loc.address()
                 srcSnippet = AccessAddress(var.loc).result()
             #print('snippet:')
             #print(str(srcSnippet))

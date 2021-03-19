@@ -5,6 +5,8 @@
 #RODefine(@ro2 79 Bit32)
 ROStringDefine(@roTrue ""  True")
 ROStringDefine(@roQuery ""Query:")
+ROStringUTF8Define(@utf1 ""C\u2042fé")
+#ROStringUTF8Define(@utf1 ""\u263a")
 
 func(@adder)
     frame()
@@ -37,6 +39,8 @@ funcMain()
 #--
     #println(ro2)
 #--
+    #println(utf1)
+#--
 
 #-- define
     #regDefine(@reg1 'rbx' 777 Bit64)
@@ -50,6 +54,10 @@ funcMain()
     #set(heap2 799)
     #println(heap2)
 
+#-- Alloc UTF8
+    # No. What we will do here is define our string handling library
+    # heapDefineStringUtf8(@utf1 'groovin')
+    # println(arith1)
 #--
     #Isnt working because what ''type' is a length of bytes?
     #stackAllocBytes(@stk1 8, 1)
@@ -96,10 +104,10 @@ funcMain()
 
 # -- shl/shr
     # must be a reg
-    regDefine(@arith1 'rbx' 128 Bit64)
+    # regDefine(@arith1 'rbx' 128 Bit64)
     #shr(arith1 1)
-    shl(arith1 1)
-    println(arith1)
+    # shl(arith1 1)
+    # println(arith1)
 
 #-- cmp
     #regDefine(@rbx1 'rbx' 77 Bit64)

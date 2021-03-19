@@ -25,8 +25,8 @@ class PrintX64():
             self.f64(b, source)
         elif(tpe == StrASCII):
             self.ascii(b, source)
-        #elif(tpe == StrUTF8):
-        #    self.utf8(b, source)
+        elif(tpe == StrUTF8):
+            self.utf8(b, source)
         #elif(tpe == Pointer):
         #    self.pointer(b, tpe, source)
         #elif(tpe == Array):
@@ -73,15 +73,20 @@ class PrintX64():
         self.generic(b, 'printCharFmt', source)
             
     def ascii(self, b, source):
-        '''
-        pointer
-            an instance of a pointer
-        '''
         self.protect(source)
         self.extern(b)
         b._code.append("mov rdi, " + source)
         b._code.append("call printf")
 
+    #NB if I moved to widechar for strlen() and the like,
+    # I'd need to use a different format string. '%ls'.
+    def utf8(self, b, source):
+        # repeating ascii until we know how it behaves
+        self.protect(source)
+        self.extern(b)
+        b._code.append("mov rdi, " + source)
+        b._code.append("call printf")
+        
     def i8(self, b, source):
         b.rodataAdd('print8Fmt: db "%hhi", 0')
         self.generic(b, 'print8Fmt', source) 

@@ -128,9 +128,11 @@ class Type():
         #return "{}".format(self.__class__.__name__) #+ ('instance')
 
 
+
 class _NoType(Type):
     def __repr__(self):
         return "NoType"
+        
 '''
 A type of no substance.
 Useful if a Type is required, but never want to interact with it. 
