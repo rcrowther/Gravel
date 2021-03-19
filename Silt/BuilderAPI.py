@@ -24,23 +24,6 @@ from tpl_label_generators import LabelGen
 
 
 
-# https://www.felixcloutier.com/x86/index.html
-# shidt
-# casts
-# dec. inx
-# deeper types
-# union
-# breeak
-# null
-# excepts
-# inline
-# parameters
-# UTF8
-# unsigned
-# float
-# switch
-# switch loop
-# alignmant
 class BuilderAPI():
     '''
     A base for building code.
@@ -105,11 +88,17 @@ class BuilderAPI():
         'dec' : [anyVar()],
         'inc' : [anyVar()],
         #? should be int or float. Anyway...
-        'add' : [anyVar(), intVal()],
-        'sub' : [anyVar(), intVal()],
-        'mul' : [anyVar(), intVal()],
-        'divi' : [anyVar(), intVal()],
-        'div' : [anyVar(), intVal()],
+        #? Should be more verbose
+        #! and it's freer than these parameters define. Memory locations
+        # are ok for destination too.
+        # but not teo memory locs together
+        'add' : [regVar(), intOrVarNumeric()],
+        'sub' : [regVar(), intOrVarNumeric()],
+        'mul' : [regVar(), intOrVarNumeric()],
+        'divi' : [regVar(), intOrVarNumeric()],
+        'div' : [regVar(), intOrVarNumeric()],
+        'shl' : [regVar(), intVal()],
+        'shr' : [regVar(), intVal()],
         
         ## Allocs
         'ROStringDefine': [protoSymbolVal(), strVal()],
@@ -146,6 +135,7 @@ class BuilderAPI():
     def byteSize(self, bitsize):
         return bitsize >> 3
 
+
     #!!! Python specific code turns this class into an imitation of a
     # map of func pointers. Probably what is needed is a map of func 
     # pointers (but that is not templatable). 
@@ -165,6 +155,18 @@ class BuilderAPIX64(BuilderAPI):
     printers = PrintX64()
 
 
+    def literalOrVarAccessValue(self, varOrConstant):
+        '''
+        Return snippets for literals and variables.
+        Can't handle offsets or registers, but s useful finc.
+        '''
+        if (not(isinstance(varOrConstant, Var.Var))):
+            # its a constant
+            return str(varOrConstant)
+        else:
+            return AccessValue(varOrConstant.loc).result(),
+
+            
     ## basics
     def comment(self, b, args):
         b._code.append("; " + args[0])
@@ -302,7 +304,7 @@ class BuilderAPIX64(BuilderAPI):
             protoSymbolLabel, 
             #Var.ROX64(protoSymbolLabel, tpe)
             Var.Var(
-                LocRoot.RODataX64(protoSymbolLabel),
+                LocRoot.RODataAX64(protoSymbolLabel),
                 tpe
             )
         )
@@ -570,6 +572,7 @@ class BuilderAPIX64(BuilderAPI):
 
 
     ## arithmetic
+    #! if we go unsigned, we need to extend these
     #! We need something works as var or val?
     #? Will need widths?
     def dec(self, b, args):
@@ -595,18 +598,109 @@ class BuilderAPIX64(BuilderAPI):
         ))       
         return MessageOptionNone
         
+        #! and it's freer than these parameters define. Memory locations
+        # are ok for destination too.
+        # but not teo memory locs together
+
+    def add(self, b, args):
+        '''
+        [regVar(), intOrVarNumeric()]
+        '''
+        varD = args[0]
+        varS = args[1]
+        b._code.append("add {} {}, {}".format(
+            TypesToASMName[varD.tpe],
+            AccessValue(varD.loc).result(),
+            self.literalOrVarAccessValue(varS)
+        ))       
+        return MessageOptionNone
         
-    #def add(self, b, args):
+    def sub(self, b, args):
+        '''
+        [regVar(), intOrVarNumeric()]
+        '''
+        varD = args[0]
+        varS = args[1]
+        b._code.append("sub {} {}, {}".format(
+            TypesToASMName[varD.tpe],
+            AccessValue(varD.loc).result(),
+            self.literalOrVarAccessValue(varS)
+        ))       
+        return MessageOptionNone
+        
+    def mul(self, b, args):
+        '''
+        [regVar(), intOrVarNumeric()]
+        '''
+        # imul
+        # https://www.felixcloutier.com/x86/imul
+        varD = args[0]
+        varS = args[1]
+        b._code.append("imul {} {}, {}".format(
+            TypesToASMName[varD.tpe],
+            AccessValue(varD.loc).result(),
+            self.literalOrVarAccessValue(varS)
+        ))       
+        return MessageOptionNone        
 
-    #def sub(self, b, args):
-
-    #def mult(self, b, args):
-
-    #def divi(self, b, args):
-
+    
     #def div(self, b, args):
+        '''
+        [regVar(), intOrVarNumeric()]
+        '''
+        # idiv, real problem, will not work from full-width, and 
+        # restricted in registers, too!
+        # https://www.felixcloutier.com/x86/imul
+        # I don't have a current solution. Beteween the rgister splits
+        # and linited arg positions, this is not whaat we want.
+        # I want to divide one fulll register by another, and to heck
+        # with consequences. maybe I need one of those multiply/divide
+        # algorithms used by compilers?
+        # e.g. https://board.flatassembler.net/topic.php?t=20099
+                
+    #def div(self, b, args):
+        '''
+        [regVar(), intOrVarNumeric()]
+        '''
 
+    def shr(self, b, args):
+        '''
+        [regVar(), intVal()]
+        '''
+        varD = args[0]
+        varS = args[1]
+        
+        # Keep numerics down
+        if (
+            not(isinstance(varS, Var.Var)) 
+            and (varS > self.arch['bytesize'] - 1)
+        ):
+            self.compiler.warning('Given shiftsize is too large for arch. Will compile, but not do as intended. size:{}'.format(varS))
+        b._code.append("shr {} {}, {}".format(
+            TypesToASMName[varD.tpe],
+            AccessValue(varD.loc).result(),
+            self.literalOrVarAccessValue(varS)
+        ))       
+        return MessageOptionNone
 
+    def shl(self, b, args):
+        '''
+        [regVar(), intVal()]
+        '''
+        varD = args[0]
+        varS = args[1]
+        
+        # Keep numerics down
+        if (
+            not(isinstance(varS, Var.Var)) 
+            and (varS > self.arch['bytesize'] - 1)
+        ):
+            self.compiler.warning('Given shiftsize is too large for arch. Will compile, but not do as intended. size:{}'.format(varS))
+        b._code.append("shl {}, {}".format(
+            AccessValue(varD.loc).result(),
+            self.literalOrVarAccessValue(varS)
+        ))       
+        return MessageOptionNone
 
     ### compare/if
             
@@ -633,12 +727,7 @@ class BuilderAPIX64(BuilderAPI):
     ]
 
 
-    def buildDataCode(self, val):
-        if (not(isinstance(val, Var.Var))):
-            # its a constant
-            return val
-        else:
-            return var.loc.value()
+
             
             
     def _logicBuilder(

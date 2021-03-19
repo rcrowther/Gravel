@@ -74,14 +74,32 @@ funcMain()
 
 #-- arithmetic
 #-- dec/inc
-    heapAlloc(@dec1 Bit64)
-    set(dec1 777)
-
-    #regDefine(@dec1 'rbx' 77 Bit64)
+    #heapAlloc(@dec1 Bit64)
+    #set(dec1 777)
     #inc(dec1)
-    dec(dec1)
-    println(dec1)
+    #dec(dec1)
+    #println(dec1)
 
+# -- add/sub
+    # must be a reg
+    # should work signed
+    #regDefine(@arith1 'rbx' 3 Bit64)
+    #add(arith1 7)
+    #sub(arith1 7)
+    #println(arith1)
+
+# -- mul/div
+    # must be a reg
+    #regDefine(@arith1 'rbx' 3 Bit64)
+    #mul(arith1 7)
+    #println(arith1)
+
+# -- shl/shr
+    # must be a reg
+    regDefine(@arith1 'rbx' 128 Bit64)
+    #shr(arith1 1)
+    shl(arith1 1)
+    println(arith1)
 
 #-- cmp
     #regDefine(@rbx1 'rbx' 77 Bit64)

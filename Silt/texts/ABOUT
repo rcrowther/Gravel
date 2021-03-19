@@ -1,3 +1,5 @@
+??? This is not an ABOUT. That's got authors, dates and similar meta-info
+
 == Syntax
 Silt has a base syntax usually described as Algol-like. Functions are named then followed by brackets containing data,
 

@@ -39,7 +39,6 @@ class ValOrVarTypeTest():
 
 
 
-
 class ValOrVarTypeTypeTest():
     '''
     Test for value or general var type.
