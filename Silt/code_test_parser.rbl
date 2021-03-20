@@ -121,6 +121,17 @@ funcMain()
     #    println(roTrue)
     #    ifEnd()
 
+#-- switch
+    regDefine(@rbx1 'rbx' 7 Bit64)
+    switchStart(rbx1)
+        whenStart(7)
+            println(roTrue)
+            whenEnd()
+        whenStart(2)
+            println(roTrue)
+            whenEnd()
+        switchEnd()
+
 #-- loops
 #-- forRange
     #regDefine(@reg1 'rbx' 2 Bit64)

@@ -41,7 +41,7 @@
     //printf("%s\n", "block called!");
 //}
 
-static const size_t str_builder_min_size = 32;
+//static const size_t str_builder_min_size = 32;
 
 struct str_builder {
     char   *str;
@@ -53,7 +53,17 @@ typedef struct str_builder str_builder_t;
 
 int main()
 {
-    printf("%d" , 99);
+    int x = 5;
+    switch(x) {
+      case 1:
+        printf("%d" , 33);
+        break;
+      case 2:
+        printf("%d" , 55);
+        break;
+      default:
+        printf("%d" , 77);
+    }
 
     //printf("%s\n", "block call?");
     //testCall();

@@ -115,7 +115,11 @@ class BuilderAPI():
         'cmp': [regVar(), booleanFuncVal()],
         'ifStart': [booleanFuncVal()],
         'ifEnd': [],
-        
+        'switchStart': [regVar()],
+        'whenStart': [intVal()],
+        'whenEnd': [],
+        'switchEnd': [],
+                    
         ## loops
         'forRange': [strVal(), intVal(), intOrVarNumeric()],
         'forRangeEnd': [],
@@ -150,7 +154,10 @@ class BuilderAPI():
         # python '[id]' syntax
         return getattr(self, name)
 
-
+class SwitchData(list):
+    pass
+class WhenData(list):
+    pass
 
 #! needs inherit arch
 class BuilderAPIX64(BuilderAPI):
@@ -905,9 +912,8 @@ class BuilderAPIX64(BuilderAPI):
         #! Won't work on two literal numbers
         #! and wont work with literals on first parameter  
         self._logicBuilder(b, logicTree, True, False, trueLabel, falseLabel)
-                
-            
-            
+    
+    
             
     def ifStart(self, b, args):
         '''
@@ -982,9 +988,145 @@ class BuilderAPIX64(BuilderAPI):
        
         mo = MessageOptionNone
         return mo
+
+
+
+
+
+
+
+    def switchStart(self, b, args):
+        '''
+            [regVar()]
+        '''
+        # Everything is done at the end?
+        # Because we don't know the number of whens?
+        # Can assume exhaustion.
+        # Two approachs:
+        # - Use embeded syntax
+        # - store When data
+        # I'm really aginst embedding, for some reason...
+        # - It's syntactically mess. Means spreading over lines
+        # - ?it doesn't use the stack mechanisms of both readers and 
+        # generators?
+        varCondition = args[0]
+        #labelEnd = self.labelGenerate('switchEnd')
         
+        #! fence the closuredata       
+        self.compiler.closureDataPush(
+            SwitchData((varCondition.loc.lid,))
+        )
+        mo = MessageOptionNone
+        return mo
         
+    #! environments
+    def whenStart(self, b, args):
+        '''
+            [intVal()]
+        '''
+        whenIndex = args[0]
+        self.compiler.closureDataPush(
+            whenIndex
+        )   
         
+        # Capture instructions until when end
+        self.compiler.instructionsStore()
+        mo = MessageOptionNone
+        return mo
+        
+    def whenEnd(self, b, args):
+        # Revert builders and 
+        # get content data
+        funcsWhen = self.compiler.instructionsGet()
+        
+        # Pop the index, push back as a WhenData pair
+        whenIndex = self.compiler.closureDataPop()
+        self.compiler.closureDataPush(
+            WhenData([whenIndex, funcsWhen])
+        )        
+        
+        mo = MessageOptionNone
+        return mo
+
+        
+    def switchEnd(self, b, args):
+        '''
+        '''
+        # Map[index, funcs]
+        whenMap = {}
+        
+        # get when data
+        # We need to make Map(index, funcs)
+        #? what if no data accident?
+        #! other protections, 
+        # should be a WhenData
+        # should not empty
+        while (True):
+            data = self.compiler.closureDataPop()
+            if (isinstance(data, SwitchData)):
+                break
+            indexWhen = str(data[0]) 
+            if (indexWhen in whenMap):
+                self.compiler.warning('When index repeated. index:{}'.format(data[0]))
+                 
+            whenMap[indexWhen] = data[1]
+             
+        if (not(whenMap)):
+            self.compiler.warning('No When in Switch block?')
+            
+        # get the register from the data
+        reg = data[0]
+        
+        # basics
+        labelEnd = self.labelGenerate('switchEnd')
+        defaultWhen = whenMap.pop('default', None)
+        
+        #! more tests, is exhaustive/has default
+        # Map[whenIndex, label]
+        switchConditions = {}
+        for whenIndex in whenMap.keys():
+            labelWhen = self.labelGenerate('whenStart')
+            switchConditions[whenIndex] = labelWhen 
+
+        # build switch
+        b._code.append('; beginBlock')
+        
+        # write switch condition
+        for  whenIndex, whenLabel in switchConditions.items():
+            b._code.append("cmp	{}, {}".format(reg, whenIndex))
+            b._code.append("je " + whenLabel)
+        # default jump? Fall through, surely?
+        
+                
+        # if present, write default
+        if (defaultWhen):
+            self.compiler.instructionsPlay(defaultWhen[1])
+        else:
+            self.compiler.warning('switch, no default?')
+            
+        # always go to end, default or not
+        b._code.append("jmp " + labelEnd)
+            
+        # write whens
+        for index, funcsWhen in whenMap.items():
+            b._code.append(switchConditions[index] + ':')
+            b._code.append('; beginBlock') 
+            # replay instructions
+            self.compiler.instructionsPlay(funcsWhen)
+            b._code.append("jmp " + labelEnd)
+            b._code.append('; endBlock')        
+        
+        # Finish switch
+        b._code.append(labelEnd + ':')
+        b._code.append('; endBlock')        
+        
+        mo = MessageOptionNone
+        return mo
+                        
+
+
+
+                
     ## loops
     def forRange(self, b, args):
         '''

@@ -238,7 +238,10 @@ class Compiler(Syntaxer):
             # I do want to control this, because it will lead to incomprehensible arrors,
             # so catch whenever, hardcoded? e.g.
             # if (name in storeCloseFuncs):
-            if (name == 'forEachUnrolledEnd'):
+            if (
+                name == 'forEachUnrolledEnd'
+                or name == 'whenEnd'
+            ):
                 self.instructionsStoreTrigger = False
                 
                 # play the end instruction

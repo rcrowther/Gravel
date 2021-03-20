@@ -41,7 +41,7 @@ frameEnd()
 
 
 === Whitespace and layout
-In the current compiler, Rubble functions must be one per line. But other whitespace is irrelevant, so code can be spaced how you wish. I lean towards Python-style indenting,
+In the current compiler, Rubble functions must be one per line. Other whitespace is irrelevant, so code can be spaced how you wish. I lean towards Python-style indenting,
 ?rubble
 func(name: type)
     ...
@@ -73,7 +73,7 @@ Rubble is not a LISP. This will give an error,
 whileStart(dec(reg1))
 ?
 
-There are two exceptions, declarations of data types, and of Boolean logic. See the relevant sections.
+There are two exceptions (eccept they are specific kinds). Declarations of data types, and of Boolean logic. See the relevant sections.
 
 
 === Commas
@@ -106,8 +106,10 @@ To put a comment into generated code,
 comment('See? I said it!')
 ?
 
+== Printing
 
 
+???Move down
 == The two exceptions, functions in functions
 We cover these in more depth when they are used,
 
@@ -176,5 +178,76 @@ define(@array1 3 777)
 == Functions by group
 General info on different groups of functions.
 
+Rubble may not be a clever thing, but it has weird moments. Even if you are an expert, please glance over this. Other people will be fine.
+
+
 === Arithmetic
 
+=== Boolean and switches
+
+==== cmp
+Put a boolean into a variable,
+?rl
+cmp(reg1, booleanCondition)
+?
+In Assembly, thats a painful job. In Rubble, it's bad Assembly.
+
+
+==== If
+?rl
+ifStart (booleanCondition)
+ifEnd()
+?
+
+===== Rubble has no ''if..else' statement
+Nope. No ''else'. Use two ifs in a row. Or get clever.
+ 
+
+
+==== Switch
+?rl
+switchStart(varInt)
+whenStart(valInt)
+whenEnd()
+whenStart(default)
+whenEnd()
+
+switchEnd()
+?
+
+e.g.
+
+?rl
+switchStart(varInt)
+    whenStart(3)
+        println('Free!')
+        whenEnd()
+
+    whenStart(4)
+        println('Fore!')
+        whenEnd()
+switchEnd()
+?
+
+Rubble's switch is weird. First, Pascal-like, it has no fallthrough. Second, if nothing matches, it does nothing. That's it, nothing. Like an if().
+
+
+== Loops
+=== forRange
+It's a from..until. Like this,
+?rl
+forRangeStart(protosymbol, reg, varOrInt)
+forRangeEnd()
+?
+
+It makes a variable then runs through the numbers. 
+?rl
+forRangeStart(@loop, 'rbx', 10, -3)
+    println(loop)
+    forRangeEnd()
+?
+Prints the numbers from 10 to -2.
+
+It's not a real range. Rannge doesn't exist as an object.
+
+===
