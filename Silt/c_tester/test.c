@@ -54,18 +54,18 @@ typedef struct str_builder str_builder_t;
 int main()
 {
     int x = 5;
-    switch(x) {
-      case 1:
-        printf("%d" , 33);
-        break;
-      case 2:
-        printf("%d" , 55);
-        break;
-      default:
-        printf("%d" , 77);
-    }
+    //switch(x) {
+      //case 1:
+        //printf("%d" , 33);
+        //break;
+      //case 2:
+        //printf("%d" , 55);
+        //break;
+      //default:
+        //printf("%d" , 77);
+    //}
 
-    //printf("%s\n", "block call?");
+    printf("block call?");
     //testCall();
     //long trip = 1;
        //switch(trip) {

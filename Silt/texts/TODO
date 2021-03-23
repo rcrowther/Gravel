@@ -33,6 +33,10 @@ https://developer.gnome.org/glib/stable/glib-Unicode-Manipulation.html
 # alignmant
 # freeing (or auto-freeing) mallocs
 
+== Style
+Style needs to be more robusst, like render anyhow with errors
+Not beginBlock, its startBlock
+Need to be able to inherit from 'all loop blocks' to 'whileLoops' etc.
 
 == Lib
 # String handling

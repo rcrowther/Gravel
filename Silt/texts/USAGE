@@ -192,6 +192,13 @@ cmp(reg1, booleanCondition)
 ?
 In Assembly, thats a painful job. In Rubble, it's bad Assembly.
 
+==== ifRange
+If x is in the range from...until. This branch construct is a help,
+?rl
+ifRange([ntVar], from, to)
+
+ifrraangeEnd()
+?
 
 ==== If
 ?rl
@@ -205,13 +212,13 @@ Nope. No ''else'. Use two ifs in a row. Or get clever.
 
 
 ==== Switch
+Rubble has a multi-way switch on numeric values. The default is optional,
 ?rl
 switchStart(varInt)
 whenStart(valInt)
 whenEnd()
-whenStart(default)
+whenDefaultStart()
 whenEnd()
-
 switchEnd()
 ?
 
@@ -226,15 +233,19 @@ switchStart(varInt)
     whenStart(4)
         println('Fore!')
         whenEnd()
+
+    whenDefaultStart()
+        println('Anynum!')
+        whenEnd()
 switchEnd()
 ?
 
-Rubble's switch is weird. First, Pascal-like, it has no fallthrough. Second, if nothing matches, it does nothing. That's it, nothing. Like an if().
+Rubble's switch is weird. First, Pascal-like, it has no fallthrough. Second, unPascallike, there is no way to define multiple values to one codeblock. Third, if nothing matches, it does nothing. Like an if(). Optionally, you use ''whenDefaultStart' to catch. 
 
 
 == Loops
 === forRange
-It's a from..until. Like this,
+A numeric run from..until. Like this,
 ?rl
 forRangeStart(protosymbol, reg, varOrInt)
 forRangeEnd()
@@ -248,6 +259,26 @@ forRangeStart(@loop, 'rbx', 10, -3)
 ?
 Prints the numbers from 10 to -2.
 
-It's not a real range. Rannge doesn't exist as an object.
+It's not a real range. Range doesn't exist as an object.
 
-===
+
+=== while
+Evaluate a boolean condition to repeat,
+?rl
+whileStart(gt(x 0))
+    println(x)
+    whileEnd()
+?
+
+
+=== forEach
+forEach works on any collection,
+?rl
+    heapAlloc(@heap3 Array(Bit64 3))
+    setPath(heap3 [0] 555)
+    setPath(heap3 [2] 999)
+    forEach(@elem 'r12' heap3)
+        registersPush(('rax' 'r12' 'rbx' 'rcx'))
+        println(elem)
+        registersPop()
+?

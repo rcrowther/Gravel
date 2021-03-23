@@ -1,12 +1,12 @@
 ## A parser
 #
 
-#ROStringDefine(@ro1 ""In a Silent Way")
-#RODefine(@ro2 79 Bit32)
+ROStringDefine(@ro1 ""In a Silent Way")
+RODefine(@ro2 797 Bit64)
 ROStringDefine(@roTrue ""  True")
 ROStringDefine(@roQuery ""Query:")
 ROStringUTF8Define(@utf1 ""C\u2042fé")
-#ROStringUTF8Define(@utf1 ""\u263a")
+#ROStringUTF8Define(@utfHappyFace ""\u263a")
 
 func(@adder)
     frame()
@@ -36,11 +36,9 @@ funcMain()
 
 #--
     #println(ro1)
-#--
-    #println(ro2)
-#--
+    println(ro2)
     #println(utf1)
-#--
+    #println(""So Tired of Being Alone")
 
 #-- define
     #regDefine(@reg1 'rbx' 777 Bit64)
@@ -115,6 +113,13 @@ funcMain()
     #cmp(rbx1 lt(rcx2 5) )
     #println(rbx1)
 
+#-- ifRange
+    #regDefine(@rbx1 'rbx' 3 Bit64)
+    #println(roQuery)
+    #ifRangeStart(rbx1 3 9)
+    #    println(roTrue)    
+    #    ifRangeEnd()
+
 #-- if
     #println(roQuery)
     #ifStart(and(gt('rbx' 777) lte('rbx' 777)))
@@ -122,15 +127,18 @@ funcMain()
     #    ifEnd()
 
 #-- switch
-    regDefine(@rbx1 'rbx' 7 Bit64)
-    switchStart(rbx1)
-        whenStart(7)
-            println(roTrue)
-            whenEnd()
-        whenStart(2)
-            println(roTrue)
-            whenEnd()
-        switchEnd()
+    #regDefine(@rbx1 'rbx' 8 Bit64)
+    #switchStart(rbx1)
+    #    whenStart(7)
+    #        println(roTrue)
+    #        whenEnd()
+    #    whenStart(2)
+    #        println(roTrue)
+    #        whenEnd()
+    #    whenDefaultStart()
+    #        println(roTrue)
+    #        whenEnd()
+    #    switchEnd()
 
 #-- loops
 #-- forRange

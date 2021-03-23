@@ -144,10 +144,15 @@ class Compiler(Syntaxer):
     ## ClosureData
     def closureDataPush(self, data):
         return self.closureData.append(data)
-                        
+
+    def closureDataPeek(self):
+        if (not(self.closureData)):
+            self.error('Peek codeblock data when no block open.')
+        return self.closureData[-1]
+                                
     def closureDataPop(self):
         if (not(self.closureData)):
-            self.error('Close a codeblock close when no block open.')
+            self.error('Close a codeblock when no block open?')
         return self.closureData.pop()
 
 

@@ -59,11 +59,14 @@ class ValOrVarTypeTypeTest():
         return "ValOrVarTypeTest({})".format(self.typeString)
                 
 def intOrVarNumeric():
-    return ValOrVarTypeTypeTest("Int value or variable", int, TypeNumeric)
+    return ValOrVarTypeTypeTest("Int value or int variable", int, TypeNumeric)
 
 def strOrVarStr():
-    return ValOrVarTypeTypeTest("String value or variable", str, TypeString)    
+    return ValOrVarTypeTypeTest("String value or string variable", str, TypeString)    
     
+def strOrVarAny():
+    # specifically for string functions, allows a constant str through too
+    return ValOrVarTypeTypeTest("String value or string variable", str, Type)    
     
                 
 class InstanceTest():

@@ -111,12 +111,15 @@ class BuilderAPI():
         'stackAllocBytes': [protoSymbolVal(), intVal(), intVal()],
         'stackAlloc': [protoSymbolVal(), intVal(), anyType()],
 
-        ## boolean
-        'cmp': [regVar(), booleanFuncVal()],
+        ## Conditional
+        'ifRangeStart': [intOrVarNumeric(), intOrVarNumeric(), intOrVarNumeric()],
+        'ifRangeEnd':[],
         'ifStart': [booleanFuncVal()],
         'ifEnd': [],
+        'cmp': [regVar(), booleanFuncVal()],
         'switchStart': [regVar()],
         'whenStart': [intVal()],
+        'whenDefaultStart': [],
         'whenEnd': [],
         'switchEnd': [],
                     
@@ -131,14 +134,14 @@ class BuilderAPI():
         'forEachEnd': [],
                 
         ## printers
-        'print' : [anyVar()],
-        'println': [anyVar()],
+        # Need a speciaal argTes, strOrVarAny()
+        'print' : [strOrVarAny()],
+        'println': [strOrVarAny()],
         'printFlush': [],
     #'': [].
-    }    
-
-
-            
+    }
+     
+    # AllPlatform utitlites
     def byteSize(self, bitsize):
         return bitsize >> 3
 
@@ -156,8 +159,17 @@ class BuilderAPI():
 
 class SwitchData(list):
     pass
-class WhenData(list):
+
+class WhenDataBase():
     pass
+    
+class WhenData(WhenDataBase, list):
+    pass
+    
+class _WhenDefault(WhenDataBase):
+    pass
+    
+WhenDefault = _WhenDefault()
 
 #! needs inherit arch
 class BuilderAPIX64(BuilderAPI):
@@ -168,13 +180,13 @@ class BuilderAPIX64(BuilderAPI):
     def literalOrVarAccessValue(self, varOrConstant):
         '''
         Return snippets for literals and variables.
-        Can't handle offsets or registers, but s useful finc.
+        Can't handle offsets or registers, but s useful func.
         '''
         if (not(isinstance(varOrConstant, Var.Var))):
             # its a constant
             return str(varOrConstant)
         else:
-            return AccessValue(varOrConstant.loc).result(),
+            return AccessValue(varOrConstant.loc).result()
 
             
   
@@ -298,34 +310,34 @@ class BuilderAPIX64(BuilderAPI):
 
 
     ## Allocs
+    #! sting/numeric could be joined?
+    #! could be any numeric vla, including variables
+    #! type cannot be container, or can it?
+    #? and its called RODataDefine
     def RODefine(self, b, args):
         '''
-        Define a numeruc string to a label
-            protoSymbol, string
+        Define a number to a label
+             [protoSymbolVal(), intVal(), anyType()]
         '''
         protoSymbolLabel = args[0].toString()
         data = args[1]
         tpe = args[2]
-        #? wrap as string if necessary
+
+        #! check size limits?
         rodata = '{}: {} {}'.format(
             protoSymbolLabel,
             TypesToASMAbv[tpe],
             data
         )
         b.rodataAdd(rodata)
+        var = Var.Var(
+            Loc.RODataX64(protoSymbolLabel), 
+            tpe
+        )
         self.compiler.symbolSetGlobal(
             protoSymbolLabel, 
-            #Var.ROX64(protoSymbolLabel, tpe)
-            Var.Var(
-                LocRoot.RODataAX64(protoSymbolLabel),
-                tpe
-            )
+            var
         )
-        # return (
-            # protoSymbolLabel, 
-            # #Var.ROX64(protoSymbolLabel, tpe)
-            # Var.ROX64Either(protoSymbolLabel, tpe)
-        # )
         return MessageOptionNone
 
     def ROStringDefine(self, b, args):
@@ -415,8 +427,8 @@ class BuilderAPIX64(BuilderAPI):
         byteSize = self.arch['bytesize'] * args[1]
         b._code.append("mov {}, {}".format(self.arch['cParameterRegisters'][0], byteSize))
         b._code.append("call malloc")
-        #return LocRoot.RegisterX64(self.arch['returnRegister'])
-        # No, it has no ''Type', hence the Loc return abovr
+        #?! No, it has no ''Type', hence the Loc return above
+        #? Ummm, proposal: Array[Bit8]
         var = Var.Var(
             Loc.RegisterX64(self.arch['returnRegister'],), 
             Type.StrASCII
@@ -781,8 +793,48 @@ class BuilderAPIX64(BuilderAPI):
         ))       
         return MessageOptionNone
 
+
+
+
     ### compare/if
-            
+
+    def ifRangeStart(self, b, args):
+        '''
+        Conditionally ecaluate between two numbers.
+        Cantt test the variables so allows messing about. Underneath,
+        the test is lessThan | GreaterThanEqeals.
+        var
+            to test
+        from
+            the number to start on
+        until
+            advances until before this number
+            [intOrVarNumeric(), intOrVarNumeric(), intOrVarNumeric()],
+        '''
+        #NB Range can't be tested, as it may be vars.
+        # but both range numbers can be register, as the tests are 
+        # seeperate.
+        var = args[0]
+        froom = args[1]
+        to = args[2]
+        falseLabel = self.labelGenerate('ifRangeFalse')
+        accessSnippet = self.literalOrVarAccessValue(var)
+        fromSnippet = self.literalOrVarAccessValue(froom)
+        toSnippet = self.literalOrVarAccessValue(to)
+        b._code.append("cmp {}, {}".format(accessSnippet, fromSnippet))
+        b._code.append("jl " + falseLabel)
+        b._code.append("cmp {}, {}".format(accessSnippet, toSnippet))
+        b._code.append("jge " + falseLabel)
+        self.compiler.closureDataPush(falseLabel)
+        b._code.append('; beginBlock')
+        return MessageOptionNone
+        
+    def ifRangeEnd(self, b, args):
+        falseLabel = self.compiler.closureDataPop()
+        b._code.append(falseLabel + ':')
+        b._code.append('; endBlock')                
+        return MessageOptionNone
+                    
     jumpOps = {
         "lt": "jl",
         "lte": "jle",
@@ -804,9 +856,6 @@ class BuilderAPIX64(BuilderAPI):
     NamesBooleanCollators = [
         'and', 'or', 'xor', 
     ]
-
-
-
             
             
     def _logicBuilder(
@@ -914,7 +963,7 @@ class BuilderAPIX64(BuilderAPI):
         self._logicBuilder(b, logicTree, True, False, trueLabel, falseLabel)
     
     
-            
+    
     def ifStart(self, b, args):
         '''
         if...then flow control from boolean logic.
@@ -991,26 +1040,11 @@ class BuilderAPIX64(BuilderAPI):
 
 
 
-
-
-
-
     def switchStart(self, b, args):
         '''
             [regVar()]
         '''
-        # Everything is done at the end?
-        # Because we don't know the number of whens?
-        # Can assume exhaustion.
-        # Two approachs:
-        # - Use embeded syntax
-        # - store When data
-        # I'm really aginst embedding, for some reason...
-        # - It's syntactically mess. Means spreading over lines
-        # - ?it doesn't use the stack mechanisms of both readers and 
-        # generators?
         varCondition = args[0]
-        #labelEnd = self.labelGenerate('switchEnd')
         
         #! fence the closuredata       
         self.compiler.closureDataPush(
@@ -1031,10 +1065,22 @@ class BuilderAPIX64(BuilderAPI):
         
         # Capture instructions until when end
         self.compiler.instructionsStore()
+
+        # Create an environment
+        self.compiler.envAddClosure()
         mo = MessageOptionNone
         return mo
-        
+
+    def whenDefaultStart(self, b, args):
+        '''
+            []
+        '''
+        return self.whenStart(b, [WhenDefault])
+
     def whenEnd(self, b, args):
+        # Delete the environment
+        self.compiler.envDelClosure()
+        
         # Revert builders and 
         # get content data
         funcsWhen = self.compiler.instructionsGet()
@@ -1048,28 +1094,35 @@ class BuilderAPIX64(BuilderAPI):
         mo = MessageOptionNone
         return mo
 
-        
     def switchEnd(self, b, args):
         '''
         '''
         # Map[index, funcs]
         whenMap = {}
+        defaultWhen = None
         
         # get when data
         # We need to make Map(index, funcs)
         #? what if no data accident?
         #! other protections, 
         # should be a WhenData
-        # should not empty
         while (True):
             data = self.compiler.closureDataPop()
             if (isinstance(data, SwitchData)):
                 break
-            indexWhen = str(data[0]) 
-            if (indexWhen in whenMap):
-                self.compiler.warning('When index repeated. index:{}'.format(data[0]))
-                 
-            whenMap[indexWhen] = data[1]
+
+            #? We could check this as we push WhenDatas, thus catching the error earlier?
+            # previous is a WhenData or a SwitchData  (the first)
+            # But then we need to peek te closeure =stack
+            if (not(isinstance(data, WhenDataBase))):
+                self.compiler.warning('CodeBlock stack not found WhenData. A codeblock in a When is not colosed. data:{}'.format(data))
+            if (data[0] == WhenDefault):
+                defaultWhen = data
+            else:
+                indexWhen = str(data[0]) 
+                if (indexWhen in whenMap):
+                    self.compiler.warning('When index repeated? index:{}'.format(data[0]))
+                whenMap[indexWhen] = data[1]
              
         if (not(whenMap)):
             self.compiler.warning('No When in Switch block?')
@@ -1079,7 +1132,6 @@ class BuilderAPIX64(BuilderAPI):
         
         # basics
         labelEnd = self.labelGenerate('switchEnd')
-        defaultWhen = whenMap.pop('default', None)
         
         #! more tests, is exhaustive/has default
         # Map[whenIndex, label]
@@ -1102,7 +1154,7 @@ class BuilderAPIX64(BuilderAPI):
         if (defaultWhen):
             self.compiler.instructionsPlay(defaultWhen[1])
         else:
-            self.compiler.warning('switch, no default?')
+            self.compiler.warning('Switch, no default?')
             
         # always go to end, default or not
         b._code.append("jmp " + labelEnd)
@@ -1137,6 +1189,8 @@ class BuilderAPIX64(BuilderAPI):
             the number to start on
         until
             advances until before this number
+            
+            [strVal(), intVal(), intOrVarNumeric()]            
         '''
         # From a given numeric point to a given numeric point. Beats a 
         # for...next loop, no probs...
@@ -1432,45 +1486,64 @@ class BuilderAPIX64(BuilderAPI):
     ## Printers
     def print(self, b, args):
         '''
-        var
+            [strOrVarAny()]
         '''
         # We could print out using printf semantics....
         # No, print singly. figue out the slowness later.
         var = args[0]
-        tpe = var.tpe
-        if (not isinstance(tpe, Type.TypeSingular)):
-            #! Need a foreach here. lets get to thatt....
-            # we got to do something recursive with it
-            # printStr(b, tpe.name, StrASCII)
-            # printStr(b, ['(' StrASCII])
-            # print(b, tpe.foreach(args => print(b, [args])))
-            # printStr(b, [')' StrASCII])
-            raise NotImplementedError('Currently, container type can not be printed')
-            # etc.
-        else:
-            # Figure out what will print or not
-            #var.accessMk()
-            #print(str(var))
-            # tpe, offset(lid)
-            # tpe.offsetDeep(self, path)
+        if isinstance(var, str):
+            # It's a constant/atom/immediate/idFunc. Currently, we do 
+            # nothing with the type, calling the special function 
+            # constant() directly.
+            #! I thought we could immediate, but I admit it makes no sense.
+            # Try a C test
+            # Like ROStringUTF8Define except no variable
 
-            srcSnippet = AccessValue(var.loc).result()
-            #NB if I moved to widechar for strlen() and the like,
-            # I'd need to use a different format string.
-            if (
-                tpe == Type.StrASCII
-                or tpe == Type.StrUTF8
-            ):
-                # For a string, printf wants the address, not the value
-                srcSnippet = AccessAddress(var.loc).result()
-            #print('snippet:')
-            #print(str(srcSnippet))
-            self.printers(b, tpe, srcSnippet)
+            # need a label
+            textLabel = self.labelGenerate('TextInternal')
+
+            #! this is not a plain API. Just DefineStrEscapable()?
+            # The difference here:
+            # - String in backquotes, for C style string escaping.
+            # The delimiting zero as C-type  string, though the encoding 
+            # may have a say.
+            rodata = textLabel + ": db `" + var + "`, 0"
+            b.rodataAdd(rodata)
+            self.printers.constant(b, textLabel)
+        else:
+            tpe = var.tpe
+            if (not isinstance(tpe, Type.TypeSingular)):
+                #! Need a foreach here. lets get to thatt....
+                # we got to do something recursive with it
+                # printStr(b, tpe.name, StrASCII)
+                # printStr(b, ['(' StrASCII])
+                # print(b, tpe.foreach(args => print(b, [args])))
+                # printStr(b, [')' StrASCII])
+                raise NotImplementedError('Currently, container type can not be printed')
+                # etc.
+            else:
+                # Figure out what will print or not
+                #var.accessMk()
+                #print(str(var))
+                # tpe, offset(lid)
+                # tpe.offsetDeep(self, path)
+                srcSnippet = AccessValue(var.loc).result()
+                #NB if I moved to widechar for strlen() and the like,
+                # I'd need to use a different format string.
+                if (
+                    tpe == Type.StrASCII
+                    or tpe == Type.StrUTF8
+                ):
+                    # For a string, printf wants the address, not the value
+                    srcSnippet = AccessAddress(var.loc).result()
+                #print('snippet:')
+                #print(str(srcSnippet))
+                self.printers(b, tpe, srcSnippet)
         return MessageOptionNone
             
     def println(self, b, args):
         '''
-        var
+            [strOrVarAny()]
         '''
         self.print(b, args)
         self.printers.newline(b)

@@ -9,6 +9,8 @@ class PrintX64():
         
     def __call__(self, b, tpe, srcSnippet):
         source = srcSnippet
+        #print('tpe')
+        #print(str(tpe))
         if(tpe == Bit8):
             self.i8(b, source)
         elif(tpe == Bit16):
@@ -44,7 +46,7 @@ class PrintX64():
             self.dispatch(b, tpe, base + offset)
 
     def protect(self, source):
-        if (source in ['rdi', 'rsi' ]):
+        if (source in ['rdi', 'rsi', '[rdi]', '[rsi]' ]):
             raise ValueError('Printing clobbers RDI and RSI. address: {}'.format(source))
 
     def extern(self, b):
@@ -78,6 +80,17 @@ class PrintX64():
         b._code.append("mov rdi, " + source)
         b._code.append("call printf")
 
+    def constant(self, b, source):
+        '''
+        Print a string.
+        For a constant/atom/immediate/idFunc. Constant prints are not 
+        accessed through the type dispatch method. Call this method 
+        directly.
+        '''
+        self.extern(b)
+        b._code.append('mov rdi, ' + source)
+        b._code.append("call printf")
+        
     #NB if I moved to widechar for strlen() and the like,
     # I'd need to use a different format string. '%ls'.
     def utf8(self, b, source):
