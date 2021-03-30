@@ -10,7 +10,7 @@ from Syntaxer import (
     Path, 
     FuncBoolean
 )
-from tpl_vars import Base, Var
+from tpl_vars import Var
 from tpl_locationRoot import RegisterX64
 
 

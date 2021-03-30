@@ -6,7 +6,7 @@ from syn_arg_tests import *
 from tpl_Printers import PrintX64
 import tpl_locationRoot as Loc
 import tpl_types as Type
-import tpl_vars as Var
+from tpl_vars import Var
 from asm_db import TypesToASMAbv, TypesToASMName
 
 #? dont like this imports. They're for arg types though.
@@ -185,7 +185,7 @@ class BuilderAPIX64(BuilderAPI):
         Return snippets for literals and variables.
         Can't handle offsets or registers, but s useful func.
         '''
-        if (not(isinstance(varOrConstant, Var.Var))):
+        if (not(isinstance(varOrConstant, Var))):
             # its a constant
             return str(varOrConstant)
         else:
@@ -333,7 +333,7 @@ class BuilderAPIX64(BuilderAPI):
             data
         )
         b.rodataAdd(rodata)
-        var = Var.Var(
+        var = Var(
             Loc.RODataX64(protoSymbolLabel), 
             tpe
         )
@@ -355,7 +355,7 @@ class BuilderAPIX64(BuilderAPI):
         rodata = protoSymbolLabel + ': db "' + args[1] + '", 0'
         b.rodataAdd(rodata)
         # isn't that to an addr?
-        var = Var.Var(Loc.RODataX64(protoSymbolLabel), Type.StrASCII)
+        var = Var(Loc.RODataX64(protoSymbolLabel), Type.StrASCII)
         self.compiler.symbolSetGlobal(
             protoSymbolLabel, 
             var
@@ -384,7 +384,7 @@ class BuilderAPIX64(BuilderAPI):
         rodata = protoSymbolLabel + ": db `" + args[1] + "`, 0"
         b.rodataAdd(rodata)
         # isn't this an addr?
-        var = Var.Var(Loc.RODataX64(protoSymbolLabel), Type.StrUTF8)
+        var = Var(Loc.RODataX64(protoSymbolLabel), Type.StrUTF8)
         self.compiler.symbolSetGlobal(
             protoSymbolLabel, 
             var
@@ -407,7 +407,7 @@ class BuilderAPIX64(BuilderAPI):
             register, 
             data
         ))
-        var = Var.Var(
+        var = Var(
             Loc.RegisterX64(register), 
             tpe
         )
@@ -434,7 +434,7 @@ class BuilderAPIX64(BuilderAPI):
         b._code.append("call malloc")
         #?! No, it has no ''Type', hence the Loc return above
         #? Ummm, proposal: Array[Bit8]
-        var = Var.Var(
+        var = Var(
             Loc.RegisterX64(self.arch['returnRegister'],), 
             Type.StrASCII
         )
@@ -455,7 +455,7 @@ class BuilderAPIX64(BuilderAPI):
         tpe = args[1]
         b._code.append("mov {}, {}".format(self.arch['cParameterRegisters'][0], tpe.byteSize))
         b._code.append("call malloc")
-        var = Var.Var(
+        var = Var(
             Loc.RegisteredAddressX64(self.arch['returnRegister']), 
             tpe
         )
@@ -525,7 +525,7 @@ class BuilderAPIX64(BuilderAPI):
 
         # No, it has no ''Type', hence the Loc return above
         #? really? this a Location, not a var
-        var = Var.Var(
+        var = Var(
             Loc.StackX64(index),
             #??? 
             Type.StrASCII
@@ -768,7 +768,7 @@ class BuilderAPIX64(BuilderAPI):
         
         # Keep numerics down
         if (
-            not(isinstance(varS, Var.Var)) 
+            not(isinstance(varS, Var)) 
             and (varS > self.arch['bytesize'] - 1)
         ):
             self.compiler.warning('Given shiftsize is too large for arch. Will compile, but not do as intended. size:{}'.format(varS))
@@ -788,7 +788,7 @@ class BuilderAPIX64(BuilderAPI):
         
         # Keep numerics down
         if (
-            not(isinstance(varS, Var.Var)) 
+            not(isinstance(varS, Var)) 
             and (varS > self.arch['bytesize'] - 1)
         ):
             self.compiler.warning('Given shiftsize is too large for arch. Will compile, but not do as intended. size:{}'.format(varS))
@@ -932,9 +932,9 @@ class BuilderAPIX64(BuilderAPI):
             # the builder---without any offsets or register relative addressing
             arg0 = logicTree.args[0]
             arg1 = logicTree.args[1]
-            if isinstance(arg0, Var.Var):
+            if isinstance(arg0, Var):
                 arg0 = AccessValue(arg0.loc).result()
-            if isinstance(arg1, Var.Var):
+            if isinstance(arg1, Var):
                 arg1 = AccessValue(logicTree.args[1].loc).result()
             b._code.append("cmp {}, {}".format(arg0, arg1))            
             #b._code.append("cmp {}, {}".format(logicTree.args[0], logicTree.args[1]))
@@ -1292,7 +1292,7 @@ class BuilderAPIX64(BuilderAPI):
         # environment.
         # As it happens, the loc will stay the same. The type is 
         # anything, maybe different for each unroll. It's set later.
-        varGen = Var.Var(
+        varGen = Var(
             Loc.RegisterX64(varGenRegister),
             Type.NoType
         )
@@ -1419,7 +1419,7 @@ class BuilderAPIX64(BuilderAPI):
         # set on the new env
         #! Not going to work for clutches, as type changes
         # ...but would start type[0]...
-        varGen = Var.Var(
+        varGen = Var(
             Loc.RegisterX64(varGenRegister), 
             #! for a clutch
             #var.tpe.elementType[0]

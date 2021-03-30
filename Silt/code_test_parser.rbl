@@ -18,7 +18,7 @@ func(@adder)
 
 func(@looper)
     frame()
-    stackAllocBytes(@loalVars 0 2)
+    stackAllocBytes(@loalVars 1 2)
     #regDefine(counter, 'rcx' 9)
     #while(GT(counter 0))
         #dec(counter)
