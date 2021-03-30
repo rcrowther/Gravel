@@ -1,5 +1,6 @@
 
 def architectureSolve(architecture):
+    #? Maybe thats byteWidth
     architecture['bytesize'] = architecture['bitsize'] >> 3
     return architecture
     
@@ -26,7 +27,8 @@ x64 = {
         "r15",
     ],    
     # remove stack pointer and base stack registers.
-    # In the future this may rewquire hints an weighing, for specialist
+    #! should includs AX or not? 'arithmeticRegisters'?
+    #! In the future this may require hints an weighing, for specialist
     # registers
     'generalPurposeRegisters' : [
         "rax", 

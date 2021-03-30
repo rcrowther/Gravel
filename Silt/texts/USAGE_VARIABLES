@@ -1,0 +1,72 @@
+== Vsriables
+In Rubble, when data is created and destroyed, labels are attached, and therse are called ''variables'.
+
+=== Mathematical variables
+Mathematics has the concept of ''variables', which is labels that represent a range of numbers. The range of numbers is, in most baasic mathematics. infinite. The system Lambda Calculus formalises this system, attaching labels to number ranges with a mechanism called ''binding'.
+
+Most high-level languages model this system, to some extent. They give abstract names to pieces of storage. Usually they add some extra facilities, especially deletion----a mathematical variable is never ''deleted,' though it may go unused.
+
+=== Rubble variables are not high-level language variables
+Rubble variable are further removed from mathematics. They know where they are located in the computer architecture. They can be deleted, and also altered/mutated. I consisdered calling them ''data labels', not ''variables', but that seemed clumsy. They are an abstraction and label for data, so I called them ''variables'. The idea works enough.
+
+=== Uding Rubble variables
+You can use Rubble variables like other high level languages. They will work,
+
+?rl
+alloc(@ro1, ""in hoc")
+println(ro1)
+?
+You created and used a variable ''ro1'. No problem. Even when you use them in a way that represents something mose extensive, they will work as an abstraction,
+
+?rl
+allocHeap(@heap1, ""in hoc")
+allocHeap(@heap2, ""in hoc")
+println(heap1)
+println(rheap1)
+?
+If you look at generated assembly code, this makes more code than the frist example. Whatt happens is that Rubble allocates to the stack. This returns a pointer to the newly allocated storage. This will be placed, by convention, in register xAX. Then a second allocation happens. Rubble knows that xAX is occupied by a variable, the pointer to xAX. So first it writes code to move the data to another available register. Then Rubble updates the variable, setting the new location. Then it runs the second stack allocation. So in the background it has preserved the data, but the Rubble code is only the intended actions, without any idea of storage position.
+
+=== Why does Rubble need variables?
+Good question. One aim of Rubble is to ''model common idioms of machine code'. This means Rubble should model registers, some forms of stack placement, and so forth. The first versions of Rubble did this.
+
+However, there is another aim of Rubble, which is to abstract to a level that is cross-platform. Dealing with registers is not cross-platform. So Rubble developed a loose kind of variable. Perhaps looser than most high-level languages, but an abstraction.
+
+== Using Rubble variables in detail
+For some purposes you may want to tamper with Rubbles actions directly.
+
+=== Basics of variables
+A variable is a location joined with a type. It does not contain the label. The label is only associated with the variable data, for convenient notation.
+
+Here are the actions Rubble can do with a variable...
+
+===
+
+???
+=== Allocation
+Sometimes you make a variable. What really happenins is that data is returned from a function that will be stored for later use. This data is associated with a label for later use. 
+??
+stringRODefine(@ro1 ""In a Silent Way")
+?
+Note the ''@' symbol. It says, ""Here is some text that will be used as a label for the data next time I use it". like this, 
+??
+stringRODefine(@ro1 ""In a Silent Way")
+println(StrASCII ro1)
+?
+
+
+=== Allocation and definition are seperate
+In Rubble, allocation is often separated from definition,
+?rubble
+stackAlloc(@str1 ASCII 15)
+set(str1 "In a Silent Way")
+?
+
+=== Definition
+Definition is fairly simple, if a bit crude at times. Put ''777' in index ''3' of an array,
+?rbl
+define(@array1 3 777)
+?
+
+=== Retrieval
+
+

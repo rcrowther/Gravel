@@ -6,20 +6,28 @@ import tpl_locationRoot as Loc
 
 
 
-# python3 -m unittest tests.test_location_root
+# python3 -m unittest test.test_location_root
 class TestInitialization(unittest.TestCase):
     
     def test_roData(self):
         Loc.RODataX64('str1')
 
-    def test_roData_fail(self):
+    def test_roData_fail1(self):
         with self.assertRaises(Exception):
             Loc.RODataX64(9)
-        
+
+    def test_roData_fail2(self):
+        with self.assertRaises(Exception):
+            Loc.RODataX64('rbx')
+                    
     def test_register(self):
         Loc.RegisterX64('rbx')
 
-    def test_register_fail(self):
+    def test_register_fail1(self):
+        with self.assertRaises(Exception):
+            Loc.RegisterX64(99)
+            
+    def test_register_fail2(self):
         with self.assertRaises(Exception):
             Loc.RegisterX64('str1')
 
@@ -33,47 +41,54 @@ class TestInitialization(unittest.TestCase):
     def test_stack(self):
         Loc.StackX64(7)
 
-    def test_stack_fail(self):
+    def test_stack_fail1(self):
         with self.assertRaises(Exception):
             Loc.StackX64('rbx')        
 
+    def test_stack_fail1(self):
+        with self.assertRaises(Exception):
+            Loc.StackX64(0)  
 
-class TestValue(unittest.TestCase):
-    def test_roData(self):
-        loc = Loc.RODataX64('str1')
-        self.assertEqual(loc.value(), '[str1]')
+    def test_stack_fail1(self):
+        with self.assertRaises(Exception):
+            Loc.StackX64(-3)  
+            
+# class TestValue(unittest.TestCase):
+    # def test_roData(self):
+        # loc = Loc.RODataX64('str1')
+        # self.assertEqual(loc.value(), '[str1]')
 
-    def test_register(self):
-        loc = Loc.RegisterX64('rax')
-        self.assertEqual(loc.value(), 'rax')
+    # def test_register(self):
+        # loc = Loc.RegisterX64('rax')
+        # self.assertEqual(loc.value(), 'rax')
 
-    def test_registered_address(self):
-        loc = Loc.RegisteredAddressX64('rax')
-        self.assertEqual(loc.value(), '[rax]')
+    # def test_registered_address(self):
+        # loc = Loc.RegisteredAddressX64('rax')
+        # self.assertEqual(loc.value(), '[rax]')
 
-    def test_registered_address(self):
-        loc = Loc.StackX64(3)
-        self.assertEqual(loc.value(), '[rbp-24]')
+    # def test_registered_address(self):
+        # loc = Loc.StackX64(3)
+        # self.assertEqual(loc.value(), '[rbp-24]')
 
 
-class TestAddr(unittest.TestCase):
-    def test_roData(self):
-        loc = Loc.RODataX64('str1')
-        self.assertEqual(loc.address(), 'str1')
+# class TestAddr(unittest.TestCase):
+    # def test_roData(self):
+        # loc = Loc.RODataX64('str1')
+        # self.assertEqual(loc.address(), 'str1')
 
-    def test_register(self):
-        loc = Loc.RegisterX64('rax')
-        with self.assertRaises(Exception): 
-            loc.address()
+    # def test_register(self):
+        # loc = Loc.RegisterX64('rax')
+        # with self.assertRaises(Exception): 
+            # loc.address()
 
-    def test_registered_address(self):
-        loc = Loc.RegisteredAddressX64('rax')
-        self.assertEqual(loc.address(), 'rax')
+    # def test_registered_address(self):
+        # loc = Loc.RegisteredAddressX64('rax')
+        # self.assertEqual(loc.address(), 'rax')
 
-    def test_registered_address(self):
-        loc = Loc.StackX64(3)
-        with self.assertRaises(Exception): 
-            loc.address()
+    # def test_registered_address(self):
+        # loc = Loc.StackX64(3)
+        # with self.assertRaises(Exception): 
+            # loc.address()
                     
 # class TestToRegister(unittest.TestCase):
 

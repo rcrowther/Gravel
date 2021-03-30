@@ -177,21 +177,44 @@ class Compiler(Syntaxer):
         assert(self.envClosure), "Celete non-existant envCloseure."
         del(self.envClosure[-1])
                 
-    def symbolSetClosure(self, protoSymbol, value):
-        #? Do a value test, or not 
-        assert(self.envClosure and (len(self.envClosure) > 0)), "Symbol offered, but no envClosure. protoSymbol:{}".format(
+    def symbolSet(self, protoSymbol, value):
+        '''
+        Register a symbol to the current environment.
+        ''' 
+        assert(self.envClosure), "Symbol offered, but no envClosure. protoSymbol:{}".format(
             protoSymbol
         )
         #print('setting: ' + protoSymbol)
         self.envClosure[-1][protoSymbol] = value
         
-    def symbolChangeType(self, name, tpe):
+    def symbolUpdateType(self, name, tpe):
         '''
         A brute mutation of a already registered type
         Used for genVars
         '''
         self.envClosure[-1][name].tpe = tpe
 
+    def symbolUpdateLoc(self, name, loc):
+        '''
+        Unregister a symbol from the current environment.
+        Despite environment cleanup, this is required. It is needed for
+        the circumstance where a var is overwritten, so presumably
+        has no further purpose.
+        '''
+        self.envClosure[-1][name].loc = loc
+
+    def symbolDelete(self, protoSymbol, value):
+        '''
+        A brute mutation of a already registered type
+        Used for genVars
+        '''
+
+        assert(self.envClosure), "Symbol offered, but no envClosure. protoSymbol:{}".format(
+            protoSymbol
+        )
+        #print('setting: ' + protoSymbol)
+        del(self.envClosure[-1][protoSymbol])
+                
     def envPrint(self):
         #! oh so yes! Sadly, the same bad defaults noted in exprCB()
         #print(str(self.envClosure[-1]))

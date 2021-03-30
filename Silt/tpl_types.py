@@ -129,16 +129,20 @@ class Type():
 
 
 
-class _NoType(Type):
-    def __repr__(self):
-        return "NoType"
-        
+
 '''
 A type of no substance.
 Useful if a Type is required, but never want to interact with it. 
 For example, a currently unknown type. Or empty return.
 '''
+class _NoType(Type):
+    def __repr__(self):
+        return "NoType"
+        
 NoType = _NoType()
+
+
+
 
 class TypeSingular(Type):
     def equals(self, other):

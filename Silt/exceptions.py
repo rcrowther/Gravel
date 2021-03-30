@@ -28,3 +28,12 @@ class FuncMessage(Exception):
     # An info from executing a func
     # '''
     # pass
+
+class BuilderError(FuncMessage):
+    '''
+    An error from a builder.
+    Vuilder errors do get thrown, but should never make their way to 
+    the user. They should be caught and formed into an appropriate
+    error message.
+    '''
+    pass

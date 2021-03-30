@@ -1,6 +1,7 @@
 Like, a novel, but anyhow...
 
 == Core
+=== Types
 # https://www.felixcloutier.com/x86/index.html
 # unsigned
 
@@ -9,27 +10,31 @@ Like, a novel, but anyhow...
 
 # float
 # casts
-# arithmetic 
- well, need a divide strategy
+# null
 
-# shifts
- Thats ok
 
-# switch
+== Simple ops
+# arithmetic, need a divide strategy
+
+= Flow
 # switch loop
 # break
-# null
 # exceptions
 # inline
 # parameters
+
+=== Strings
 # UTF8
 CU - International Components for Unicode
  ICU4C
 libicu60
 https://unicode-org.github.io/icu-docs/apidoc/released/icu4c/utypes_8h.html
+# String library 
 Truth is, I want something like this, in Gnone
 https://developer.gnome.org/glib/stable/glib-Unicode-Manipulation.html
-# basic string print
+Or Ada
+
+=== Internal dispute
 # alignmant
 # freeing (or auto-freeing) mallocs
 
@@ -63,5 +68,5 @@ What needs to be reusable in compilation?
 ???
 
 === Compiling
-Do more about code patches
+Do more about code patches, Macros?
 

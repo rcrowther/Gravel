@@ -3,10 +3,10 @@ from syn_arg_tests import *
 
 
 
-import tpl_locationRoot as Loc
 from tpl_Printers import PrintX64
-import tpl_vars as Var
+import tpl_locationRoot as Loc
 import tpl_types as Type
+import tpl_vars as Var
 from asm_db import TypesToASMAbv, TypesToASMName
 
 #? dont like this imports. They're for arg types though.
@@ -157,6 +157,7 @@ class BuilderAPI():
         # python '[id]' syntax
         return getattr(self, name)
 
+# Need to do something with these Compiler stack conveniences
 class SwitchData(list):
     pass
 
@@ -170,6 +171,8 @@ class _WhenDefault(WhenDataBase):
     pass
     
 WhenDefault = _WhenDefault()
+
+
 
 #! needs inherit arch
 class BuilderAPIX64(BuilderAPI):
@@ -351,6 +354,7 @@ class BuilderAPIX64(BuilderAPI):
         # Trailing zero, though I believe NASM padds to align anyway
         rodata = protoSymbolLabel + ': db "' + args[1] + '", 0'
         b.rodataAdd(rodata)
+        # isn't that to an addr?
         var = Var.Var(Loc.RODataX64(protoSymbolLabel), Type.StrASCII)
         self.compiler.symbolSetGlobal(
             protoSymbolLabel, 
@@ -379,6 +383,7 @@ class BuilderAPIX64(BuilderAPI):
         string = args[1]
         rodata = protoSymbolLabel + ": db `" + args[1] + "`, 0"
         b.rodataAdd(rodata)
+        # isn't this an addr?
         var = Var.Var(Loc.RODataX64(protoSymbolLabel), Type.StrUTF8)
         self.compiler.symbolSetGlobal(
             protoSymbolLabel, 
@@ -406,7 +411,7 @@ class BuilderAPIX64(BuilderAPI):
             Loc.RegisterX64(register), 
             tpe
         )
-        self.compiler.symbolSetClosure(
+        self.compiler.symbolSet(
             protoSymbolLabel, 
             var
         )
@@ -433,7 +438,7 @@ class BuilderAPIX64(BuilderAPI):
             Loc.RegisterX64(self.arch['returnRegister'],), 
             Type.StrASCII
         )
-        self.compiler.symbolSetClosure(
+        self.compiler.symbolSet(
             protoSymbolLabel, 
             var
         )
@@ -456,7 +461,7 @@ class BuilderAPIX64(BuilderAPI):
         )
         #print('huh?')
         #print(str(tpe))
-        self.compiler.symbolSetClosure(
+        self.compiler.symbolSet(
             protoSymbolLabel, 
             var
         )
@@ -525,7 +530,7 @@ class BuilderAPIX64(BuilderAPI):
             #??? 
             Type.StrASCII
         )
-        self.compiler.symbolSetClosure(
+        self.compiler.symbolSet(
             protoSymbolLabel, 
             var
         )
@@ -558,7 +563,7 @@ class BuilderAPIX64(BuilderAPI):
              self.arch['bytesize'] * index 
         )) 
         var = Var,Var(index, tpe)
-        self.compiler.symbolSetClosure(
+        self.compiler.symbolSet(
             protoSymbolLabel, 
             var
         )
@@ -1293,7 +1298,7 @@ class BuilderAPIX64(BuilderAPI):
         )
         
         # important, varGen on the env
-        self.compiler.symbolSetClosure(
+        self.compiler.symbolSet(
             protoSymbolLabel,
             varGen
         )
@@ -1420,7 +1425,7 @@ class BuilderAPIX64(BuilderAPI):
             #var.tpe.elementType[0]
             varData.tpe.elementType
         )
-        self.compiler.symbolSetClosure(
+        self.compiler.symbolSet(
             protoSymbolLabel, 
             varGen
         )

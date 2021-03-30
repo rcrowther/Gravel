@@ -3,7 +3,7 @@
 
 class AddressBuilder():
     '''
-    Simple  builder to construct addresses to places.
+    Builder to construct addresses to places.
     Expects and must have a lid (label/register name/slot number)
     Catches some unlikely events, but mostly a builder
     '''
@@ -61,3 +61,5 @@ class AddressBuilder():
 
     def __repr__(self):
         return "AddressBuilder({})".format(self.lid)
+
+

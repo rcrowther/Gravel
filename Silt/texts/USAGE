@@ -4,15 +4,15 @@
 All languagues have their oddities. Rubble less than many, I like to think, but it has them. And they are big. Here are the two biggest,
 ++
 ~ Functions only take one argument
-: ...and one return. The builtin function handles one argument only. If you wish or need more, set them yourself
+: The builtin function handles one argument and one return only. If you wish or need more, set them yourself
 ~ There is no if..else
-: Again, you can fiddle with Rubble to provide an if..else, but there is no builtin function
+: Only if.. Again, you can fiddle with Rubble to provide if..else functionality
 +
 
-There's more. which will be explained in greater detail somewhere or other but, quickly,
+There's more dealbreaker. which will be explained in greater detail somewhere or other but, quickly,
 ++
 ~ Functions take a fixed number of parameters
-: There are no vargs. Though there is an ability to pass in arrays
+: There are no vargs. If you need that, pass in arrays
 ~ 
 :
 + 
@@ -106,8 +106,24 @@ To put a comment into generated code,
 comment('See? I said it!')
 ?
 
-== Printing
 
+== Printing
+??
+print( [strOrVarAny()])
+println( [strOrVarAny()])
+?
+e.g.
+
+?rbl
+ROStringDefine(@ro1 ""In a Silent Way")
+...
+print('print tests')
+print(ro1)
+println(ro1)
+?
+
+
+Done.
 
 ???Move down
 == The two exceptions, functions in functions
@@ -136,7 +152,7 @@ Array(Bit8, 4)
 === Type in Rubble is not for type-checking
 You need to get past this. Rubble has types to reduce the syntax to a minimum. We can cover a lot of instructions by saying, ""This is an ''add' operation with type Bit64." Or Bit32, whatever.
 
-In the high-level sense, the current compile does not check types at all. Even if a compiler or linter is produced that checks types, it will never stop you from casting them.
+In the high-level sense, the current compile does not check types at all. Even if a compiler or linter is produced that checks types, it will never stop you from redeclaring or casting them.
 
 
 === There is no way to add to the collection of types
@@ -145,7 +161,7 @@ In other languages, a ''class' definition will become a type. Rubble has no such
 
 
 == Vsriables
-Rubble has some notion of ''variables'. The idea of variables is not a full abstraction. What happens is that you declare a variable, and the anme is attached to some kind of storage. Sometimes a Rubble variable can loose track of the storage, and sometimes storage can be used without a variable. That's why Rubble's variables are not a full mathematic representation. But the idea works a lot of the time.
+Rubble has some notion of ''variables'. The idea of variables is not a full abstraction. What happens is that you declare a variable, and the name is attached to some kind of storage. Sometimes a Rubble variable can loose track of the storage, and sometimes storage can be used without a variable. That's why Rubble's variables are not a full mathematic representation. But the idea works a lot of the time.
 
 === Allocation
 Sometimes you make a variable. What really happenins is that data is returned from a function that will be stored for later use. This data is associated with a label for later use. 
@@ -178,7 +194,7 @@ define(@array1 3 777)
 == Functions by group
 General info on different groups of functions.
 
-Rubble may not be a clever thing, but it has weird moments. Even if you are an expert, please glance over this. Other people will be fine.
+Rubble may not be a clever thing, but it has weird moments. If you are an expert, please glance over this. Non-experts people will have no problems.
 
 
 === Arithmetic

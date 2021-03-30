@@ -5,7 +5,7 @@ from tpl_address_builder import AddressBuilder
 # What I could use then, is this...
 # difference between this and theother address builder is it takes 
 # account of the Loc.
-# It does not take account of type, like saaying ''dont build an 
+# It does not take account of type, like saying ''dont build an 
 # address from a register variable, but do we want that? 
 class AccessBuilder():
     '''
