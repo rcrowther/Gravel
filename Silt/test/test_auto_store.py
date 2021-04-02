@@ -6,6 +6,7 @@ import architecture
 from tpl_autostore import (
     AutoStoreReg,
     AutoStoreStack,
+    AutoStoreX64
 )
 import tpl_locationRoot as Loc
 from tpl_vars import Var, NoVar
@@ -42,8 +43,6 @@ class TestAutoStoreRegEmpty(unittest.TestCase):
     
 
 
-
-
 class TestAutoStoreReg(unittest.TestCase):
     def setUp(self):
         self.a = AutoStoreReg(arch['generalPurposeRegisters'])
@@ -70,14 +69,23 @@ class TestAutoStoreReg(unittest.TestCase):
             self.assertEqual(self.a.findReg(0), 'r15')
 
     def test_remove(self):
-        self.a.remove('r15')
-        self.assertFalse(self.a.isAllocated('r15'))
+        self.a.remove('r14')
+        self.assertFalse(self.a.isAllocated('r14'))
 
+    def test_remove_fail(self):
+        with self.assertRaises(BuilderError):
+            self.a.remove('r15')
+
+    def test_delete(self):
+        self.a.delete('r14')
+        with self.assertRaises(BuilderError):
+            self.a('r14')
+            
+            
         
 from tpl_codeBuilder import *
 
-
-class TestAutoStoreStack(unittest.TestCase):
+class TestAutoStoreStackEmpty(unittest.TestCase):
 
     def setUp(self):
         self.a = AutoStoreStack(arch['bytesize'], 3, 1)
@@ -85,7 +93,157 @@ class TestAutoStoreStack(unittest.TestCase):
             Loc.RegisterX64('rsi'), 
             Type.Bit64
         )
-                
+
+    def test_byteWidth(self):        
+        self.assertEqual(self.a.byteWidth, 8)
+        
+    def test_call_fail1(self):        
+        with self.assertRaises(BuilderError):
+            self.a(999)
+
+    def test_call_fail2(self):        
+        with self.assertRaises(BuilderError):
+            self.a(2)
+
+    def test_findSlot(self):
+        self.assertEqual(self.a.findSlot(), 2)
+        
+    def test_getOffset(self):
+        self.assertEqual(self.a.getOffset(2), 24)
+
+        
+        
+class TestAutoStoreStack(unittest.TestCase):
+
+    def setUp(self):
+        self.a = AutoStoreStack(arch['bytesize'], 3, 1)
+        self.var = Var(
+            Loc.StackX64(1), 
+            Type.Bit64
+        )
+        # mimic the allocation action
+        # Will be slot 2
+        freeSlot = self.a.findSlot()
+        self.a._set(freeSlot, self.var)
+
+    def test_call(self):
+        self.assertEqual(self.a(2), self.var) 
+
+    def test_remove(self):
+        r = self.a.remove(2)
+        self.assertEqual(r, self.var)
+              
+    def test_remove_fail(self):
+        with self.assertRaises(BuilderError):
+            self.a.remove(1)
+            
+    def test_delete(self):
+        self.a.delete(2)
+        with self.assertRaises(BuilderError):
+            self.a(2)
+            
+            
+            
+from tpl_codeBuilder import Builder
+
+class TestAutoStoreX64Label(unittest.TestCase):
+    def setUp(self):
+        self.a = AutoStoreX64(arch, 3, 1)
+        # self.var = Var(
+            # Loc.RegisterX64('r14'), 
+            # Type.Bit64
+        # )
+
+    def test_varROCreate(self):
+        var = self.a.varROCreate('ro1', Type.Bit64, 3) 
+        self.assertTrue(isinstance(var.loc, Loc.RODataX64)) 
+
+    def test_delete(self):
+        var = self.a.varROCreate('ro1', Type.Bit64, 3)
+        #NB for sake, its read-only
+        with self.assertRaises(BuilderError):
+            self.a.delete(var)
+
+
+
+class TestAutoStoreX64Stack(unittest.TestCase):
+    def setUp(self):
+        self.a = AutoStoreX64(arch, 3, 1)
+        self.var = Var(
+            Loc.StackX64(2), 
+            Type.Bit64
+        )
+                        
+    def test_varStackCreate_type(self):
+        var = self.a.varStackCreate(Type.Bit64, 3) 
+        self.assertTrue(isinstance(var.loc, Loc.StackX64)) 
+                            
+    def test_varStackCreate_slot(self):
+        # should allocate at last slot
+        var = self.a.varStackCreate(Type.Bit64, 3) 
+        self.assertEqual(var.loc.lid, 2)                             
+                      
+    def test_delete(self):
+        # should allocate at last slot
+        var = self.a.varStackCreate(Type.Bit64, 3) 
+        self.a.delete(var)
+        with self.assertRaises(BuilderError):
+            self.a.autoStack(2)                       
+                      
+                            
+class TestAutoStoreX64Reg(unittest.TestCase):
+    def setUp(self):
+        self.a = AutoStoreX64(arch, 3, 1)
+        self.var = Var(#
+            Loc.RegisterX64('r14'), 
+            Type.Bit64
+        )
+
+    def test_varRegCreate(self):
+        b = Builder()
+        var = self.a.varRegCreate(b, 'rsi', Type.Bit64, 3) 
+        self.assertTrue(self.a.autoReg('rsi'), var) 
+
+    def test_varRegCreate_build(self):
+        b = Builder()
+        var = self.a.varRegCreate(b, 'rsi', Type.Bit64, 3) 
+        self.assertEqual(b._code, []) 
+        
+    def test_varRegCreate_double_relocate_toRegister(self):
+        b = Builder()
+        var1 = self.a.varRegCreate(b, 'rsi', Type.Bit64, 3) 
+        var2 = self.a.varRegCreate(b, 'rsi', Type.Bit8, 3)
+        #print('test')
+        #print(str(self.a.autoReg)) 
+        self.assertTrue(self.a.autoReg.isAllocated('r15'))  
+
+    #! to stack also
+    
+    def test_varRegCreate_double_build(self):
+        b = Builder()
+        var1 = self.a.varRegCreate(b, 'rsi', Type.Bit64, 3) 
+        var2 = self.a.varRegCreate(b, 'rsi', Type.Bit8, 3) 
+        self.assertEqual(b._code[0], 'mov qword r15, rsi')
+
+
+    # def test_varRegAnyCreate(self):
+        # b = Builder()
+        # var = self.a.varRegAnyCreate(b, Type.Bit64, 3) 
+        # self.assertTrue(self.a.autoReg('rsi'), var) 
+
+    # def test_varRegAnyCreate_build(self):
+        # b = Builder()
+        # var = self.a.varRegAnyCreate(b, Type.Bit64, 3) 
+        # self.assertEqual(b._code, []) 
+
+    def test_delete(self):
+        b = Builder()
+        var = self.a.varRegCreate(b, 'rsi', Type.Bit64, 3) 
+        self.a.delete(var)
+        with self.assertRaises(BuilderError):
+            self.a.autoReg('rsi')  
+                                                   
+######################
     # def test_push_code(self):
         # b = Builder()
         # self.a.pushStack(self.var)
@@ -169,34 +327,6 @@ class TestAutoStoreStack(unittest.TestCase):
         
         
 
-# class TestAccessAddressBuilder(unittest.TestCase):
-
-    # def test_ro(self):
-        # loc = Loc.RODataX64('label')
-        # b = AccessAddress(loc)
-        # self.assertEqual(b.result(), 'label')
-
-    # def test_reg(self):
-        # loc = Loc.RegisterX64('r12')
-        # b = AccessAddress(loc)
-        # with self.assertRaises(AssertionError):
-            # self.assertEqual(b.result(), 'r12')
-
-    # def test_reg_addr(self):
-        # loc = Loc.RegisteredAddressX64('r12')
-        # b = AccessAddress(loc)
-        # self.assertEqual(b.result(), 'r12')        
-
-    # def test_stack(self):
-        # loc = Loc.StackX64(3)
-        # b = AccessAddress(loc)
-        # with self.assertRaises(AssertionError):
-            # self.assertEqual(b.result(), '[rbp-24]')                
-
-    # def test_stack_addr(self):
-        # loc = Loc.StackedAddressX64(3)
-        # b = AccessAddress(loc)
-        # self.assertEqual(b.result(), '[rbp-24]')
             
                
 if __name__ == '__main__':

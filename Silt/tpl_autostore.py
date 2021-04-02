@@ -66,6 +66,7 @@ class AutoStoreReg():
 
     def isAllocated(self, regName):
         var = self.MapRegData[regName]
+        #print(str(var))
         return (var != NoVar)
 
     def isNotAllocated(self, regName):
@@ -141,8 +142,9 @@ class AutoStoreReg():
 
     def _set(self, registerName, var):
         '''
-        Set regVar data.
+        Set a var to a register.
         For utility.
+        Forces into tracking, overwriting.
         Does not protect against the var having the correct register, 
         priority, etc.
         regVar
@@ -152,20 +154,28 @@ class AutoStoreReg():
         '''
         self.MapRegData[registerName] = var
 
-
     def delete(self, regName):
         '''
-        Set regVar to having no var attached.
-        Will delete any existing var within the tracking structure (the 
-        var will also need removing from other structures like an 
-        environment).    
+        Delete a var from a register
+        Will delete any existing var (the var will also need removing 
+        from other structures like an environment).
+        Throws no error.    
         '''
         self.MapRegData[regName] = NoVar
 
     def remove(self, regName):
-        r = self.MapRegData[regName]
-        self.MapRegData[regName] = NoVar
+        '''
+        Take the var from a register and set the register as empty.
+        Throws an error if there is no var there.
+        '''
+        r = self(regName)
+        self.delete(regName)
         return r
+        
+    def __str__(self):
+        return str(self.MapRegData)
+        
+        
         
 # Stack
 # _DataStack = namedtuple('DataStack', ['offset','var'])
@@ -268,18 +278,20 @@ class AutoStoreStack():
         Throws error if slot is unalllocated.
         '''
         if (slot > self.sizeSlots or slot < 0):
-            raise BuilderError('Slot is out of range? slotIndex:{}'.format(slot))
+            raise BuilderError('Slot value is out of range? slotIndex:{}'.format(slot))
         if (slot in self.freeSlots):
             raise BuilderError("Slot is unallocated. slot:{}".format(slot))
         return self.MapSlotData[slot]
                 
-
-
-    def removeSlotFree(self):
+    def findSlot(self):
         '''
         return a free slot.
         '''
-        return self.freeSlots.pop()
+        # It would make more concurrent sense to pop(), but to keep the 
+        # interface similar to AutoReg, we look
+        if (not(self.freeSlots)):
+            raise BuilderError("No slots left in sn stack area.")
+        return self.freeSlots[-1]
         
     # def get(self, slotIndex):
         # '''
@@ -293,32 +305,40 @@ class AutoStoreStack():
             # raise BuilderError('Get a free slot? slotIndex:{}'.format(slotIndex))
         # return self.MapSlotData[slotIndex]
 
-
     def getOffset(self, slot):
-        return  (self.byteWidth * (self,offsetSlots + slot))
+        return  (self.byteWidth * (self.offsetSlots + slot))
 
     def _set(self, slot, var):
         '''
-        Add a var to the stash
+        Set a var to a stack slot.
+        For utility.
+        Forces into tracking, overwriting.
+        Does not protect against the var having the correct register, 
+        priority, etc.
         '''
+        # 'orrible. But I don't care. R.C.
+        if (slot in self.freeSlots):
+            self.freeSlots.remove(slot)
         self.MapSlotData[slot] = var
         
     # Or should be from type?
     def delete(self, slot):
         '''
-        Delete an item from a slot
-        return
-            offset of last slot
-        '''
-        if (slot > self.sizeSlots or slot < 0):
-            raise BuilderError('Slot is out of range? slotIndex:{}'.format(slot))
-        if (slot in self.freeSlots):
-            raise BuilderError('Delete a free slot? slotIndex:{}'.format(slot))        
-        self.freeSlots.append(slot)
+        Delete a var from a slot
+        Will delete any existing var (the var will also need removing 
+        from other structures like an environment).
+        Throws no error.
+        '''        
+        if (not(slot in self.freeSlots)):
+            self.freeSlots.append(slot)
 
     def remove(self, slot):
+        '''
+        Take the var from a slot and set the slot as empty.
+        Throws an error if there is no var there.
+        '''
         r = self(slot)
-        self.freeSlots.append(slot)        
+        self.delete(slot)        
         return r
         
 
@@ -366,7 +386,7 @@ class AutoStoreX64():
         The register must be one that exists on any X... microprocessor,
         i.e. xAX xBX xCX xSI xDI
         '''
-        
+        pass
         
     def toReg(self, var, regName):
         '''
@@ -392,7 +412,7 @@ class AutoStoreX64():
                          
     def toRegGP(self, b, var):
         '''
-        Move an existing var to a register.
+        Move an existing var to a GP register.
         Priority is ignored, the var will go to a register.
         The register is not known, it is any general purpose register.
         If the register has an existing var, if existing var has enough 
@@ -419,37 +439,42 @@ class AutoStoreX64():
             #self.autoReg.set(priority, var)
         
 
-        
+    # needed
     def _varRegToRegNamed(self, b, regName, dstRegName):
         '''
         Move an existing reg var to another register.
         No checks, may be destructive at destination
         '''
-        #! check its a regVar
-        data = self.autoReg.remove(regName)
+        #print('_varRegToRegNamed:')
+        #print(str(regName))
+        #print(str(dstRegName))
+        #? check its a regVar
+        var = self.autoReg.remove(regName)
 
-        # modify location in var
-        data.var.loc.lid = dstRegName
+        # modify location in var and build
+        self.updateLocationBuilder.toRegister(b, var, dstRegName)
+        #print(str(var))
 
-        # update indexes  
-        self.autoStack._set(dstRegName, data)
+        # update tracking  
+        self.autoReg._set(dstRegName, var)
         
-    def _toStack(self, regName):
+    # needed
+    def _varRegToStack(self, b, regName):
         '''
         Move an existing regVar to stack.
         No checks, may throw error on overallocate
         '''
-        #! check its a regVar
-        data = self.autoReg.remove(regName)
-        slot = self,autoStack.removeSlotFree()
+        var = self.autoReg.remove(regName)
+        slot = self,autoStack.findSlot()
         
-        # modify location in var
-        data.var.loc =  Loc.StackX64(slot)
+        # modify location in var and build
+        self.updateLocationBuilder.toStack(b, var, slot)
         
         # update indexes  
-        self.autoStack._set(slot, data)
-                    
-    def _varRegExistingMove(self, regName):
+        self.autoStack._set(slot, var)
+
+        
+    def _varRegExistingMove(self, b, regName):
         '''
         Move an existing var off a register.
         The variable will be forced off the register. Priority is 
@@ -463,7 +488,7 @@ class AutoStoreX64():
             # There is a var. It must be moved somewhere.
             # Let's see if it has enough priority to stay on registers
             dstRegNameOpt = self.autoReg.findRegExclusive(
-                self.autoReg.getPriority(regName), 
+                self.autoReg(regName).priority, 
                 regName
             )
             if(dstRegNameOpt):
@@ -481,103 +506,100 @@ class AutoStoreX64():
                     # has a high enough priority to displace some other 
                     # var.
                     # So second displaced var must be going to the stack. 
-                    self._toStack(b, dstRegNameOpt)
+                    self._varRegToStack(b, dstRegNameOpt)
 
                 # displaced var to new reg
                 self._varRegToRegNamed(b, regName, dstRegNameOpt)
             else:
                 # Not enough priority, 
                 # var go to stack.
-                self._toStack(b, regName)
-        
+                self._varRegToStack(b, regName)
 
-
-    def varROCreate(self, label, tpe):
+    #NB vars must be returned so they can be set on an environment
+    def varROCreate(self, label, tpe, priority):
         '''
         Create a var on read-only segment memory,
+        Untracked, present for a consistent interface.
         ''' 
-        return Var.Var(
+        var = Var(
             Loc.RODataX64(label), 
             tpe
         )
+        var.priority = priority
+        return var
                         
-    def varRegCreateOverwrite(self, regName, tpe, priority):
+    def varRegCreate(self, b, regName, tpe, priority):
         '''
         Create a var on a named register.
-        Deletes existing contents
+        If the register has an existing var it is moved to another 
+        register or stack. The destination depends on the
+        priority of the displaced var, and may cascade.
+        Tracked
         '''   
-        var = Var.Var(
+        self._varRegExistingMove(b, regName)
+        var = Var(
             Loc.RegisterX64(regName), 
-             tpe
+            tpe
         )
-        dataVar = mkDataVar(priority, var)
-        self.autoReg._set(regName, dataVar)
+        var.priority = priority
+        self.autoReg._set(regName, var)
+        return var
 
-    def varRegCreate(self, regName, tpe, priority):
+    def varRegAnyCreate(self, b, tpe, priority):
         '''
-        Create a var on a named register.
-        Relocates existing contents.
+        Attempt to create a var on a register.
+        If the var has sufficient priority or registers are free, it
+        will be placed on a register. The register is chosen by the 
+        autostore. Autostore may displace existing vars to stack. 
+        Otherwise, the var will be paced on the stack.
         '''   
-        self._varRegExistingMove(regName)
-        self.varRegCreateOverwrite(regName, tpe, priority)
-
-        
-    def varRegAnyCreateOverwrite(self, tpe, priority):
-        '''
-        Create a var on a register.
-        Deletes existing contents
-        '''           
-        regName = self.autoReg.regBest()
-        self.varRegCreateOverwrite(regName, tpe, priority)
-
-
-    def varRegAnyCreate(self, tpe, priority):
-        '''
-        Create a var on a register.
-        Relocates existing contents.
-        '''           
-        regName = self.autoReg.regBest()
-        self._varRegExistingMove(regName)
-        self.varRegCreateOverwrite(regName, tpe, priority)
-
-
-            
-        # var = Var.Var(
-            # Loc.RegisterX64(register), 
-            # tpe
-        # )
-        # var = Var.Var(
-            # Loc.RegisteredAddressX64(register), 
-            # tpe
-        # )
-        
+        # regName = self.autoReg.regBest()
+        regName = self.autoReg.findReg(priority)
+        var = None
+        if (regName):
+            var = self.varRegCreate(b, regName, tpe, priority)
+        else:
+            var = self.varStackCreate(b, tpe, priority)
+        return var
+      
     # ok
-    def varStackCreate(self, tpe):
+    def varStackCreate(self, tpe, priority):
         '''
         Create a var on the stack.
-        The new var always has the lowest priority.
+        # The new var always has the lowest priority.
         return
-            the allocated slot
+            the allocated var
         ''' 
-        slot = self,autoStack.removeSlotFree()
+        slot = self.autoStack.findSlot()
         var = Var(
             Loc.StackX64(slot),
             tpe
         )   
+        var.priority = priority
         self.autoStack._set(slot, var)
+        return var
    
-    def varCreate(self, tpe, priority):
-        '''
-        Ceate a var on a register, but on fail creates on stack.
-        For the location decision, priority is assessed.
-        '''
-        regNameMaybe = self.autoReg.findReg(priority)
-        if (regNameMaybe):
-            self.varRegCreate(regNameMaybe, tpe, priority)
-        else:
-            self.varStackCreate(tpe)
+    def delete(self, var):
+        loc = var.loc
+        if isinstance(loc, Loc.LocationLabel):
+            raise BuilderError('AutoStore: Readonly data deletion? :{}'.format(var))
+        if isinstance(loc, Loc.LocationRegister):
+            self.autoReg.delete(var.loc.lid)
+        if isinstance(loc, Loc.LocationStack):
+            self.autoStack.delete(var.loc.lid)
+            
+    # def varCreate(self, tpe, priority):
+        # '''
+        # Ceate a var on a register, but on fail creates on stack.
+        # For the location decision, priority is assessed.
+        # '''
+        # regNameMaybe = self.autoReg.findReg(priority)
+        # if (regNameMaybe):
+            # self.varRegCreate(regNameMaybe, tpe, priority)
+        # else:
+            # self.varStackCreate(tpe)
             
                             
 
-def mkAutoStoreX64():
-    return AutoStoreX64()
+#def mkAutoStoreX64():
+#    return AutoStoreX64()

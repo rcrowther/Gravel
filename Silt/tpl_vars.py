@@ -101,7 +101,7 @@ class Var():
         )
 
     def __str__(self):
-        return "Var({}, {})".format(
+        return "Var('{}', {})".format(
             self.loc.lid,
             self.tpe
         )
@@ -116,39 +116,39 @@ class UpdateLocationBuilder():
     def __init__(self, arch):
         self.arch = arch
         
-    def toRegister(self, b, var, targetRegisterName):
+    def toRegister(self, b, var, dstRegisterName):
         loc = var.loc
-        assert (targetRegisterName in self.arch['registers']), 'toRegister: Not a register? targetRegisterName:{}'.format(
-            targetRegisterName
+        assert (dstRegisterName in self.arch['registers']), 'toRegister: Not a register? dstRegisterName:{}'.format(
+            dstRegisterName
         )
-        assert (not(isinstance(loc, Loc.LocationRegister)) or (var.loc.lid != targetRegisterName)), 'toRegister: Move to same register? var:{}, targetRegisterName:{}'.format(
+        assert (not(isinstance(loc, Loc.LocationRegister)) or (var.loc.lid != dstRegisterName)), 'toRegister: Move to same register? var:{}, dstRegisterName:{}'.format(
             var,
-            targetRegisterName
+            dstRegisterName
         )
 
         # build the move
         if (isinstance(loc, Loc.LocationLabel) or isinstance(loc, Loc.LocationRegister)):
             #? Should work for registers
             #? works for labels? If not....
-            #b += 'lea {}, [{}]'.format(targetRegisterName, self.value())              
+            #b += 'lea {}, [{}]'.format(dstRegisterName, self.value())              
             b += "mov {} {}, {}".format(
                 self.arch['ASMName'],
-                targetRegisterName, 
+                dstRegisterName, 
                 loc.lid
             )
         elif (isinstance(loc, LocationStack)):
             #? Should work for stack
             b += "mov {}, {} [rbp - {}]".format(
-                targetRegisterName, 
+                dstRegisterName, 
                 self.arch['ASMName'],
                 self.lid * self.arch['bytesize'],
             )
             
         # Now adapt the location
         if (loc.isAddressLoc):
-            newLoc = Loc.RegisteredAddressX64(targetRegisterName) 
+            newLoc = Loc.RegisteredAddressX64(dstRegisterName) 
         else:
-            newLoc = Loc.RegisterX64(targetRegisterName) 
+            newLoc = Loc.RegisterX64(dstRegisterName) 
         var.loc = newLoc
                     
     def toStack(self, b, var, slot):

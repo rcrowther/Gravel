@@ -402,6 +402,18 @@ class BuilderAPIX64(BuilderAPI):
         register = args[1]
         data = args[2]
         tpe = args[3]
+
+        #!NB try to allocate the var first, to accont for data
+        # shuffles, and revised positioning
+        # var = self.autoStore.varRegCreate(b, register, tpe, 3)
+         
+        # # ... then do the write from the data in the var.
+        # b._code.append("mov {}, {}".format(
+            # #TypesToASMName[tpe],
+            # register, 
+            # data
+        # ))
+
         b._code.append("mov {}, {}".format(
             #TypesToASMName[tpe],
             register, 
