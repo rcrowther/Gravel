@@ -164,6 +164,25 @@ class TestAutoStoreX64Label(unittest.TestCase):
         with self.assertRaises(BuilderError):
             self.a.delete(var)
 
+    def test_toReg_removes(self):
+        b = Builder()
+        var = self.a.varROCreate('ro1', Type.Bit64, 3)
+        self.a.toReg(b, var, 'rsi')
+        self.assertFalse(self.a.autoReg.isAllocated('r15'))  
+
+    def test_toReg_reallocs(self):
+        b = Builder()
+        var = self.a.varROCreate('ro1', Type.Bit64, 3)
+        self.a.toReg(b, var, 'rsi')
+        self.assertTrue(self.a.autoReg.isAllocated('rsi'))  
+
+    def test_toReg_build(self):
+        b = Builder()
+        var = self.a.varROCreate('ro1', Type.Bit64, 3)
+        self.a.toReg(b, var, 'rsi')
+        self.assertEqual(b._code[0], 'mov qword rsi, ro1') 
+
+
 
 
 class TestAutoStoreX64Stack(unittest.TestCase):
@@ -190,7 +209,26 @@ class TestAutoStoreX64Stack(unittest.TestCase):
         with self.assertRaises(BuilderError):
             self.a.autoStack(2)                       
                       
-                            
+    def test_toReg_removes(self):
+        b = Builder()
+        var = self.a.varStackCreate(Type.Bit64, 3) 
+        self.a.toReg(b, var, 'rsi')
+        self.assertFalse(self.a.autoReg.isAllocated('r15'))  
+
+    def test_toReg_reallocs(self):
+        b = Builder()
+        var = self.a.varStackCreate(Type.Bit64, 3) 
+        self.a.toReg(b, var, 'rsi')
+        self.assertTrue(self.a.autoReg.isAllocated('rsi'))  
+
+    def test_toReg_build(self):
+        b = Builder()
+        var = self.a.varStackCreate(Type.Bit64, 3) 
+        self.a.toReg(b, var, 'rsi')
+        self.assertEqual(b._code[0], 'mov rsi, qword [rbp - 16]')  
+        
+        
+        
 class TestAutoStoreX64Reg(unittest.TestCase):
     def setUp(self):
         self.a = AutoStoreX64(arch, 3, 1)
@@ -198,7 +236,7 @@ class TestAutoStoreX64Reg(unittest.TestCase):
             Loc.RegisterX64('r14'), 
             Type.Bit64
         )
-
+                
     def test_varRegCreate(self):
         b = Builder()
         var = self.a.varRegCreate(b, 'rsi', Type.Bit64, 3) 
@@ -242,7 +280,25 @@ class TestAutoStoreX64Reg(unittest.TestCase):
         self.a.delete(var)
         with self.assertRaises(BuilderError):
             self.a.autoReg('rsi')  
-                                                   
+
+    def test_toReg_removes(self):
+        b = Builder()
+        var = self.a.varRegCreate(b, 'r15', Type.Bit64, 3) 
+        self.a.toReg(b, var, 'rsi')
+        self.assertFalse(self.a.autoReg.isAllocated('r15'))  
+
+    def test_toReg_reallocs(self):
+        b = Builder()
+        var = self.a.varRegCreate(b, 'r15', Type.Bit64, 3) 
+        self.a.toReg(b, var, 'rsi')
+        self.assertTrue(self.a.autoReg.isAllocated('rsi'))  
+
+    def test_toReg_build(self):
+        b = Builder()
+        var = self.a.varRegCreate(b, 'r15', Type.Bit64, 3) 
+        self.a.toReg(b, var, 'rsi')
+        self.assertEqual(b._code[0], 'mov qword rsi, r15')  
+        
 ######################
     # def test_push_code(self):
         # b = Builder()

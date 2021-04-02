@@ -136,12 +136,12 @@ class UpdateLocationBuilder():
                 dstRegisterName, 
                 loc.lid
             )
-        elif (isinstance(loc, LocationStack)):
+        elif (isinstance(loc, Loc.LocationStack)):
             #? Should work for stack
             b += "mov {}, {} [rbp - {}]".format(
                 dstRegisterName, 
                 self.arch['ASMName'],
-                self.lid * self.arch['bytesize'],
+                loc.lid * self.arch['bytesize'],
             )
             
         # Now adapt the location
