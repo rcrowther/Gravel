@@ -69,6 +69,7 @@ def strOrVarAny():
     return ValOrVarTypeTypeTest("String value or string variable", str, Type)    
     
                 
+                
 class InstanceTest():
     def __init__(self, typeString, valType):
         self.typeString = typeString

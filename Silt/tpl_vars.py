@@ -1,6 +1,8 @@
 import architecture
 from tpl_locationRoot import LocationRoot, NoLoc
 from tpl_types import Type, NoType
+from ci_symbol import Symbol
+
 
 #from tpl_either import Either
 
@@ -73,12 +75,14 @@ from tpl_types import Type, NoType
 
 
 
-class Var():
-    def __init__(self, loc, tpe):
+class Var(Symbol):
+    def __init__(self, name, loc, tpe):
         assert isinstance(loc, LocationRoot), "Parameter not a LocRoot. loc: '{}'".format(loc)
         assert isinstance(tpe, Type), "Parameter not a Type. tpe: '{}'".format(tpe)
+        # None is for loc. it's a big refactorr.
+        super().__init__(name, tpe)
         self.loc = loc
-        self.tpe = tpe
+        #self.tpe = tpe
         
         # Variables can be given a priority, for retaining on registers.
         # Priority is always the baseline of zero. It is 
@@ -95,18 +99,12 @@ class Var():
         # self.loc = self.loc.toRegister(b, targetRegisterName)
                      
     def __repr__(self):
-        return "Var(loc:'{}', tpe:{})".format(
-            self.loc,
-            self.tpe
-        )
+        return f"Var(name:{self.name}, loc:'{self.loc}', tpe:{self.tpe})"
 
     def __str__(self):
-        return "Var('{}', {})".format(
-            self.loc.lid,
-            self.tpe
-        )
+        return f"Var('{self.name}', {self.tpe})"
 
-NoVar = Var(NoLoc, NoType)
+NoVar = Var("NoVar", NoLoc, NoType)
 
 
 #? from this import, probably not the right place. Where is?

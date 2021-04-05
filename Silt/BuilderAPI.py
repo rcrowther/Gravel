@@ -20,7 +20,7 @@ from tpl_access_builders import AccessValue, AccessAddress
 
 from tpl_label_generators import LabelGen
 
-                    
+from tpl_autostore import AutoStoreX64
 
 
 
@@ -95,8 +95,8 @@ class BuilderAPI():
         'add' : [regVar(), intOrVarNumeric()],
         'sub' : [regVar(), intOrVarNumeric()],
         'mul' : [regVar(), intOrVarNumeric()],
-        'divi' : [regVar(), intOrVarNumeric()],
-        'div' : [regVar(), intOrVarNumeric()],
+        #'divi' : [regVar(), intOrVarNumeric()],
+        #'div' : [regVar(), intOrVarNumeric()],
         'shl' : [regVar(), intVal()],
         'shr' : [regVar(), intVal()],
         
@@ -134,7 +134,7 @@ class BuilderAPI():
         'forEachEnd': [],
                 
         ## printers
-        # Need a speciaal argTes, strOrVarAny()
+        # Need a special argTes, strOrVarAny()
         'print' : [strOrVarAny()],
         'println': [strOrVarAny()],
         'printFlush': [],
@@ -157,6 +157,7 @@ class BuilderAPI():
         # python '[id]' syntax
         return getattr(self, name)
 
+        
 # Need to do something with these Compiler stack conveniences
 class SwitchData(list):
     pass
@@ -179,6 +180,8 @@ class BuilderAPIX64(BuilderAPI):
     arch = architecture.architectureSolve(architecture.x64)
     printers = PrintX64()
 
+    # arch, sizeSlots, offset
+    autoStore = AutoStoreX64(arch, 3, 1)
 
     def literalOrVarAccessValue(self, varOrConstant):
         '''
@@ -247,9 +250,12 @@ class BuilderAPIX64(BuilderAPI):
         '''
         Start a function.
         '''
-        b._code.append('{}:'.format(args[0].toString()))
+        protoSymbolLabel = args[0].toString()
+        #print(protoSymbolLabel)
+        b._code.append('{}:'.format(protoSymbolLabel))
         b._code.append('; beginFunc')
-        self.compiler.envAddClosure()
+        #self.compiler.envAddClosure()
+        self.compiler.scopeStackPush()
         return MessageOptionNone
 
         
@@ -262,18 +268,23 @@ class BuilderAPIX64(BuilderAPI):
         '''
         End a function with return.
         '''
-        self.compiler.envDelClosure()
+        self.autoStore.deleteAll([])
+        #self.compiler.envDelClosure()
+        self.compiler.scopeStackPop()
         b._code.append('ret')
         b._code.append('; endFunc')
         return MessageOptionNone
 
     def funcMain(self, b, args):
         self.func(b, [ProtoSymbol('@main')])
-        self.compiler.envAddClosure()
+        #self.compiler.envAddClosure()
+        self.compiler.scopeStackPush()
         return MessageOptionNone
         
     def funcMainEnd(self, b, args):
-        self.compiler.envDelClosure()
+        #self.compiler.scopePrint()
+        #self.compiler.envDelClosure()
+        self.compiler.scopeStackPop()
         b._code.append('; endFunc')
         return MessageOptionNone
 
@@ -334,13 +345,15 @@ class BuilderAPIX64(BuilderAPI):
         )
         b.rodataAdd(rodata)
         var = Var(
+            protoSymbolLabel,
             Loc.RODataX64(protoSymbolLabel), 
             tpe
         )
-        self.compiler.symbolSetGlobal(
-            protoSymbolLabel, 
-            var
-        )
+        # self.compiler.symbolSetGlobal(
+            # protoSymbolLabel, 
+            # var
+        # )
+        self.compiler.symbolSetGlobal(var) 
         return MessageOptionNone
 
     def ROStringDefine(self, b, args):
@@ -355,11 +368,16 @@ class BuilderAPIX64(BuilderAPI):
         rodata = protoSymbolLabel + ': db "' + args[1] + '", 0'
         b.rodataAdd(rodata)
         # isn't that to an addr?
-        var = Var(Loc.RODataX64(protoSymbolLabel), Type.StrASCII)
-        self.compiler.symbolSetGlobal(
-            protoSymbolLabel, 
-            var
-        )            
+        var = Var(
+            protoSymbolLabel,
+            Loc.RODataX64(protoSymbolLabel), 
+            Type.StrASCII
+        )
+        # self.compiler.symbolSetGlobal(
+            # protoSymbolLabel, 
+            # var
+        # )            
+        self.compiler.symbolSetGlobal(var) 
         return MessageOptionNone
         
     def ROStringUTF8Define(self, b, args):
@@ -384,11 +402,16 @@ class BuilderAPIX64(BuilderAPI):
         rodata = protoSymbolLabel + ": db `" + args[1] + "`, 0"
         b.rodataAdd(rodata)
         # isn't this an addr?
-        var = Var(Loc.RODataX64(protoSymbolLabel), Type.StrUTF8)
-        self.compiler.symbolSetGlobal(
-            protoSymbolLabel, 
-            var
-        )            
+        var = Var(
+            protoSymbolLabel,
+            Loc.RODataX64(protoSymbolLabel), 
+            Type.StrUTF8
+            )
+        # self.compiler.symbolSetGlobal(
+            # protoSymbolLabel, 
+            # var
+        # )  
+        self.compiler.symbolSetGlobal(var) 
         return MessageOptionNone
 
    
@@ -420,13 +443,16 @@ class BuilderAPIX64(BuilderAPI):
             data
         ))
         var = Var(
+            protoSymbolLabel,
             Loc.RegisterX64(register), 
             tpe
         )
-        self.compiler.symbolSet(
-            protoSymbolLabel, 
-            var
-        )
+        # self.compiler.symbolSet(
+            # protoSymbolLabel, 
+            # var
+        # )
+        self.compiler.symSet(var)
+
         # return (
             # protoSymbolLabel, 
             # #Var.RegX64(register, tpe)
@@ -447,13 +473,15 @@ class BuilderAPIX64(BuilderAPI):
         #?! No, it has no ''Type', hence the Loc return above
         #? Ummm, proposal: Array[Bit8]
         var = Var(
+            protoSymbolLabel,
             Loc.RegisterX64(self.arch['returnRegister'],), 
             Type.StrASCII
         )
-        self.compiler.symbolSet(
-            protoSymbolLabel, 
-            var
-        )
+        # self.compiler.symbolSet(
+            # protoSymbolLabel, 
+            # var
+        # )
+        self.compiler.symSet(var)
         return MessageOptionNone
         
     def heapAlloc(self, b, args):
@@ -468,15 +496,17 @@ class BuilderAPIX64(BuilderAPI):
         b._code.append("mov {}, {}".format(self.arch['cParameterRegisters'][0], tpe.byteSize))
         b._code.append("call malloc")
         var = Var(
+            protoSymbolLabel,
             Loc.RegisteredAddressX64(self.arch['returnRegister']), 
             tpe
         )
         #print('huh?')
         #print(str(tpe))
-        self.compiler.symbolSet(
-            protoSymbolLabel, 
-            var
-        )
+        # self.compiler.symbolSet(
+            # protoSymbolLabel, 
+            # var
+        # )
+        self.compiler.symSet(var)
 
         #return LocationRootRegisterX64(self.arch['returnRegister']) 
         # return (
@@ -538,14 +568,16 @@ class BuilderAPIX64(BuilderAPI):
         # No, it has no ''Type', hence the Loc return above
         #? really? this a Location, not a var
         var = Var(
+            protoSymbolLabel,
             Loc.StackX64(index),
             #??? 
             Type.StrASCII
         )
-        self.compiler.symbolSet(
-            protoSymbolLabel, 
-            var
-        )
+        # self.compiler.symbolSet(
+            # protoSymbolLabel, 
+            # var
+        # )
+        self.compiler.symSet(var)
 
         return MessageOptionNone
         
@@ -574,11 +606,18 @@ class BuilderAPIX64(BuilderAPI):
         b._code.append("lea rsp, [rbp - {}]".format(
              self.arch['bytesize'] * index 
         )) 
-        var = Var,Var(index, tpe)
-        self.compiler.symbolSet(
-            protoSymbolLabel, 
-            var
+        var = Var(
+            protoSymbolLabel,
+            index, 
+            tpe
         )
+        
+        # self.compiler.symbolSet(
+            # protoSymbolLabel, 
+            # var
+        # )
+        self.compiler.symSet(var)
+
         return MessageOptionNone
                         
     # def stringHeapDefine(self, b, args):
@@ -708,7 +747,7 @@ class BuilderAPIX64(BuilderAPI):
         
         #! and it's freer than these parameters define. Memory locations
         # are ok for destination too.
-        # but not teo memory locs together
+        # but not two memory locs together
 
     def add(self, b, args):
         '''
@@ -1003,6 +1042,7 @@ class BuilderAPIX64(BuilderAPI):
         # Put the false label at block end
         falseLabel = self.compiler.closureDataPop()
         #self.compiler.envDelClosure()
+        #self.compiler.scopeStackPop()
         b._code.append('; endBlock')
         b._code.append(falseLabel + ':')        
         return MessageOptionNone
@@ -1084,7 +1124,8 @@ class BuilderAPIX64(BuilderAPI):
         self.compiler.instructionsStore()
 
         # Create an environment
-        self.compiler.envAddClosure()
+        #self.compiler.envAddClosure()
+        self.compiler.scopeStackPush()
         mo = MessageOptionNone
         return mo
 
@@ -1096,8 +1137,9 @@ class BuilderAPIX64(BuilderAPI):
 
     def whenEnd(self, b, args):
         # Delete the environment
-        self.compiler.envDelClosure()
-        
+        #self.compiler.envDelClosure()
+        self.compiler.scopeStackPop()
+
         # Revert builders and 
         # get content data
         funcsWhen = self.compiler.instructionsGet()
@@ -1296,7 +1338,8 @@ class BuilderAPIX64(BuilderAPI):
         #NB no need for regCount
 
         # add a new environment
-        self.compiler.envAddClosure()
+        #self.compiler.envAddClosure()
+        self.compiler.scopeStackPush()
 
         # create the varGen
         # This needs to be registered at the start so parsing of the
@@ -1305,15 +1348,17 @@ class BuilderAPIX64(BuilderAPI):
         # As it happens, the loc will stay the same. The type is 
         # anything, maybe different for each unroll. It's set later.
         varGen = Var(
+            protoSymbolLabel,
             Loc.RegisterX64(varGenRegister),
             Type.NoType
         )
         
         # important, varGen on the env
-        self.compiler.symbolSet(
-            protoSymbolLabel,
-            varGen
-        )
+        # self.compiler.symbolSet(
+            # protoSymbolLabel,
+            # varGen
+        # )
+        self.compiler.symSet(var)
 
         #NB so far, similar
         
@@ -1382,7 +1427,8 @@ class BuilderAPIX64(BuilderAPI):
         b._code.append('; endLoop')
         
         # Dispose of the inner environment (goodbye varGen)
-        self.compiler.envDelClosure()
+        #self.compiler.envDelClosure()
+        self.compiler.scopeStackPop()
         return MessageOptionNone
 
 
@@ -1425,22 +1471,25 @@ class BuilderAPIX64(BuilderAPI):
         countReg = 'rcx'
 
         # add a new environment
-        self.compiler.envAddClosure()
+        #self.compiler.envAddClosure()
+        self.compiler.scopeStackPush()
 
         # create the varGen
         # set on the new env
         #! Not going to work for clutches, as type changes
         # ...but would start type[0]...
         varGen = Var(
+            protoSymbolLabel,
             Loc.RegisterX64(varGenRegister), 
             #! for a clutch
             #var.tpe.elementType[0]
             varData.tpe.elementType
         )
-        self.compiler.symbolSet(
-            protoSymbolLabel, 
-            varGen
-        )
+        # self.compiler.symbolSet(
+            # protoSymbolLabel, 
+            # varGen
+        # )
+        self.compiler.symSet(var)
 
         # loop start
         #! array
@@ -1495,7 +1544,8 @@ class BuilderAPIX64(BuilderAPI):
         b._code.append('; endLoop')
 
         # Dispose of the inner environment too (goodbye varGen)
-        self.compiler.envDelClosure()
+        #self.compiler.envDelClosure()
+        self.compiler.scopeStackPop()
         return MessageOptionNone
 
         

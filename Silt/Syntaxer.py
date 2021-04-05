@@ -143,7 +143,10 @@ class Syntaxer(SyntaxerBase):
                 # such as boolean and type names, but this rule should 
                 # be defended
                 # So it's a dynamically created identifier
-                arg = self.findIdentifier(pos, name)
+                #! but it doesn't need to look so wide? It can only be a const
+                # or perhaps a custom definition?
+                #arg = self.findIdentifier(pos, name)
+                arg = self.symbolUsrFind(pos, name)
             argsB.append(arg)
             self._next() 
         return commit
