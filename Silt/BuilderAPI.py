@@ -245,7 +245,7 @@ class BuilderAPIX64(BuilderAPI):
         b._code.append("pop {}".format(self.arch['stackBasePointer']))
         return MessageOptionNone
            
-           
+    #! symbol needs registering in globalenv
     def func(self, b, args):
         '''
         Start a function.
@@ -337,6 +337,11 @@ class BuilderAPIX64(BuilderAPI):
         data = args[1]
         tpe = args[2]
 
+        var = self.autoStore.varROCreate(
+            protoSymbolLabel, 
+            tpe, 
+            1
+        )
         #! check size limits?
         rodata = '{}: {} {}'.format(
             protoSymbolLabel,
@@ -344,15 +349,6 @@ class BuilderAPIX64(BuilderAPI):
             data
         )
         b.rodataAdd(rodata)
-        var = Var(
-            protoSymbolLabel,
-            Loc.RODataX64(protoSymbolLabel), 
-            tpe
-        )
-        # self.compiler.symbolSetGlobal(
-            # protoSymbolLabel, 
-            # var
-        # )
         self.compiler.symbolSetGlobal(var) 
         return MessageOptionNone
 
@@ -363,23 +359,19 @@ class BuilderAPIX64(BuilderAPI):
         '''
         protoSymbolLabel = args[0].toString()
         string = args[1]
-        
-        # Trailing zero, though I believe NASM padds to align anyway
+
+        var = self.autoStore.varROCreate(
+            protoSymbolLabel, 
+            Type.StrASCII,
+            1
+        )        
+        # Trailing zero, though I believe NASM pads to align anyway
         rodata = protoSymbolLabel + ': db "' + args[1] + '", 0'
-        b.rodataAdd(rodata)
-        # isn't that to an addr?
-        var = Var(
-            protoSymbolLabel,
-            Loc.RODataX64(protoSymbolLabel), 
-            Type.StrASCII
-        )
-        # self.compiler.symbolSetGlobal(
-            # protoSymbolLabel, 
-            # var
-        # )            
+        b.rodataAdd(rodata)       
         self.compiler.symbolSetGlobal(var) 
         return MessageOptionNone
         
+    ??? Here
     def ROStringUTF8Define(self, b, args):
         '''
         Define a byte-width string to a label
@@ -415,7 +407,7 @@ class BuilderAPIX64(BuilderAPI):
         return MessageOptionNone
 
    
-
+    #??? Try it?
     def regDefine(self, b, args):
         '''
         Define a value in a register
@@ -426,9 +418,14 @@ class BuilderAPIX64(BuilderAPI):
         data = args[2]
         tpe = args[3]
 
-        #!NB try to allocate the var first, to accont for data
-        # shuffles, and revised positioning
-        # var = self.autoStore.varRegCreate(b, register, tpe, 3)
+        #!NB llocate the var first, to account for data
+        # shuffles
+        var = self.autoStore.varRegCreate(b, 
+            protoSymbolLabel, 
+            register, 
+            tpe, 
+            1
+        )
          
         # # ... then do the write from the data in the var.
         # b._code.append("mov {}, {}".format(
@@ -439,14 +436,15 @@ class BuilderAPIX64(BuilderAPI):
 
         b._code.append("mov {}, {}".format(
             #TypesToASMName[tpe],
-            register, 
+            #var,
+            AccessValue(var.loc).result(),
             data
         ))
-        var = Var(
-            protoSymbolLabel,
-            Loc.RegisterX64(register), 
-            tpe
-        )
+        #var = Var(
+        #    protoSymbolLabel,
+        #    Loc.RegisterX64(register), 
+        #    tpe
+        #)
         # self.compiler.symbolSet(
             # protoSymbolLabel, 
             # var

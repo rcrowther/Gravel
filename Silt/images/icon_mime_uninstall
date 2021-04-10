@@ -1,0 +1,51 @@
+#!/bin/bash
+
+# Install a mimetype and icon for Ruble files.
+# simple utility, no arg checks
+icon_theme_root=$1
+
+# To project...
+#cd "$icon_theme_root"
+
+## check if a directory exists
+#if [ ! -d "$icon_theme_root" ]; then
+    #(>&2 echo "The directory '$icon_theme_root' does not exist"); 
+    #exit 1;
+#fi
+
+echo "*** This script will not clean index.themes!!! ***"
+echo "*** If necessary, use a text editor to clean by hand  ***"
+
+
+#icon_theme_root=/usr/share/icons/hicolor
+#icon_theme_root=/usr/share/icons/gnome
+#icon_theme_root=/usr/share/icons/Adwaita
+icon_theme_root=/usr/share/icons/Mint-Y
+echo '= Delete Icon'
+
+#! Dont remove folders or configuration, it's an ass
+
+# Delete icon
+echo "Delete icon: $icon_theme_root/scalable/mimetypes/text-x-rubble.svg" 
+rm $icon_theme_root/scalable/mimetypes/text-x-rubble.svg 
+
+echo "Update cache: $icon_theme_root"
+gtk-update-icon-cache $icon_theme_root
+
+
+
+## Delete Mimetype
+mime_register_root=/usr/share/mime
+echo "= Delete File Mime"
+
+# Delete config
+echo "Delete config: $mime_register_root/packages/rubble.xml"
+rm $mime_register_root/packages/rubble.xml
+
+
+## Update mime cache
+echo "Update cache: $mime_register_root"
+update-mime-database $mime_register_root
+
+
+echo "done"

@@ -10,23 +10,7 @@ from collections import OrderedDict
 arch = architecture.architectureSolve(architecture.x64)
 
 
-# registers
-# Don't use directly, hence underscore
-# _DataVar = namedtuple('DataVar', ['priority','var'])
 
-# NoDataVar = _DataVar(-1, None)
-
-# def mkDataVar(priority, var):
-    # if (priority < 0):
-        # raise BuilderError('priority < 0 for existing var. var:{}'.format(var))
-    # return _DataVar(priority, var)
-
-
-
-    
-    
-    
-    
 # assume we always have a Var
 class AutoStoreReg():
     '''
@@ -436,7 +420,7 @@ class AutoStoreX64():
         var = self.autoReg.remove(regName)
         self._toStack_common(b, var)
 
-
+    #! yes, but labels should go back to being labels!!!
     def toStack(self, b, var):
         '''
         Move an existing var to stack.
@@ -492,19 +476,20 @@ class AutoStoreX64():
                 self._varRegToStack(b, regName)
 
     #NB vars must be returned so they can be set on an environment
-    def varROCreate(self, label, tpe, priority):
+    def varROCreate(self, name, tpe, priority):
         '''
         Create a var on read-only segment memory,
         Untracked, present for a consistent interface.
         ''' 
         var = Var(
-            Loc.RODataX64(label), 
+            name,
+            Loc.RODataX64(name), 
             tpe
         )
         var.priority = priority
         return var
                         
-    def varRegCreate(self, b, regName, tpe, priority):
+    def varRegCreate(self, b, name, regName, tpe, priority):
         '''
         Create a var on a named register.
         If the register has an existing var it is moved to another 
@@ -514,6 +499,7 @@ class AutoStoreX64():
         '''   
         self._varRegExistingMove(b, regName)
         var = Var(
+            name,
             Loc.RegisterX64(regName), 
             tpe
         )
@@ -521,7 +507,7 @@ class AutoStoreX64():
         self.autoReg._set(regName, var)
         return var
 
-    def varRegAnyCreate(self, b, tpe, priority):
+    def varRegAnyCreate(self, b, name, tpe, priority):
         '''
         Attempt to create a var on a register.
         If the var has sufficient priority or registers are free, it
@@ -532,13 +518,13 @@ class AutoStoreX64():
         regName = self.autoReg.findReg(priority)
         var = None
         if (regName):
-            var = self.varRegCreate(b, regName, tpe, priority)
+            var = self.varRegCreate(b, name, regName, tpe, priority)
         else:
-            var = self.varStackCreate(b, tpe, priority)
+            var = self.varStackCreate(b, name, tpe, priority)
         return var
       
     # ok
-    def varStackCreate(self, tpe, priority):
+    def varStackCreate(self, name, tpe, priority):
         '''
         Create a var on the stack.
         return
@@ -546,6 +532,7 @@ class AutoStoreX64():
         ''' 
         slot = self.autoStack.findSlot()
         var = Var(
+            name,
             Loc.StackX64(slot),
             tpe
         )   

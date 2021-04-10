@@ -35,14 +35,21 @@ funcMain()
     #registersPop()
 
 #--
-    #println(ro1)
-    println(ro2)
+#-- ROStr
+    println(ro1)
+
+#-- ROData
+    #println(ro2)
+
+#-- ROUTF
     #println(utf1)
     #println(""So Tired of Being Alone")
 
 #-- define
     #regDefine(@reg1 'rbx' 777 Bit64)
     #println(reg1)
+    #regDefine(@reg2 'rbx' 333 Bit64)
+    #println(reg2)
 #--
     #Isnt working because what ''type' is a length of bytes?
     #heapAllocBytes(@heap1 8)

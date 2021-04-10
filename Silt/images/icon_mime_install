@@ -1,0 +1,81 @@
+#!/bin/bash
+
+# Install a mimetype and icon for Ruble files.
+# simple utility, no arg checks
+#icon_theme_root=$1
+
+# To project...
+#cd "$icon_theme_root"
+
+## check if a directory exists
+#if [ ! -d "$icon_theme_root" ]; then
+    #(>&2 echo "The directory '$icon_theme_root' does not exist"); 
+    #exit 1;
+#fi
+
+echo "*** Dont run multiple times!!! ***"
+echo "*** This script canot clean index.theme ***"
+
+
+# Add Mimetype
+mime_register_root=/usr/share/mime
+echo "= Install File Mime"
+
+## Append config
+echo "Create config: $mime_register_root/packages/rubble.xml"
+echo '<?xml version="1.0" encoding="UTF-8"?>
+<mime-info xmlns="http://www.freedesktop.org/standards/shared-mime-info">
+  <mime-type type="text/x-rubble">
+    <sub-class-of type="text/plain"/>
+    <glob pattern="*.rbl"/>
+  </mime-type>
+</mime-info>' >  $mime_register_root/packages/rubble.xml
+
+## Update mime cache
+echo "Update cache: $mime_register_root"
+update-mime-database $mime_register_root
+
+
+
+
+# Add Icon
+#icon_theme_root=/usr/share/icons/hicolor 
+#icon_theme_root=/usr/share/icons/gnome
+#icon_theme_root=/usr/share/icons/Adwaita
+icon_theme_root=/usr/share/icons/Mint-Y
+echo "= Install Icon"
+
+## Modify index.theme
+echo "Modify Config: $icon_theme_root/index.theme"
+
+mkdir -p $icon_theme_root/scalable/mimetypes
+
+## add to directories entry
+sed -i 's/Directories=/Directories=scalable\/mimetypes,/' $icon_theme_root/index.theme
+
+## add stanza to end
+echo "
+###################
+
+[scalable/mimetypes]
+Size=16
+Context=Mimetypes
+Type=Scalable
+MinSize=8
+MaxSize=512
+" >> $icon_theme_root/index.theme
+
+
+## Install icon
+echo "Install icon: $icon_theme_root/scalable/mimetypes/text-x-rubble.svg"
+
+# hicolor scalable/mimetypes is basic Size=128
+# size seems to be ignored on scalable, and Gnone is happy with and 
+# configures 16x16
+cp ./16/text-x-rubble.svg $icon_theme_root/scalable/mimetypes
+
+## Update icon cache
+echo "Update cache: $icon_theme_root"
+gtk-update-icon-cache $icon_theme_root
+
+echo "done (may require file browser refresh))"

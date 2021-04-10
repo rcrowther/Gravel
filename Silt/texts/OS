@@ -1,0 +1,339 @@
+== Highlighting
+Impossible to plugin. Will look again
+
+/usr/share/highlight/themes/edit-matlab.theme
+
+/etc/highlight
+
+== File icons
+https://askubuntu.com/questions/52138/how-do-i-change-the-icon-for-a-particular-file-type
+https://wiki.ubuntu.com.cn/UbuntuHelp:AddingMimeTypes
+
+=== Create a MIME type
+For info,
+cat /etc/mime.types
+
+>>
+#  Users can add their own types if they wish by creating a ".mime.types"
+#  file in their home directory.  Definitions included there will take
+#  precedence over those listed here.
+>
+Ok, create and edit that file, or for safety make ~/.mime.types
+
+Add,
+application/x-rubble				rblc
+text/x-rubble					    rbl
+
+Doesn't work. Let's try some junk,
+
+text/x-garbage					    garbage
+
+Nope, not working either. And you have to believe you need a restart or to run a bit of code to register this file, the system will not regard this as important enough to monitor it.
+
+This will cost me 25 mins of work. I try a restart (and throw in an update so it is not entirely futile). Dosn't register the new mime type extensions.
+
+
+
+==== mime-support
+An installed package, with this program
+>>
+man update-mime
+>
+For programable registration of an execuatable to a filetype. It's for mailcap. The name is weird, ok?
+
+Won't tell us the key item, is that MIME registered?
+
+On my system, this clashes with MatLab, for reasons I do not understand.
+
+==== mailcap
+Maps MIMES to programs. Not so relevant for us
+cat /etc/mailcap
+
+
+
+==== Why MatLab?
+On my chosen files, with the chosen extension, they became mimetype,
+
+Text (text/x-matlab)
+
+Attempts at overriding the extension, as detailed above, whent nowhere. I sought a file in /etc that defined an extension for MatLab, and failed. Only a folder in /etc/mime that contains XML configuration for MatLab. 
+
+grep -r matlab /usr/share/mime
+
+from those results,
+
+cat /usr/share/mime/types
+
+registers Matlab as a type.
+
+
+cat /usr/share/mime/text/x-matlab.xml
+
+HAs this config, which is worth a look, if not what we want,
+
+  <sub-class-of type="text/plain"/>
+  <glob pattern="*.m"/>
+  <alias type="text/x-octave"/
+
+A massive file, contains Freedestop general config for Mimes. Lets look,
+
+cat /usr/share/mime/packages/freedesktop.org.xml
+
+O, worth a look. I pipe it out and do a search, and find this, under a Matlab element,
+
+    <magic priority="10">
+      <match value="%" type="string" offset="0"/>
+    </magic>
+    <magic priority="10">
+      <match value="##" type="string" offset="0"/>
+    </magic>
+    <magic priority="50">
+      <match value="function" type="string" offset="0"/>
+    </magic>
+    <glob pattern="*.m"/>
+
+Well, that might be setting the Mime type on my file. It's doing '##' magic on inner code. So how do I override?
+
+=== Why Matlab2?
+ find . | grep matlab
+
+One maybe is /usr/share/mime/text/x-matlab.xml
+
+Ah,
+>>
+  <!--Created automatically by update-mime-database. DO NOT EDIT!-->
+>
+
+It's been peeled from the general Freedestop file into it's own file here.
+
+
+==== Overrides
+From FreeDesktop,
+>>
+Once you have installed the gimp.xml file [an example configuration file], run the update-mime-database command to rebuild the output files. This program checks that the syntax of your file is correct and merges the information in it with that in the other XML files in the packages directory. It then puts the rules for recognising files into one set of files, and the information about each type into other files (eg $XDG_DATA_DIR/mime/image/png.xml), where other programs can access it easily. 
+>
+update-mime-database is provided as a commandline utility. With no help file whatsover, despite a switch (which lists usage), but a man file.
+
+So, 
+
+
+
+==== Blackbox tests
+So I tried this sequence.
+
+I created an empty file with the extension 'rbl'. The result was a file with mime,
+
+Text (text/plain)
+
+Then I added a first line to the file,
+ 
+## A parser
+#
+
+Mime,
+
+Text (text/x-matlab)
+
+Delete content. Mime,
+
+Text (text/plain)
+
+Let's try some Pythonlike content,
+
+class Symbol():
+    pass
+
+Text (text/x-modelica)
+
+Delete content. Mime,
+
+Text (text/plain)
+
+This teaches us a lot. First, the Mime is estimated probably on each save, or each time a tool like a file browser looks at the file, or by a notification is sent to the system. We don't care.
+
+Second, the mime is not generated from the extension. It comes from magic numbers.
+
+Third, the mime extension we have registered is not working at all. It is not overrriding. Do we need a restart?
+
+Right, let's try an obvious extensions, make empty files test.scala, test.java, test.rb. Mimetype
+
+Text (text/plain)
+
+
+
+== Magic names
+According to,
+https://specifications.freedesktop.org/shared-mime-info-spec/shared-mime-info-spec-0.21.html
+
+Filename Globs beat magic.
+
+
+cat /etc/magic
+
+>>
+# Magic local data for file(1) command.
+# Insert here your local magic data. Format is described in magic(5).
+>
+
+From FreeDesktop,
+
+/usr/share/misc/magic
+is empty
+
+=== update-mime-database
+Is this for code to update, or user registration?
+
+
+http://www.freedesktop.org/wiki/Specifications/shared-mime-info-spec
+
+This contains the stuff mentioned in the FreeDesktop spec,
+
+/usr/share/mime/
+
+
+
+=== Overall
+So
+I wanted to create a new mimetype, the associate it with files of a certain extension. 
+
+I do not know if I have created a new mimetype,
+- local did not seem to have any effect 
+- I do not know what is registered
+- And IU do not know how to register, whatever file I use
+
+As for association,
+- extenions are not registered
+- current files react to magic, not extension
+
+update-mime-database seems to be for application registration, despite commandline prescence. And the situation seems to call for Override.xml.
+
+- the file recommendation of ~/.mime.types doeant wor, even with a restart
+- 
+
+I tried /usr/share/mime/globs and /usr/share/mime/globs2, as the presumed config, and both had no registering. I tried /usr/share/mime/types and no registering.
+
+update-mime-database -Vn /usr/share/mime/
+
+Skipping mime update as the cache is up-to-date
+
+sudo update-mime-database -V /usr/share/mime/
+
+Nope.
+
+Edit /etc/mime.types. Add,
+
+application/x-rubble				rblc
+text/x-rubble					    rbl
+text/x-garbage					    garbage
+
+Nope. Not even with,
+
+sudo update-mime-database -V /usr/share/mime/
+
+== Direct, like an app
+Ok,
+
+sudo nano /usr/share/mime/packages/rubble.xml
+
+add,
+
+<?xml version="1.0" encoding="UTF-8"?>
+<mime-info xmlns="http://www.freedesktop.org/standards/shared-mime-info">
+  <mime-type type="text/x-rubble">
+    <sub-class-of type="text/plain"/>
+    <glob pattern="*.rbl"/>
+  </mime-type>
+</mime-info>
+
+Then,
+
+sudo update-mime-database -V /usr/share/mime/
+
+Works, but it seems matlab magic is overriding. No, it now works?
+
+
+
+
+== Icons
+My icon theme is Mint-Y, stock
+
+Index file says,
+
+Inherits=Adwaita,gnome,hicolor
+
+The one it looks like (or series) is,
+/usr/share/icons/Mint-Y/mimetypes/48/text-x-python.png
+
+
+Another location, unused?
+
+usr/shar/pixmaps/python3.xpm
+
+=== Installing
+Where to install? The wider the base, the more general youer code, will work on different systems. So ""hicolor" is the logical choice. But some apps are tweaky, will only work on the actual theme folder given? Try them both?
+
+mkdir -p /usr/share/icons/gnome/scalable/mimetypes/
+mkdir -p /usr/share/icons/Mint-Y/mimetypes/scalable/
+sudo cp /usr/share/icons/images/16/text-x-rubble.svg /usr/share/icons/gnome/scalable/mimetypes/
+sudo cp /usr/share/icons/images/32/text-x-rubble.svg /usr/share/icons/Mint-Y/mimetypes/scalable/
+.... = /usr/share/icons
+
+Update cache,
+sudo gtk-update-icon-cache /usr/share/icons/gnome
+sudo gtk-update-icon-cache /usr/share/icons/Mint-Y
+
+Sadly, gtk-update-icon-cache has no --verbose option.
+
+On gnome/mimetypes, doesn't work. Why? The index shows,
+
+[scalable/mimetypes]
+Context=MimeTypes
+Size=16
+MinSize=8
+MaxSize=512
+Type=Scalable
+
+One possibility is that the size says 16. There are some libreoffice links in there, softlinked, at 256x256. Are they used? 
+
+Give it a 16x16 svg. Nope.
+
+
+Right, maybe there's something about base themes and inheritence I don't know? lets try the theme direct.
+- int-Y/scalable, and
+-  cache refres
+
+Lets throw the new directory into index.theme,
+Directories=...c,mimetypes/scalable
+gtk-update-icon-cache... Nope
+Permissions issue? Apparently not.
+
+Ah, try a new stanza?
+[mimetypes/scalable]
+Context=MimeTypes
+Size=32
+MinSize=8
+MaxSize=512
+Type=Scalable
+
+Ah, yes! Lordy, but it's annoying we need a new stanza for Mint-Y, therefore need to edit the index.theme file
+
+Now must go in reverse.
+
+Do we need to update both caches, a dependant and main?
+Nope, doesn't work.
+
+# size seems to be ignored on scalable
+
+So I automate using scraps of BASH, which lets me test wider.
+
+No inherited theme works. Not even Adwaita, with it's ominous comment,
+
+Comment=The Only One
+
+
+
+==== References
+Freedesktop icon theme documentation, 
+https://www.freedesktop.org/wiki/Specifications/icon-theme-spec/
+
+
