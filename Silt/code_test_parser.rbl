@@ -36,33 +36,51 @@ funcMain()
 
 #--
 #-- ROStr
-    println(ro1)
+    #println(ro1)
 
 #-- ROData
     #println(ro2)
 
 #-- ROUTF
-    #println(utf1)
+    # println(utf1)
+
+#-- Print string
     #println(""So Tired of Being Alone")
 
-#-- define
+#-- Reg define
     #regDefine(@reg1 'rbx' 777 Bit64)
     #println(reg1)
     #regDefine(@reg2 'rbx' 333 Bit64)
     #println(reg2)
+
+#-- define
+    #define(@var1 333 Bit64)
+    #println(var1)
+
 #--
     #Isnt working because what ''type' is a length of bytes?
     #heapAllocBytes(@heap1 8)
 
-#-- heapAlloc
+#-- set
     #heapAlloc(@heap2 Bit64)
     #set(heap2 799)
     #println(heap2)
+
+#-- delete
+    define(@var2 333 Bit64)
+    delete(var2)
+    println(var2)
 
 #-- Alloc UTF8
     # No. What we will do here is define our string handling library
     # heapDefineStringUtf8(@utf1 'groovin')
     # println(arith1)
+
+#-- stackAllocSlots
+    stackAllocSlots(16)
+    # Throws warning
+    #stackAllocSlots(9)
+
 #--
     #Isnt working because what ''type' is a length of bytes?
     #stackAllocBytes(@stk1 8, 1)

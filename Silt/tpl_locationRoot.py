@@ -13,7 +13,7 @@ from exceptions import BuilderError
 
 
 
-#! This Statice return needs looking at becausse it includes the 
+#! This Static return needs looking at becausse it includes the 
 # parameter protection.
 #! such errors need to be asserts to fit in with the other template
 # helpers. See the AccessBuilders. 
@@ -36,28 +36,21 @@ class LocationRoot():
     arch = architecture.architectureSolve(architecture.x64)
     isAddressLoc = None
     
+    # If the src was a label, then an assembler will track the loc,
+    # and these classes fo not need to.
+    # However, a label var value may be transferred to some other 
+    # location. If so, we need to know the what the original
+    # location was. Then if the var is displaced it can be returned to
+    # the label value, rather than occupying stack space.
+    # We do this by stashing the location
+    labelLoc = None
+    
     def __init__(self, lid):
         self._validInitialLID(lid)
         self.lid = lid
         
     def _validInitialLID(self, lid):
         return NotImplementedError()
-
-    # def toStackIndex(self, b, slot):
-        # '''
-        # Copy the data to a stack allocation
-        # '''
-        # raise NotImplementedError('A location should never be instanced. location:{}\nShould this be a subclass?'.format(
-            # self
-        # ))
-                        
-    # def toRegister(self, b, targetRegisterName):
-        # '''
-        # Copy the data to a register
-        # '''
-        # raise NotImplementedError('A location should never be instanced. location:{}\nShould this be a subclass?'.format(
-            # self
-        # ))
                 
     def __repr__(self):
         return "{}(lid: '{}')".format(self.__class__.__name__, self.lid)
@@ -98,27 +91,7 @@ class RODataX64(LocationLabel):
     '''
     def __init__(self, label):
         super().__init__(label)
-
-    # def toStackIndex(self, b, slot):
-        # '''
-        # Copy the data to a stack allocation
-        # '''
-        # b += "mov {}[rbp - {}], {}".format(
-            # self.arch['ASMName'],
-            # slot * self.arch['bytesize'], 
-            # self.value()
-        # )
-        # return StackX64(index)
-
-    # #! ok
-    # def toRegister(self, b, targetRegisterName):
-        # if (not(targetRegisterName in self.arch['registers'])):
-            # raise NotImplementedError('toRegister: targetRegisterName not a register')
-        # #? or mov {}, {}
-        # b += 'lea {}, [{}]'.format(targetRegisterName, self.value())              
-        # return RegisterX64(targetRegisterName) 
-
-
+        self.labelLoc = self
 
 class LocationRegister(LocationRoot):
     def _validInitialLID(self, lid):
@@ -145,31 +118,7 @@ class RegisterX64(LocationRegister):
     '''
     isAddressLoc = False
 
-    #! repeated
-    # def value(self):
-        # return self.lid
-        
-    # def address(self):
-        # #? Can get LEA of a register? Dunno.
-        # raise NotImplementedError('A LocationRootRegister can not be treated as an address. Transfer to a register first rootStorage:{}'.format(
-            # self
-        # ))
-        
-    # def toStackIndex(self, b, slot):
-        # '''
-        # Copy the data to a stack allocation
-        # '''
-        # b += "mov [rbp - {}], {}".format(slot * self.arch['bytesize'], self.value())
-        # return StackX64(index)
-        
-    # def toRegister(self, b, targetRegisterName):
-        # if (not(targetRegisterName in self.arch['registers'])):
-            # raise NotImplementedError('toRegister: targetRegisterName not a register')
-        # if (self.lid == targetRegisterName):
-            # raise ValueError('toRegister', 'data already in given register. locationRoot:{}'.format(self))
-        # else:
-            # b += 'mov {}, {}'.format(targetRegisterName, self.value())              
-        # return RegisterX64(targetRegisterName)        
+     
     
     
         
@@ -181,31 +130,6 @@ class RegisteredAddressX64(LocationRegister):
     This kind of storage can represent many datatypes.
     '''
     isAddressLoc = True
-
-    # def value(self):
-        # return AddressBuilder(self.lid).result(True) 
-        
-    # def address(self):
-        # return self.lid     
-                    
-    #! repeated
-
-
-    # def toStackIndex(self, b, slot):
-        # '''
-        # Copy the data to a stack allocation
-        # '''
-        # b += "mov [rbp - {}], {}".format(slot * self.arch['bytesize'], self.value())
-        # return StackX64(index)
-        
-    # def toRegister(self, b, targetRegisterName):
-        # if (not(targetRegisterName in self.arch['registers'])):
-            # raise NotImplementedError('toRegister: targetRegisterName not a register')
-        # if (self.lid == targetRegisterName):
-            # raise ValueError('toRegister', 'data already in given register. locationRoot:{}'.format(self))
-        # else:
-            # b += 'mov {}, {}'.format(targetRegisterName, self.value())              
-        # return RegisterX64(targetRegisterName)        
 
 
 
@@ -227,16 +151,6 @@ class LocationStack(LocationRoot):
                 lid
             )
             raise BuilderError(msg)
-        #! not here, in alloc
-        # if (lid & 1):
-            # # i.e. not a lid divisable by 2
-            # # In this architecture, lid ''slots' are eight bytes. But 
-            # # stack must be aligned to 16 bytes. So issue a warning. 
-            # msg = "LocationStack: Slot number not divisible by 2. Calls in this frame will fail. slot: '{}'".format(
-                # lid
-            # )
-            # raise BuilderError(msg)
-
 
         
 class StackX64(LocationStack):
@@ -253,30 +167,6 @@ class StackX64(LocationStack):
     def __init__(self, index):
         super().__init__(index)    
         self.stackByteSize = self.arch['bytesize']
-        
-    # def value(self):
-        # b = AddressBuilder('rbp')
-        # b.addOffset(-(self.lid * self.stackByteSize))
-        # return b.result(True)
-
-    # def address(self):
-        # # needs LEA
-        # raise NotImplementedError('A RootStorageStack can not be treated as an address. Transfer to a register first rootStorage:{}'.format(
-            # self
-        # ))
-        
-    # def toStackIndex(self, b, slot):
-        # '''
-        # Copy the data to a stack allocation
-        # '''
-        # raise ValueError('toStack: value already in stack. locationRoot:{}'.format(self))
-        
-    # def toRegister(self, b, targetRegisterName):
-        # if (not(targetRegisterName in self.arch['registers'])):
-            # raise NotImplementedError('toRegister: targetRegisterName not a register')
-        # b += 'lea {}, {}'.format(targetRegisterName, self.address())              
-        # return LocationRootRegisterX64(targetRegisterName)
-
 
 
 class StackedAddressX64(LocationStack):
@@ -286,19 +176,7 @@ class StackedAddressX64(LocationStack):
     def __init__(self, slot):
         super().__init__(slot)    
         self.stackByteSize = self.arch['bytesize']
-                
-    # def value(self):
-        # # needs LEA
-        # raise NotImplementedError('A StackedAddressX64 can not be treated as an value. Transfer to a register first rootStorage:{}'.format(
-            # self
-        # ))
-        
-    # def address(self):
-        # b = AddressBuilder('rbp')
-        # b.addOffset(-(self.lid * self.stackByteSize))
-        # return b.result(True)
 
-    # def toStackIndex(self, b, slot):
 
     
     

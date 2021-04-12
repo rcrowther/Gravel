@@ -47,6 +47,7 @@ class TestAutoStoreReg(unittest.TestCase):
     def setUp(self):
         self.a = AutoStoreReg(arch['generalPurposeRegisters'])
         self.var = Var(
+            "testVar",
             Loc.RegisterX64('r14'), 
             Type.Bit64
         )
@@ -90,6 +91,7 @@ class TestAutoStoreStackEmpty(unittest.TestCase):
     def setUp(self):
         self.a = AutoStoreStack(arch['bytesize'], 3, 1)
         self.var = Var(
+            "testVar",
             Loc.RegisterX64('rsi'), 
             Type.Bit64
         )
@@ -118,6 +120,7 @@ class TestAutoStoreStack(unittest.TestCase):
     def setUp(self):
         self.a = AutoStoreStack(arch['bytesize'], 3, 1)
         self.var = Var(
+            "testVar",
             Loc.StackX64(1), 
             Type.Bit64
         )
@@ -150,6 +153,7 @@ class TestAutoStoreX64Label(unittest.TestCase):
     def setUp(self):
         self.a = AutoStoreX64(arch, 3, 1)
         # self.var = Var(
+            #"testVar",
             # Loc.RegisterX64('r14'), 
             # Type.Bit64
         # )
@@ -189,41 +193,42 @@ class TestAutoStoreX64Stack(unittest.TestCase):
     def setUp(self):
         self.a = AutoStoreX64(arch, 3, 1)
         self.var = Var(
+            "testVar",
             Loc.StackX64(2), 
             Type.Bit64
         )
                         
     def test_varStackCreate_type(self):
-        var = self.a.varStackCreate(Type.Bit64, 3) 
+        var = self.a.varStackCreate("testVar", Type.Bit64, 3) 
         self.assertTrue(isinstance(var.loc, Loc.StackX64)) 
                             
     def test_varStackCreate_slot(self):
         # should allocate at last slot
-        var = self.a.varStackCreate(Type.Bit64, 3) 
+        var = self.a.varStackCreate("testVar", Type.Bit64, 3) 
         self.assertEqual(var.loc.lid, 2)                             
                       
     def test_delete(self):
         # should allocate at last slot
-        var = self.a.varStackCreate(Type.Bit64, 3) 
+        var = self.a.varStackCreate("testVar", Type.Bit64, 3) 
         self.a.delete(var)
         with self.assertRaises(BuilderError):
             self.a.autoStack(2)                       
                       
     def test_toReg_removes(self):
         b = Builder()
-        var = self.a.varStackCreate(Type.Bit64, 3) 
+        var = self.a.varStackCreate("testVar", Type.Bit64, 3) 
         self.a.toReg(b, var, 'rsi')
         self.assertFalse(self.a.autoReg.isAllocated('r15'))  
 
     def test_toReg_reallocs(self):
         b = Builder()
-        var = self.a.varStackCreate(Type.Bit64, 3) 
+        var = self.a.varStackCreate("testVar", Type.Bit64, 3) 
         self.a.toReg(b, var, 'rsi')
         self.assertTrue(self.a.autoReg.isAllocated('rsi'))  
 
     def test_toReg_build(self):
         b = Builder()
-        var = self.a.varStackCreate(Type.Bit64, 3) 
+        var = self.a.varStackCreate("testVar", Type.Bit64, 3) 
         self.a.toReg(b, var, 'rsi')
         self.assertEqual(b._code[0], 'mov rsi, qword [rbp - 16]')  
         
@@ -233,7 +238,8 @@ class TestAutoStoreX64Reg(unittest.TestCase):
     def setUp(self):
         # arch, sizeSlots, offset
         self.a = AutoStoreX64(arch, 3, 1)
-        self.var = Var(#
+        self.var = Var(
+            "testVar",
             Loc.RegisterX64('r14'), 
             Type.Bit64
         )
@@ -246,26 +252,26 @@ class TestAutoStoreX64Reg(unittest.TestCase):
         
     def test_varRegCreate(self):
         b = Builder()
-        var = self.a.varRegCreate(b, 'rsi', Type.Bit64, 3) 
+        var = self.a.varRegCreate(b,'testVar', 'rsi', Type.Bit64, 3) 
         self.assertTrue(self.a.autoReg('rsi'), var) 
 
     def test_varStackCreate(self):
         b = Builder()
-        var = self.a.varStackCreate(Type.Bit64, 3) 
+        var = self.a.varStackCreate("testVar", Type.Bit64, 3) 
         self.assertTrue(self.a.autoStack.isAllocated(var.loc.lid)) 
         
         
     # Reg Reallocate
     def test_varRegCreate_double_relocate_toRegister(self):
         b = Builder()
-        var1 = self.a.varRegCreate(b, 'rsi', Type.Bit64, 3) 
-        var2 = self.a.varRegCreate(b, 'rsi', Type.Bit8, 3)
+        var1 = self.a.varRegCreate(b,'testVar', 'rsi', Type.Bit64, 3) 
+        var2 = self.a.varRegCreate(b, 'testVar2', 'rsi', Type.Bit8, 3) 
         self.assertTrue(self.a.autoReg.isAllocated('r15'))  
     
     def test_varRegCreate_double_build(self):
         b = Builder()
-        var1 = self.a.varRegCreate(b, 'rsi', Type.Bit64, 3) 
-        var2 = self.a.varRegCreate(b, 'rsi', Type.Bit8, 3) 
+        var1 = self.a.varRegCreate(b,'testVar', 'rsi', Type.Bit64, 3) 
+        var2 = self.a.varRegCreate(b, 'testVar2', 'rsi', Type.Bit8, 3) 
         self.assertEqual(b._code[0], 'mov qword r15, rsi')
 
 
@@ -278,14 +284,14 @@ class TestAutoStoreX64Reg(unittest.TestCase):
             
     def test_reg_delete(self):
         b = Builder()
-        var = self.a.varRegCreate(b, 'rsi', Type.Bit64, 3) 
+        var = self.a.varRegCreate(b, 'testVar', 'rsi', Type.Bit64, 3) 
         self.a.delete(var)
         with self.assertRaises(BuilderError):
             self.a.autoReg('rsi')  
 
     def test_stack_delete(self):
         b = Builder()
-        var = self.a.varStackCreate(Type.Bit64, 3) 
+        var = self.a.varStackCreate("testVar", Type.Bit64, 3) 
         self.a.delete(var)
         with self.assertRaises(BuilderError):
             self.a.autoStack(var.loc.lid) 
@@ -293,19 +299,19 @@ class TestAutoStoreX64Reg(unittest.TestCase):
     # toReg
     def test_toReg_removes(self):
         b = Builder()
-        var = self.a.varRegCreate(b, 'r15', Type.Bit64, 3) 
+        var = self.a.varRegCreate(b, 'testVar', 'r15', Type.Bit64, 3) 
         self.a.toReg(b, var, 'rsi')
         self.assertFalse(self.a.autoReg.isAllocated('r15'))  
 
     def test_toReg_reallocs(self):
         b = Builder()
-        var = self.a.varRegCreate(b, 'r15', Type.Bit64, 3) 
+        var = self.a.varRegCreate(b, 'testVar', 'r15', Type.Bit64, 3) 
         self.a.toReg(b, var, 'rsi')
         self.assertTrue(self.a.autoReg.isAllocated('rsi'))  
 
     def test_toReg_build(self):
         b = Builder()
-        var = self.a.varRegCreate(b, 'r15', Type.Bit64, 3) 
+        var = self.a.varRegCreate(b, 'testVar', 'r15', Type.Bit64, 3) 
         self.a.toReg(b, var, 'rsi')
         self.assertEqual(b._code[0], 'mov qword rsi, r15')  
 
@@ -324,32 +330,32 @@ class TestAutoStoreX64Reg(unittest.TestCase):
 
     def test_toRegAny_reg(self):
         b = Builder()
-        var = self.a.varRegCreate(b, 'r15', Type.Bit64, 3) 
+        var = self.a.varRegCreate(b, 'testVar', 'r15', Type.Bit64, 3) 
         self.a.toRegAny(b, var)
         self.assertTrue(self.a.autoReg.isAllocated(var.loc.lid))  
         
     def test_toRegAny_stack(self):
         b = Builder()
-        var = self.a.varStackCreate(Type.Bit64, 3) 
+        var = self.a.varStackCreate('testVar', Type.Bit64, 3) 
         self.a.toRegAny(b, var)
         self.assertTrue(self.a.autoReg.isAllocated(var.loc.lid))  
 
     def test_toRegAny_stack_build(self):
         b = Builder()
-        var = self.a.varStackCreate(Type.Bit64, 3) 
+        var = self.a.varStackCreate('testVar', Type.Bit64, 3) 
         self.a.toRegAny(b, var)
         self.assertEqual(b._code[0], 'mov r15, qword [rbp - 16]')  
                                 
     # reg toStack
     def test_toStack_removes(self):
         b = Builder()
-        var = self.a.varRegCreate(b, 'r15', Type.Bit64, 3) 
+        var = self.a.varRegCreate(b, 'testVar', 'r15', Type.Bit64, 3) 
         slot = self.a.toStack(b, var)
         self.assertFalse(self.a.autoReg.isAllocated('r15'))  
 
     def test_toStack_reallocs(self):
         b = Builder()
-        var = self.a.varRegCreate(b, 'r15', Type.Bit64, 3) 
+        var = self.a.varRegCreate(b, 'testVar', 'r15', Type.Bit64, 3) 
         self.a.toStack(b, var)
         self.assertTrue(self.a.autoStack.isAllocated(var.loc.lid))
 
@@ -362,13 +368,13 @@ class TestAutoStoreX64Reg(unittest.TestCase):
 
     def test_regToStack_build(self):
         b = Builder()
-        var = self.a.varRegCreate(b, 'r15', Type.Bit64, 3) 
+        var = self.a.varRegCreate(b, 'testVar', 'r15', Type.Bit64, 3) 
         self.a.toStack(b, var)
         self.assertEqual(b._code[0], 'mov qword[rbp - 16], r15')      
 
     def test_stackToStack_build(self):
         b = Builder()
-        var = self.a.varStackCreate(Type.Bit64, 3) 
+        var = self.a.varStackCreate('testVar', Type.Bit64, 3) 
         with self.assertRaises(AssertionError):
             self.a.toStack(b, var)
 

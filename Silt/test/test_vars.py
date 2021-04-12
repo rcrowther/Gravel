@@ -8,26 +8,26 @@ from tpl_codeBuilder import Builder
 
 
 
-#python3 -m unittest test.test_vars
+# python3 -m unittest test.test_vars
 class TestInit(unittest.TestCase):
 
     def test_init(self):
         tpe = Bit64
         loc = Loc.RegisterX64('rsi')
-        var = Var.Var(loc, tpe)
+        var = Var.Var('testVar', loc, tpe)
         self.assertEqual(var.tpe, Bit64)
 
     def test_init_fail1(self):
         tpe = Bit64
         loc = 'rsi'
         with self.assertRaises(Exception):
-            Var.Var(loc, tpe)
+            Var.Var('testVar', loc, tpe)
 
     def test_init_fail2(self):
         tpe = 'rsi'
         loc = Loc.RegisterX64('rsi')
         with self.assertRaises(Exception):
-            Var.Var(loc, tpe)
+            Var.Var('testVar', loc, tpe)
         
         
         
@@ -40,7 +40,7 @@ class TestUpdateLocationROToReg(unittest.TestCase):
         self.ul = Var.UpdateLocationBuilder(arch)
         tpe = Bit64
         loc = Loc.RODataX64('pi')
-        self.var = Var.Var(loc, tpe) 
+        self.var = Var.Var('testVar', loc, tpe) 
         self.b = Builder()        
         self.ul.toRegister(self.b, self.var, 'rbx')  
     
@@ -60,7 +60,7 @@ class TestUpdateLocationRegToReg(unittest.TestCase):
         self.ul = Var.UpdateLocationBuilder(arch)
         tpe = Bit64
         loc = Loc.RegisterX64('rsi')
-        self.var = Var.Var(loc, tpe) 
+        self.var = Var.Var('testVar', loc, tpe) 
         self.b = Builder()        
         self.ul.toRegister(self.b, self.var, 'rax')  
     
@@ -80,7 +80,7 @@ class TestUpdateLocationRegToStack(unittest.TestCase):
         self.ul = Var.UpdateLocationBuilder(arch)
         tpe = Bit64
         loc = Loc.RegisterX64('rax')
-        self.var = Var.Var(loc, tpe) 
+        self.var = Var.Var('testVar', loc, tpe) 
         self.b = Builder()        
         self.ul.toStack(self.b, self.var, 3)  
     

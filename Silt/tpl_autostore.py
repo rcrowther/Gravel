@@ -401,7 +401,7 @@ class AutoStoreX64():
         )):
             self.toReg(b, var, regName)
 
-            
+    # Should be from Reg
     def _toStack_common(self, b, var):
         slot = self.autoStack.findSlot()
 
@@ -433,7 +433,21 @@ class AutoStoreX64():
         else:
             #NB if on stack already, this errors
             self._toStack_common(b, var)
-                    
+
+    def offReg(self, b, regName):
+        '''
+        Move data off a register.
+        The destination is choseb automatically.
+        '''
+        var = self.autoReg.remove(regName)
+        
+        # if a label revert to label
+        if (var.loc.labelLoc):
+            var.loc = var.loc.labelLoc
+        else:
+            # var to stack.
+            self._toStack_common(b, var)
+                                
     def _varRegExistingMove(self, b, regName):
         '''
         Move an existing var off a register.
@@ -446,34 +460,40 @@ class AutoStoreX64():
         alloced = self.autoReg.isAllocated(regName)
         if (alloced):
             # There is a var. It must be moved somewhere.
-            # Let's see if it has enough priority to stay on registers
-            dstRegNameOpt = self.autoReg.findRegExclusive(
-                self.autoReg(regName).priority, 
-                regName
-            )
-            if(dstRegNameOpt):
-                # We got a regName to move to
-                # Now we need, if necessary, to clear out that reg too
-                alloced2 = self.autoReg.isAllocated(dstRegNameOpt)
-
-                if(alloced2):
-                    # We tried to find a place for the displaced var
-                    # using findRegExclusive. If an unallocated 
-                    # register was available, it would have been 
-                    # returned.
-                    # But we got an allocated register, which means
-                    # all registers are allocated. And the displaced var
-                    # has a high enough priority to displace some other 
-                    # var.
-                    # So second displaced var must be going to the stack. 
-                    self._varRegToStack(b, dstRegNameOpt)
-
-                # displaced var to new reg
-                self._regToRegNamed(b, regName, dstRegNameOpt)
+            # Let's see if it is a label. If it is, we can revert to the 
+            # label
+            var = self.autoReg(regName)
+            if (isinstance(var, Loc.LocationLabel)):
+                self.autoReg.remove(regName)
+                self.updateLocationBuilder.toLabel(var)
             else:
-                # Not enough priority, 
-                # var go to stack.
-                self._varRegToStack(b, regName)
+                # Let's see if it has enough priority to stay on registers
+                dstRegNameOpt = self.autoReg.findRegExclusive(
+                    var.priority, 
+                    regName
+                )
+                if(dstRegNameOpt):
+                    # We got a regName to move to
+                    # Now we need, if necessary, to clear out that reg too
+                    alloced2 = self.autoReg.isAllocated(dstRegNameOpt)
+
+                    if(alloced2):
+                        # We tried to find a place for the displaced var
+                        # using findRegExclusive. If an unallocated 
+                        # register was available, it would have been 
+                        # returned.
+                        # But we got an allocated register, which means
+                        # all registers are allocated. And the displaced var
+                        # has a high enough priority to displace some other 
+                        # var.
+                        # So second displaced var must be going to the stack. 
+                        self.offReg(b, dstRegNameOpt)
+
+                    # displaced var to new reg
+                    self._regToRegNamed(b, regName, dstRegNameOpt)
+                else:
+                    # Not enough priority, 
+                    self.offReg(b, regName)
 
     #NB vars must be returned so they can be set on an environment
     def varROCreate(self, name, tpe, priority):

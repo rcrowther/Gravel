@@ -20,61 +20,6 @@ from ci_symbol import Symbol
 # But it seems Rubble will be close enough to an assembly code to need
 # to capture these distinctions. It needs to be able to say, function X
 # can take VarOrConstant of a type e.g.
-#
-# Value(Bit64)
-#
-# Or not,
-#
-# Constant(StrASCII)
-#
-# or
-#
-# Var(Bit64)
-#
-# No hang on, the input type is irrelevant. int, float, str will do
-# But the varOrConstant
-# So we need something like 
-# StrConstant() or
-# We could even do with it being based on location
-# RegVar or String
-# And we need Arrays... lists?
-# How are we going to do that?
-
-# At first I was reluctant to type further than using the  
-# types from the language the parser--builder is written in. It means
-# a wrap, and I don't like wraps. But without that, we can't do the
-# type checking of args. Further, with that the parserBuilder can then
-# use a consistent interface for code building. So here it it is, the 
-# Value class. 
-
-        
-#! this tangle of Base and Var needs fixing.
-# will affect syn_arg_tests also
-# class Base():
-
-    # def value(self):
-        # return self.loc.value()
-
-    # def toStackIndex(self, b, index):
-        # self.loc = self.loc.toStackIndex(b, index)
-
-    # def toRegister(self, b, targetRegisterName):
-        # self.loc = self.loc.toRegister(b, targetRegisterName)
-                     
-    # def __repr__(self):
-        # return "Var(loc:'{}', tpe:{})".format(
-            # self.loc,
-            # self.tpe
-        # )
-
-    # def __str__(self):
-        # return "Var({}, {})".format(
-            # self.loc.lid,
-            # self.tpe
-        # )
-
-
-
 class Var(Symbol):
     def __init__(self, name, loc, tpe):
         assert isinstance(loc, LocationRoot), "Parameter not a LocRoot. loc: '{}'".format(loc)
@@ -113,6 +58,13 @@ import tpl_locationRoot as Loc
 class UpdateLocationBuilder():
     def __init__(self, arch):
         self.arch = arch
+        
+    def toLabel(self, var):
+        assert (var.labelLoc), 'toLabel: This var was not a label? var:{}'.format(
+            var
+        )
+        # No need to build anything, this is a compiler only scenario
+        var.loc = var.loc.labelLoc
         
     def toRegister(self, b, var, dstRegisterName):
         loc = var.loc
