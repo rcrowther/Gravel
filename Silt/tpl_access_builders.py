@@ -50,6 +50,7 @@ class AccessBuilder():
         raise NotImplementedError('A AccessBuilder should never be instanced. accessBuilder:{}\nShould this be a subclass?'.format(
             self
         ))
+        
     def __repr__(self):
         return "AccessBuilder(location:{})".format(self.loc)
 

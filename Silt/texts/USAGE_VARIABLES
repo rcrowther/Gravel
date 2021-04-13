@@ -2,9 +2,9 @@
 In Rubble, when data is created and destroyed, labels are attached, and therse are called ''variables'.
 
 === Mathematical variables
-Mathematics has the concept of ''variables', which is labels that represent a range of numbers. The range of numbers is, in most baasic mathematics. infinite. The system Lambda Calculus formalises this system, attaching labels to number ranges with a mechanism called ''binding'.
+Mathematics has the concept of ''variables'. Tese are labels that represent a range of numbers. The range of numbers is, in most baasic mathematics. infinite. The system Lambda Calculus formalises this system, attaching labels to number ranges with a mechanism called ''binding'.
 
-Most high-level languages model this system, to some extent. They give abstract names to pieces of storage. Usually they add some extra facilities, especially deletion----a mathematical variable is never ''deleted,' though it may go unused.
+Most high-level languages model this system, to some extent. They give abstract names to pieces of storage. Usually they add some extra facilities, especially deletion-by-scope----a mathematical variable is never ''deleted,' though it may go unused.
 
 === Rubble variables are not high-level language variables
 Rubble variable are further removed from mathematics. They know where they are located in the computer architecture. They can be deleted, and also altered/mutated. I consisdered calling them ''data labels', not ''variables', but that seemed clumsy. They are an abstraction and label for data, so I called them ''variables'. The idea works enough.
@@ -16,7 +16,7 @@ You can use Rubble variables like other high level languages. They will work,
 alloc(@ro1, ""in hoc")
 println(ro1)
 ?
-You created and used a variable ''ro1'. No problem. Even when you use them in a way that represents something mose extensive, they will work as an abstraction,
+You created and used a variable ''ro1'. No problem. Even when you use a Rubble variable in a way that represents something more extensive, they will work as an abstraction,
 
 ?rl
 allocHeap(@heap1, ""in hoc")
@@ -24,7 +24,7 @@ allocHeap(@heap2, ""in hoc")
 println(heap1)
 println(rheap1)
 ?
-If you look at generated assembly code, this makes more code than the frist example. Whatt happens is that Rubble allocates to the stack. This returns a pointer to the newly allocated storage. This will be placed, by convention, in register xAX. Then a second allocation happens. Rubble knows that xAX is occupied by a variable, the pointer to xAX. So first it writes code to move the data to another available register. Then Rubble updates the variable, setting the new location. Then it runs the second stack allocation. So in the background it has preserved the data, but the Rubble code is only the intended actions, without any idea of storage position.
+If you look at the generated assembly code, this makes more code than the first example. What happens is that Rubble allocates to the heap. This returns a pointer to the newly allocated storage. This will be placed, by convention, in register xAX. Then a second allocation happens. Rubble knows that xAX is occupied by a variable, the pointer to xAX. So first it writes code to move the data to another available register. Then Rubble updates the variable, setting the new location. Then it runs the second stack allocation. So in the background it has preserved the the pointer to the data. And the first variable still knows how to access it'sw data.
 
 === Why does Rubble need variables?
 Good question. One aim of Rubble is to ''model common idioms of machine code'. This means Rubble should model registers, some forms of stack placement, and so forth. The first versions of Rubble did this.
@@ -32,13 +32,60 @@ Good question. One aim of Rubble is to ''model common idioms of machine code'. T
 However, there is another aim of Rubble, which is to abstract to a level that is cross-platform. Dealing with registers is not cross-platform. So Rubble developed a loose kind of variable. Perhaps looser than most high-level languages, but an abstraction.
 
 == Using Rubble variables in detail
-For some purposes you may want to tamper with Rubbles actions directly.
+For some purposes you may want to tamper with Rubbles varable actions directly.
 
 === Basics of variables
-A variable is a location joined with a type. It does not contain the label. The label is only associated with the variable data, for convenient notation.
+A variable is a location joined with a type, a label, and a priority. In truth, the label is unnessasary, but is stored for easy reporting.
 
-Here are the actions Rubble can do with a variable...
+Variables are created on allocation of definition of data. the coder supplies a protosymbol, the variable is created, After that, you can use them. The compiler will tell you if you have used a vartiable in a place where it can not be used,
 
+?rl
+allocHeap(@heap1, ""in hoc")
+allocHeap(@heap2, ""in hoc")
+println(heap1)
+println(rheap1)
+?
+
+=== Directly influencing variables
+There are some actions you can do directly to a variable---this is not like a high-level language!
+
+==== Set priority
+All variables have a priority. This tells Rubble code how important you think the variable is. If possible, high priority variables will be kept on registers. And they will kept on the same register. This depends on availablility, but Rubble will try.
+
+Historical note: this is similar to how the ''register' hint was originally concieved in C, but that hint has become all but useless.
+  
+The basic priority is 0. That is what all variables created by Rubble are set to. If you set priority, it must be greater than or equal to 1. Lets set the priority of this heap allocation to 3.
+
+?rbl
+allocHeap(@heap1, ""in hoc")
+setPriority(heap1 3)
+?
+Underneath, on a x64 architecture, this var will be located at xAX. If no other data forces it's way onto this register, then no other variable can push it's way into this var's location. If other data forces it's way into xAX, for example another heap allocation, Rubble knows you prioritise this var highly, so will try to displace into another register, maybe displacing some other value.
+ 
+There is no scheme associated with the priority numbers. Make your own.
+
+==== Delete
+A var can be deleted,
+?rbl
+delete(heap1)
+?
+If you delete a var, you are stating you will not use the data again. This means the storage the var points at can be used by some other data
+
+Let's say, because you wanted to do one or two things with the value, you loaded a value into registers. But now you are finished. Do a delete and the varible will vanish. The space can be used by some other variable. Attempts to use the variable again will return an error.
+
+?rbl
+screenWidth1 = regAlloc(screenWith)
+
+# ...do calculations...
+
+# free the space
+delete(screenWidth1)
+
+# After a delete(), this would throw an error
+# add(ballPosX screenWidth1)
+?
+
+Please note that ''delete' will not, for example, ''free' a malloc. The ''delete' function deletes a var from Rubble's system of tracking variables. 
 ===
 
 ???

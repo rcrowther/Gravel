@@ -18,7 +18,7 @@ func(@adder)
 
 func(@looper)
     frame()
-    stackAllocBytes(@loalVars 1 2)
+    stackAllocSlots(2)
     #regDefine(counter, 'rcx' 9)
     #while(GT(counter 0))
         #dec(counter)
@@ -61,15 +61,31 @@ funcMain()
     #Isnt working because what ''type' is a length of bytes?
     #heapAllocBytes(@heap1 8)
 
-#-- set
+#-- set (on reg)
+    #define(@var1 333 Bit64)
+    #set(var1 555)
+    #println(var1)
+
+#-- set (on heap)
     #heapAlloc(@heap2 Bit64)
     #set(heap2 799)
     #println(heap2)
 
+#-- set (from var)
+    # define(@var1 333 Bit64)
+    # define(@var2 555 Bit64)
+    # set(var1 var2)
+    # println(var1)
+
+#-- setPriority
+    # define(@var1 333 Bit64)
+    # setPriority(var1, 3)
+    # println(var1)
+
 #-- delete
-    define(@var2 333 Bit64)
-    delete(var2)
-    println(var2)
+    #define(@var2 333 Bit64)
+    #delete(var2)
+    #println(var2)
 
 #-- Alloc UTF8
     # No. What we will do here is define our string handling library
@@ -77,7 +93,7 @@ funcMain()
     # println(arith1)
 
 #-- stackAllocSlots
-    stackAllocSlots(16)
+    # stackAllocSlots(16)
     # Throws warning
     #stackAllocSlots(9)
 
@@ -111,15 +127,41 @@ funcMain()
     #dec(dec1)
     #println(dec1)
 
-# -- add/sub
-    # must be a reg
-    # should work signed
-    #regDefine(@arith1 'rbx' 3 Bit64)
-    #add(arith1 7)
-    #sub(arith1 7)
-    #println(arith1)
+#-- add
+    #define(@var1 333 Bit64)
+    #add(var1 555)
+    #println(var1)
 
-# -- mul/div
+#-- add (from heap)
+    #heapAlloc(@var1 Bit64)
+    #set(var1 333)
+    #add(var1 555)
+    #println(var1)
+
+#-- add (from var)
+    # define(@var1 333 Bit64)
+    # define(@var2 555 Bit64)
+    # add(var1 var2)
+    # println(var1)
+
+#-- sub
+    #define(@var1 333 Bit64)
+    #sub(var1 555)
+    #println(var1)
+
+#-- sub (from heap)
+    #heapAlloc(@var1 Bit64)
+    #set(var1 333)
+    #sub(var1 555)
+    #println(var1)
+
+#-- sub (from var)
+    #define(@var1 333 Bit64)
+    #define(@var2 555 Bit64)
+    #sub(var1 var2)
+    #println(var1)
+
+#-- mul/div
     # must be a reg
     #regDefine(@arith1 'rbx' 3 Bit64)
     #mul(arith1 7)

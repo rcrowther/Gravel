@@ -80,8 +80,9 @@ class BuilderAPI():
         'registersPop': [],
 
         ## var action
-        'set': [anyVar(), intVal()],
+        'set': [anyVar(), intOrVarNumeric()],
         'setPath': [anyVar(), Path, intVal()],
+        'setPriority': [anyVar(), intVal()], 
         'delete': [anyVar()],
         
         ## Arithmetic
@@ -92,8 +93,8 @@ class BuilderAPI():
         #! and it's freer than these parameters define. Memory locations
         # are ok for destination too.
         # but not teo memory locs together
-        'add' : [regVar(), intOrVarNumeric()],
-        'sub' : [regVar(), intOrVarNumeric()],
+        'add' : [anyVar(), intOrVarNumeric()],
+        'sub' : [anyVar(), intOrVarNumeric()],
         'mul' : [regVar(), intOrVarNumeric()],
         #'divi' : [regVar(), intOrVarNumeric()],
         #'div' : [regVar(), intOrVarNumeric()],
@@ -110,8 +111,8 @@ class BuilderAPI():
         'heapAlloc': [protoSymbolVal(), anyType()],
         'heapAlloc': [protoSymbolVal(), anyType()],     
         'stackAllocSlots':  [intVal()],   
-        'stackAllocBytes': [protoSymbolVal(), intVal(), intVal()],
-        'stackAlloc': [protoSymbolVal(), intVal(), anyType()],
+        #'stackAllocBytes': [protoSymbolVal(), intVal(), intVal()],
+        #'stackAlloc': [protoSymbolVal(), intVal(), anyType()],
 
         ## Conditional
         'ifRangeStart': [intOrVarNumeric(), intOrVarNumeric(), intOrVarNumeric()],
@@ -434,7 +435,7 @@ class BuilderAPIX64(BuilderAPI):
         '''
         Define a variable with a value.
         The value will usually go to a register but, if registers are 
-        full. it will go to stack.
+        full, it will go to stack.
             var
             [anyVar()],
         '''
@@ -465,24 +466,14 @@ class BuilderAPIX64(BuilderAPI):
         self.extern(b, ['malloc'])
         protoSymbolLabel = args[0].toString()
         size = args[1]
-        var = self.autoStore.varRegCreate(b, 
+        var = self.autoStore.varRegAddrCreate(b, 
             protoSymbolLabel, 
             self.arch['returnRegister'],
-            # What we really need here is Type of self.arch['bytesize']
             Type.Array(size, Type.Bit8),
             1
         )
-
-        #byteSize = self.arch['bytesize'] * size
         b._code.append("mov {}, {}".format(self.arch['cParameterRegisters'][0], size))
         b._code.append("call malloc")
-        #?! No, it has no ''Type', hence the Loc return above
-        #? Ummm, proposal: Array[Bit8]
-        # var = Var(
-            # protoSymbolLabel,
-            # Loc.RegisterX64(self.arch['returnRegister'],), 
-            # Type.StrASCII
-        # )
         self.compiler.symSet(var)
         return MessageOptionNone
         
@@ -495,7 +486,7 @@ class BuilderAPIX64(BuilderAPI):
         #! Need to return bytesizeFull(), I think
         protoSymbolLabel = args[0].toString()
         tpe = args[1]
-        var = self.autoStore.varRegCreate(b, 
+        var = self.autoStore.varRegAddrCreate(b, 
             protoSymbolLabel, 
             self.arch['returnRegister'],
             tpe,
@@ -515,6 +506,17 @@ class BuilderAPIX64(BuilderAPI):
         #print(str(tpe))
         self.compiler.symSet(var)
         return MessageOptionNone
+
+                        
+    # def stringHeapDefine(self, b, args):
+        # '''
+        # Allocate and define a malloced string
+        # UTF-8
+        # '''
+        # byteSize = self.byteSize() * size
+        # b._code.append("mov {}, {}".format(arch['cParameterRegister'][0], byteSize))
+        # b._code.append("call malloc")
+        # return LocationRootRegisterX64('rax') 
 
     ## Unicode?
     # No I think what this might be about is not, how to creat a UTF 
@@ -552,7 +554,7 @@ class BuilderAPIX64(BuilderAPI):
         # self.raw(b, ['; UTF unhere'])
         # return MessageOptionNone
             
-    #??? Here
+    ## Stack
     # Do we need a MaybeReg define? Or is that, varDefine?
     def stackAllocSlots(self, b, args):
         '''
@@ -593,118 +595,99 @@ class BuilderAPIX64(BuilderAPI):
     # Look, one would allocate by type, one by bytes. But there
     # is some question wether bytes are needed anyhow?
     # May be better looking at fullBytes in types.
-    def stackAllocBytes(self, b, args):
-        '''
-        Allocate stack storage
-            protoSymbol, slotIndex, int
-        '''
-        protoSymbolLabel = args[0].toString()
-        index = args[1]
-        allocSpace = args[2]
-        BPRoffset = allocSpace + (self.arch['bytesize'] * index)
-        b._code.append("lea rsp, [rbp - {}]".format(BPRoffset)) 
+    # def stackAllocBytes(self, b, args):
+        # '''
+        # Allocate stack storage
+            # protoSymbol, slotIndex, int
+        # '''
+        # protoSymbolLabel = args[0].toString()
+        # index = args[1]
+        # allocSpace = args[2]
+        # BPRoffset = allocSpace + (self.arch['bytesize'] * index)
+        # b._code.append("lea rsp, [rbp - {}]".format(BPRoffset)) 
 
-        # No, it has no ''Type', hence the Loc return above
-        #? really? this a Location, not a var
-        var = Var(
-            protoSymbolLabel,
-            Loc.StackX64(index),
-            #??? 
-            Type.StrASCII
-        )
-        # self.compiler.symbolSet(
+        # var = self.autoStore.varStackCreate(b, 
             # protoSymbolLabel, 
-            # var
+            # tpe,
+            # 1
         # )
-        self.compiler.symSet(var)
-
-        return MessageOptionNone
+        # # No, it has no ''Type', hence the Loc return above
+        # #? really? this a Location, not a var
+        # var = Var(
+            # protoSymbolLabel,
+            # Loc.StackX64(index),
+            # #??? 
+            # Type.StrASCII
+        # )
+        # self.compiler.symSet(var)
+        # return MessageOptionNone
         
     #! bad thing here, we don't know where stack starts, so only works 
     # on empty stackframe
     # can't allocate stack multiple slots with current setup, unless 
     # use slot -> addresses like heap?
-    def stackAlloc(self, b, args):
-        '''
-        Allocate stack storage
-        Resets the Stack pointer register e.g. 'esp' etc. 
-        The calculation is absolute, from the index
-        So set index to a calculated top (unless you are writing trick 
-        code).
-        It's ok to alloc at a slot above the current stack hight, 
-        but an alloc below the stack height will reset the pointer 
-        towards the base pointer. Subsequent action could overwrite
-        required data. 
-            [protoSymbol, slotIndex, type]
-        '''
-        protoSymbolLabel = args[0].toString()
-        index = args[1]
-        tpe = args[2]
-        #tpe.byteSize
-        #self.arch['bytesize']
+    # def stackAlloc(self, b, args):
+        # '''
+        # Allocate stack storage
+        # Resets the Stack pointer register e.g. 'esp' etc. 
+        # The calculation is absolute, from the index
+        # So set index to a calculated top (unless you are writing trick 
+        # code).
+        # It's ok to alloc at a slot above the current stack hight, 
+        # but an alloc below the stack height will reset the pointer 
+        # towards the base pointer. Subsequent action could overwrite
+        # required data. 
+            # [protoSymbol, slotIndex, type]
+        # '''
+        # protoSymbolLabel = args[0].toString()
+        # index = args[1]
+        # tpe = args[2]
+        # #tpe.byteSize
         # var = self.autoStore.varStackCreate(b, 
             # protoSymbolLabel, 
             # tpe,
             # 1
         # ) 
-        # We can not account for bytesize, only allocate the slot
-        # must be aligned on 16 bytes?
-        b._code.append("lea rsp, [rbp - {}]".format(
-             self.arch['bytesize'] * index 
-        )) 
-        var = Var(
-            protoSymbolLabel,
-            index, 
-            tpe
-        )
-        
-        # self.compiler.symbolSet(
-            # protoSymbolLabel, 
-            # var
+        # # We can not account for bytesize, only allocate the slot
+        # # must be aligned on 16 bytes?
+        # b._code.append("lea rsp, [rbp - {}]".format(
+             # self.arch['bytesize'] * index 
+        # )) 
+        # var = Var(
+            # protoSymbolLabel,
+            # index, 
+            # tpe
         # )
-        self.compiler.symSet(var)
-
-        return MessageOptionNone
-                        
-    # def stringHeapDefine(self, b, args):
-        # '''
-        # Allocate and define a malloced string
-        # UTF-8
-        # '''
-        # byteSize = self.byteSize() * size
-        # b._code.append("mov {}, {}".format(arch['cParameterRegister'][0], byteSize))
-        # b._code.append("call malloc")
-        # return LocationRootRegisterX64('rax') 
+        # self.compiler.symSet(var)
+        # return MessageOptionNone
 
                   
     ## Var actions
     def set(self, b, args):
         '''
         Set a var to a value
-            [Var, val],
+            [Var, valOrVarInt],
+            [anyVar(), intOrVarNumeric()]
         '''
         var = args[0]
-        val = args[1]
+        valOrVarInt = args[1]
         mo = MessageOptionNone
         
         # By definition, RO is not possible
         if (isinstance(var.loc, Loc.RODataX64)):
             mo = MessageOption.error('Cant set a RO variable!')
-            #self.compiler.error('Cant set a RO variable!')
 
         # Needs a path for deeper peeks
         if (not(isinstance(var.tpe, Type.TypeSingular))):
             mo = MessageOption.error('Need path to set on complex type? var:{}'.format(var))
-            #self.compiler.error('Need path to set on complex type? var:{}'.format(var))
             
         # Only if ok (could throw errors)
         if (mo.isOk()):
             b._code.append("mov {} {}, {}".format(
                 TypesToASMName[var.tpe], 
                 AccessValue(var.loc).result(),
-                val
+                self.literalOrVarAccessValue(valOrVarInt)
             ))
-            
         return mo
 
     #! Utility. Should not be here
@@ -762,13 +745,24 @@ class BuilderAPIX64(BuilderAPI):
             ))                    
         return mo
 
+    def setPriority(self, b, args):
+        '''
+        Set the priority on a var.
+            var value
+            [anyVar(), intVal()]
+        '''
+        var = args[0]
+        priority = args[1]
+        var.priority = priority
+        return MessageOptionNone        
+        
     def delete(self, b, args):
         '''
         Define a variable with a value.
         The value will usually go to a register but, if registers are 
         full. it will go to stack.
-            protoSymbol, intOrVarNumeric, type
-            [protoSymbolVal(), intOrVarNumeric(), anyType()],
+            var
+            [protoSymbolVal()],
         '''
         var = args[0]
         self.autoStore.delete(
@@ -807,17 +801,19 @@ class BuilderAPIX64(BuilderAPI):
         #! and it's freer than these parameters define. Memory locations
         # are ok for destination too.
         # but not two memory locs together
-
+    #? should work signed
+    #!? can currently add varAddr to varrAddr = error
     def add(self, b, args):
         '''
         [regVar(), intOrVarNumeric()]
         '''
         varD = args[0]
-        intOrVar = args[1]
+        valOrVarInt = args[1]
+        self.autoStore.toRegAny(b, varD)
         b._code.append("add {} {}, {}".format(
             TypesToASMName[varD.tpe],
             AccessValue(varD.loc).result(),
-            self.literalOrVarAccessValue(intOrVar)
+            self.literalOrVarAccessValue(valOrVarInt)
         ))       
         return MessageOptionNone
         
@@ -826,11 +822,12 @@ class BuilderAPIX64(BuilderAPI):
         [regVar(), intOrVarNumeric()]
         '''
         varD = args[0]
-        intOrVar = args[1]
+        valOrVarInt = args[1]
+        self.autoStore.toRegAny(b, varD)
         b._code.append("sub {} {}, {}".format(
             TypesToASMName[varD.tpe],
             AccessValue(varD.loc).result(),
-            self.literalOrVarAccessValue(intOrVar)
+            self.literalOrVarAccessValue(valOrVarInt)
         ))       
         return MessageOptionNone
         
@@ -841,11 +838,11 @@ class BuilderAPIX64(BuilderAPI):
         # imul
         # https://www.felixcloutier.com/x86/imul
         varD = args[0]
-        intOrVar = args[1]
+        valOrVarInt = args[1]
         b._code.append("imul {} {}, {}".format(
             TypesToASMName[varD.tpe],
             AccessValue(varD.loc).result(),
-            self.literalOrVarAccessValue(intOrVar)
+            self.literalOrVarAccessValue(valOrVarInt)
         ))       
         return MessageOptionNone        
 

@@ -385,20 +385,18 @@ class AutoStoreX64():
 
     def toRegAny(self, b, var):
         '''
-        Move an existing var to aregister.
-        Silently protects against moving a varReg to the same 
-        tregister i.e. the varReg is already in the 'best' place.
-        If the register has an existing var, if existing var has enough 
-        priority or there is an empty register, the exisitng var is 
-        moved to a register. Otherwise, it goes to stack.
-        The register must be one that exists on any X... microprocessor,
-        i.e. xAX xBX xCX xSI xDI
+        Move an existing var to a register.
+        Silently protects against moving an existing varReg. 
+        Other variables go to the lowest priority register.
+        Guarentees register placement. that may cause variable 
+        displacemet.
         '''
-        regName = self.autoReg.regBest()
-        if (not(
-            isinstance(var.loc, Loc.LocationRegister) 
-            and (var.loc.lid == regName)
-        )):
+        if (not(isinstance(var.loc, Loc.LocationRegister))):
+            regName = self.autoReg.regBest()
+        # if (not(
+            # isinstance(var.loc, Loc.LocationRegister) 
+            # and (var.loc.lid == regName)
+        # )):
             self.toReg(b, var, regName)
 
     # Should be from Reg
@@ -437,7 +435,7 @@ class AutoStoreX64():
     def offReg(self, b, regName):
         '''
         Move data off a register.
-        The destination is choseb automatically.
+        The destination is chosen automatically.
         '''
         var = self.autoReg.remove(regName)
         
@@ -527,6 +525,24 @@ class AutoStoreX64():
         self.autoReg._set(regName, var)
         return var
 
+    def varRegAddrCreate(self, b, name, regName, tpe, priority):
+        '''
+        Create a var on a named register.
+        If the register has an existing var it is moved to another 
+        register or stack. The destination depends on the
+        priority of the displaced var, and may cascade.
+        Tracked
+        '''   
+        self._varRegExistingMove(b, regName)
+        var = Var(
+            name,
+            Loc.RegisteredAddressX64(regName), 
+            tpe
+        )
+        var.priority = priority
+        self.autoReg._set(regName, var)
+        return var
+        
     def varRegAnyCreate(self, b, name, tpe, priority):
         '''
         Attempt to create a var on a register.
