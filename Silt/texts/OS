@@ -5,6 +5,30 @@ Impossible to plugin. Will look again
 
 /etc/highlight
 
+=== XED
+Looks like difficult to do. No Documentation
+Plugins: Bracket complete/textsize written in Python. All else in C
+Highlight: seems to be a GtkSourceLanguage
+This it?:
+ls /usr/share/gtksourceview-3.0/language-specs/ada/lang
+It's an XML file. Doable?
+sudo cp /home/rob/Code/Gravel/Silt/images/rubble.lang /usr/share/gtksourceview-3.0/language-spec
+Try here?
+~/.local/share/gtksourceview-4/language-specs/
+# More to go wrong....
+mkdir ~/.local/share/gtksourceview-3.0/language-specs/
+cp /home/rob/Code/Gravel/Silt/images/rubble.lang ~/.local/share/gtksourceview-3.0/language-specs/
+
+https://developer.gnome.org/gtksourceview/stable/style-reference.html
+https://developer.gnome.org/gtksourceview/stable/lang-tutorial.html
+
+Total restart of xed required.
+
+
+=== Geany
+Can do by config. That would be Geany spacific, but fast enough
+Uses scintilla object
+
 == File icons
 Ok, see script
 

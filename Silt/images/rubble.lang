@@ -1,0 +1,210 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!--
+cp /home/rob/Code/Gravel/Silt/images/rubble.lang ~/.local/share/gtksourceview-3.0/language-specs/
+-->
+<language id="rubble" name="Rubble" version="2.0" _section="Source">
+  <metadata>
+    <property name="mimetypes">text/x-rubble</property>
+    <property name="globs">*.rbl</property>
+  </metadata>
+
+  <styles>
+    <style id="comment"           name="Comment"               map-to="def:comment"/>
+    <style id="builtin-function"  name="Builtin Function"      map-to="def:statement"/>
+    <style id="label"             name="label"                 map-to="def:identifier"/>
+    <style id="int"               name="Integer number"        map-to="def:decimal"/>
+    <style id="float"             name="Floating number"       map-to="def:floating-point"/>
+    <style id="null-value"        name="Null"                  map-to="def:special-constant"/>
+    <style id="string"            name="String"                map-to="def:constant"/>
+    <style id="boolean-function"  name="Boolean Function"      map-to="def:statement"/>
+    <style id="boolean-value"     name="Boolean Value"         map-to="def:boolean"/>
+    <style id="type"              name="Type"                  map-to="def:type"/>
+  </styles>
+
+  <definitions>
+    <define-regex id="punctuation">[\(\)\[\]\,\:\s]</define-regex>
+    <define-regex id="not-punctuation">[^\(\)\[\]\,\:\s]*</define-regex>
+    <define-regex id="identifier">[a-zA-Z]\%{not-punctuation}*</define-regex>
+
+
+
+    <!-- Comments -->
+    <context id="comment-multiline" style-ref="comment" end-at-line-end="false" class-disabled="no-spell-check">
+      <start>##</start>
+      <end>#</end>
+    </context>  
+
+    <context id="comment-line" style-ref="def:comment" end-at-line-end="true" class-disabled="no-spell-check">
+      <start>#</start>
+    </context>
+
+
+
+    <!-- Func Names --> 
+    <!-- builtin -->
+    <context id="builtin-functions" style-ref="builtin-function">
+      <keyword>comment</keyword>
+      <keyword>sysExit</keyword>
+      <keyword>extern</keyword>
+      <keyword>raw</keyword>
+    
+      <keyword>frame</keyword>
+      <keyword>frameEnd</keyword>
+      <keyword>func</keyword>
+      <keyword>funcEnd</keyword>
+      <keyword>funcMain</keyword>
+      <keyword>funcMainEnd</keyword>
+
+      <keyword>ROStringDefine</keyword>
+      <keyword>ROStringUTF8Define</keyword>
+      <keyword>RODefine</keyword>
+      <keyword>regDefine</keyword>
+      <keyword>define</keyword>
+      <keyword>heapAllocBytes</keyword>
+      <keyword>heapAlloc</keyword>
+      <keyword>heapAlloc</keyword>
+      <keyword>stackAllocSlots</keyword>
+
+      <keyword>ifRangeStart</keyword>
+      <keyword>ifRangeEnd</keyword>
+      <keyword>ifStart</keyword>
+      <keyword>ifEnd</keyword>
+      <keyword>cmp</keyword>
+      <keyword>switchStart</keyword>
+      <keyword>whenStart</keyword>
+      <keyword>whenDefaultStart</keyword>
+      <keyword>whenEnd</keyword>
+      <keyword>switchEnd</keyword>
+                
+      <keyword>forRange</keyword>
+      <keyword>forRangeEnd</keyword>
+      <keyword>whileStart</keyword>
+      <keyword>whileEnd</keyword>
+      <keyword>forEachUnrolled</keyword>
+      <keyword>forEachUnrolledEnd</keyword>
+      <keyword>forEach</keyword>
+      <keyword>forEachEnd</keyword>
+    
+      <keyword>dec</keyword>
+      <keyword>inc</keyword>
+      <keyword>add</keyword>
+      <keyword>sub</keyword>
+      <keyword>mul</keyword>
+      <keyword>divi</keyword>
+      <keyword>div</keyword>
+      <keyword>shl</keyword>
+      <keyword>shr</keyword>
+
+      <keyword>set</keyword>
+      <keyword>regDefine</keyword>
+      <keyword>define</keyword>
+      <keyword>setPriority</keyword>
+      <keyword>delete</keyword>
+      <keyword>stackAllocSlots</keyword>
+      
+      <keyword>print</keyword>
+      <keyword>println</keyword>
+      <keyword>printFlush</keyword>
+    </context>
+    
+    
+    
+    <!-- Argument types -->
+    <!-- strings -->  
+    <context id="double-quoted-string" style-ref="string" end-at-line-end="true" class="string" class-disabled="no-spell-check">
+      <start>""</start>
+      <end>"</end>
+    </context>
+    
+    <context id="single-quoted-string" style-ref="string" end-at-line-end="true" class="string" class-disabled="no-spell-check">
+      <start>'</start>
+      <end>'</end>
+    </context>
+
+
+
+    <!-- booleans --> 
+    <context id="boolean-op" style-ref="boolean-function">
+      <keyword>and</keyword>
+      <keyword>or</keyword>
+      <keyword>lt</keyword>
+      <keyword>gt</keyword>
+      <keyword>lte</keyword>
+      <keyword>gte</keyword>
+      <keyword>eq</keyword>
+      <keyword>neq</keyword>
+    </context>
+
+    <context id="boolean-value" style-ref="boolean-value">
+      <keyword>FALSE</keyword>
+      <keyword>TRUE</keyword>
+      <keyword>false</keyword>
+      <keyword>true</keyword>
+    </context>
+
+
+
+    <!-- types -->  
+    <context id="singular-type" style-ref="type">
+      <keyword>Bit8</keyword>
+      <keyword>Bit16</keyword>
+      <keyword>Bit32</keyword>
+      <keyword>Bit64</keyword>
+    </context>
+    
+    <context id="container-type" style-ref="type">
+      <keyword>Clutch</keyword>
+      <keyword>Array</keyword>
+    </context>
+    
+    
+    
+    <!-- other -->  
+    <context id="var" style-ref="label">
+      <match>@?\%{identifier}</match>
+    </context>
+    
+    <context id="float" style-ref="float">
+      <match>[+\-]?\d+\.\d+</match>
+    </context>
+    
+    <context id="int" style-ref="int">
+      <match>[+\-]?\d+</match>
+    </context>
+
+    <context id="null-value" style-ref="null-value">
+      <keyword>NULL</keyword>
+      <keyword>null</keyword>
+    </context>
+
+
+
+
+    <!-- Arguments -->
+    <context id="args" >
+      <include>
+        <context ref="double-quoted-string" />
+        <context ref="single-quoted-string"/>
+        <context ref="singular-type"/>
+        <context ref="container-type"/>
+        <context ref="boolean-op"/>
+        <context ref="boolean-value"/>
+        <context ref="var"/>
+        <context ref="float"/>
+        <context ref="int"/>
+      </include>
+    </context>
+
+
+    <context id="rubble" class="no-spell-check">
+      <include>
+        <context ref="def:shebang"/>
+        <context ref="comment-multiline"/>
+        <context ref="comment-line"/>
+        <context ref="builtin-functions"/>
+        <context ref="args"/>
+      </include>
+    </context>
+  </definitions>
+</language>

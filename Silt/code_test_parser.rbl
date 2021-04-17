@@ -48,7 +48,7 @@ funcMain()
     #println(""So Tired of Being Alone")
 
 #-- Reg define
-    #regDefine(@reg1 'rbx' 777 Bit64)
+    regDefine(@reg1 'rbx' 777 Bit64)
     #println(reg1)
     #regDefine(@reg2 'rbx' 333 Bit64)
     #println(reg2)
@@ -109,7 +109,7 @@ funcMain()
 #--
     #stackAlloc(@stk2 1 Bit64)
 #--
-    #stackAlloc(@stk2 Array(Bit64, 8))
+    stackAlloc(@stk2 Array(Bit64, 8))
     #varStack(@stk2 2 99)
     #println(Bit64 stk2)
     #println(stk2)
@@ -156,10 +156,10 @@ funcMain()
     #println(var1)
 
 #-- sub (from var)
-    #define(@var1 333 Bit64)
-    #define(@var2 555 Bit64)
-    #sub(var1 var2)
-    #println(var1)
+    define(@var1 333 Bit64)
+    define(@var2 555 Bit64)
+    sub(var1 var2)
+    println(var1)
 
 #-- mul/div
     # must be a reg
@@ -189,7 +189,7 @@ funcMain()
 
 #-- if
     #println(roQuery)
-    #ifStart(and(gt('rbx' 777) lte('rbx' 777)))
+    ifStart(and(gt('rbx' 777) lte('rbx' 777)))
     #    println(roTrue)
     #    ifEnd()
 
