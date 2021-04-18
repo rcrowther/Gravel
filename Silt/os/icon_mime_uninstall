@@ -35,7 +35,7 @@ gtk-update-icon-cache $icon_theme_root
 
 
 ## Delete Mimetype
-mime_register_root=/usr/share/mime
+mime_register_root=???/.local/share/mime
 echo "= Delete File Mime"
 
 # Delete config

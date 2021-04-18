@@ -18,7 +18,7 @@ echo "*** This script canot clean index.theme ***"
 
 
 # Add Mimetype
-mime_register_root=/usr/share/mime
+mime_register_root=~???/.local/share/mime
 echo "= Install File Mime"
 
 ## Append config

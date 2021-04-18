@@ -1,0 +1,369 @@
+= GTK SourceView Highlighting
+I wasn't going to write about this. But the scattered information on the web convinces me to.
+
+== What system this works on
+You have a GTK desktop. This usually means a Debian derivative, Ubuntu or the like. You would like, when certain files are opened, for them to be automatically coloured, like happens when you open a file of computer code.
+
+== What gadgets it works on
+Gadgets that use GTK sourceView for displaying text. That usually means Gedit, and it's forks, Pulma and Xed (Xed is the fork for Mint Linux, it is modern and people seem to be fond of it).
+
+== Howto
+=== Setup
+The highlighting definitions built into the system are in,
+?none
+/usr/share/gtksourceview-3.0/language-specs
+?
+Theres a lot of them, on my system maybe 120. Most are computer languages, but some are for configuration files---''changelong.lang', ''mallard.lang'--- and some are for markup---''markdown.lang', ''latex.lang' etc.
+
+Pick one with some features like, or close to, the results you want to create.
+
+Check what version of GtkSourceView you have on your system (use Synaptic or apt-get).
+
+Make this directory, with the appropriate sourceview version name,
+?none
+mkdir -p ~/.local/share/gtksourceview-3.0/language-specs/
+? 
+Copy your starter file into the directory, and rename,
+?shell
+sudo cp ~/.local/share/gtksourceview-3.0/language-specs/garbage.lang /usr/share/gtksourceview-3.0/language-spec/puppet.lang
+?
+
+Somewhere, make a text file to use as a test,
+?none
+touch test.garbage
+?
+
+=== Test we are up and working
+Edit the new file, 
+?none
+ ~/.local/share/gtksourceview-3.0/language-specs/garbage.lang 
+?
+and alter these XML elements. A note about the _section attriute. The documentation
+glosses this as ''just put in Script'. This is where the lang will be classed in the GUIs that use the lang file. Me, I have found I have uses for other classifications, especially Source", "Markup".
+?xml
+<!--
+Set the id and name attributes. They will be used in the text editor
+-->
+<language id="garbage" name="Garbage" version="2.0" _section="Script">
+  <metadata>
+    <!--
+    change or comment these out to recognise the targeted files
+    -->
+    <property name="mimetypes">text/x-garbage</property>
+    <property name="globs">*.garbage</property>
+    <!--
+    comment out any other elements in metadata
+    <property name="line-comment-start">#</property>
+    <property name="block-comment-start">##</property>
+    <property name="block-comment-end">#</property>
+    -->
+  </metadata>
+  ...
+?
+Now you need to shut down every running instance of your text editor. All instances.
+
+Now open a terminal, and launch the text editor. The reason for using a terminal to launch is that it will display any errors,
+?shell
+xed test.garbage
+?
+If all is good, the text editor will pop up the test file, recognise it has the extension ''.garbage', then find your new XML config file. It should show the language in the display somewhere, the name you gave in the XML file. Then it will apply the contents of the configuration you make. Currently that is a copy of some other language description. But hey, if all that happened, that is a remarkably easy start.
+
+=== Editing the file
+Ok, now you need to edit the file to highlight your way. Use the two key weblinks below, and start flippinf between them,
+
++dl
+~ GTK language file reference,
+: {a(https://developer.gnome.org/gtksourceview/stable/style-reference.html)}
+~ GTK tutorial for the XML file,
+: {a(https://developer.gnome.org/gtksourceview/stable/lang-tutorial.html)} 
++
+
+You may need the notes on how to create a new style,
++dl
+~ GTK language style scheme reference,
+: {a(https://developer.gnome.org/gtksourceview/stable/style-reference.html)}
++
+
+You may want to read the notes below, too.
+
+=== Notes on style files
+I think it's easiest to underand some featirtures of the style files.
+
+GtkSourceView comes with some sample style file sinstalled. You'll find them at,
+?none
+/usr/share/gtksourceview-3.0/styles/
+?
+Here's some more info,
+
+==== Palette
+The style files often start with a pallete. Here is from the ''classic.xml'
+?xml
+  <!-- Palette -->
+  <color name="white"      value="#FFFFFF"/>
+  <color name="blue"       value="#0000FF"/>
+  <color name="magenta"    value="#FF00FF"/>
+  <color name="violet"     value="#6A5ACD"/>
+  <color name="cyan"       value="#008A8C"/>
+  ...
+?
+These pallete styles are rarely fully-referenced in the same style file. So they are intended aa general resource, available both for GUI preference setting and further lang file definitions.
+
+==== Default styles
+?xml
+  <style  ... map-to="def:comment"/>
+?
+Means ''use the style defined as default'. In this case, the default ''comment' style. The default styles are a small set. Here are the default styles,
+
+There is no mention of default styles in documentation. But they are clearly present in the all the builtin styles. This appears to be by design---the form is copied from one style file to another.
+
+So, you can use one of these styles, safe-knowing it will be available in any theme. 
+
+Here they are, with notes,
++dl
+~ def:comment
+~ def:shebang
+~ def:doc-comment-element
+: Usually italic. Rarely used, usually for versioning like ''deprecated'. In mediawiki.lang, ''light-emphasis'
+~ def:constant
+~ def:special-char
+: Used for escaped chars/codepoints in strings
+~ def:identifier
+~ def:statement
+: An oddity, in naming anyway. Used for list and emphasis marks in markdown.lang, ID selectors in css.lang, builtin targets in automake.lang, properties in javascript.lang. Maybe described as ""for important modifying marks?"
+~ def:type
+~ def:preprocessor
+~ def:error
+: You wouldn't think a simple regex could detect errors like a parser, but this style is used to indicate some found errors, such as incorrect closures
+~ def:warning
+: You wouldn't think a simple regex could detect errors like a parser, but this style is used to indicate warnings, such as legacy code
+~ def:note
+: barely used. Markdown,lang uses for linebreaks, Foth.lang for alerts
+~ def:underlined
+: markup languages use it for web adresses/urls
++
+
+==== Non-default styles
+When highlighting, it is common to target some lexical categories.
+
+However, in the theme files these styles are often missing. You can not rely on these, even if you find them in a lang/them files,
++dl
+~ def:boolean
+: Used for ''true'/''false'
+~ def:number
+~ def:floating-point
+~ def:keyword
+~ def:builtin
++
+
+==== Heading files
+These heading styles appear to be cut and pasted into every theme file. But they have been commented out,
+?xml
+  <!-- Heading styles, uncomment to enable -->
+  <!--
+  <style name="def:heading0"                scale="5.0"/>
+  <style name="def:heading1"                scale="2.5"/>
+  <style name="def:heading2"                scale="2.0"/>
+  <style name="def:heading3"                scale="1.7"/>
+  <style name="def:heading4"                scale="1.5"/>
+  <style name="def:heading5"                scale="1.3"/>
+  <style name="def:heading6"                scale="1.2"/>
+  -->
+?
+
+==== Other styles in theme files
+Another sample from classic.xml. This shows several features. 
+?xml 
+  <style name="changelog:bullet"            use-style="changelog:file"/>
+  <style name="changelog:release"           foreground="#0095FF" bold="true"/>
+
+  <style name="perl:pod"                    foreground="grey"/>
+
+  <style name="python:string-conversion"    background="#BEBEBE"/>
+  <style name="python:module-handler"       use-style="def:character"/>
+  <style name="python:special-variable"     use-style="def:type"/>
+?
+
+
+=== Notes on creating a lang file
+I found it best to start with the default styles, and get my matching working first.
+
+==== XML editing
+XML editing is notoriously a pain in the neck. The error reports from the files are resonably good, at least providing a line number.
+
+==== Contexts
+Instead of globally seaching for regexes, the code searches for a stretch of code, This stretch is called a ''context'. Then the config can do other searches within that stretch. And so on, recursively.
+
+This is like a parse rule. In no way does it turn a lang config into a parser, it doesn't make regexes more or less expressive. But, for highlighting purposes, it makes regexes much easier to handle.
+
+Take a highlighting problem that many of the lang files address. You would like to identify strings. Fine, look for opening and closing quotes. 
+?none
+?
+But now you want to highlight escaped chars. Escaped chars are important to your readers, and are hard to spot in the middle of a string. So you make a regex to spot escaped chars.
+?none
+?
+The problem with this is that a genereral (''global') regex will highlight escaped chars everywhere in the source data. It would be unusual to find escaped chars free in data, but this regex will highlight them there. Worse, it will highlight escaped chars in comments, an if you are highlighting computer code, docstrings. But contexts solves that. Define like this,
+?xml
+?
+Now escaped chars will only be highlighted within a string type.
+
+To do this job without contexts would be an annoying recursive call. Contexts are a small feature, but powerful, and very handy for the purpose of text highlighting.
+
+===== Types of context
+The XML code allows several types of context. I've recordered the presentation here to give examples/templates for the most common constructions. These examples do not cover many attributes, so please look at the reference page for full details.
+
+This is a reduced form of the ''simple' context. It's the most basic match/highlight,
+?xml
+        <!-- 
+        All attributers are optional
+        id, for further references
+        style-ref, apply a style to the match
+        -->
+        <context id="function" style-ref="def:statement">
+            <match>^([^\n]*)$</match>
+        </context>
+?
+
+The larger form of the ''simple' context can highlight, but also allows highlighting within captured groups.
+?xml
+        <!-- 
+        All attributers are optional
+        id, for further references
+        style-ref, apply a style to the match
+        -->
+        <context id="function" style-ref="def:statement">
+            <match>^([^\n]*)$</match>
+            <!--
+            Include is optional
+            Only subpattern matches in the include
+            -->
+            <include>
+                <context id="func-name" sub-pattern="1" class="builtin-functions" />
+                <context sub-pattern="2" class="args" />
+            </include>
+        </context>
+?
+Note that this is somewhat limited. The Include element can only contain subpattern matches, which means matching can not be further nested. When I grepped the builtin lang files, I found that most of the definitions that used subpattern matches were for markup languages. The definitions were highlighting string matches. The only computer language definition that used subpattern matches estensively was Ruby. And it used them tto highlight Ruby's sophisticated string manipulation facilities.
+ 
+The container context is a slightly different way of capturing a stretch. It captures the begin and maybe end of the stretch (the underlying code matchs the contents), 
+?xml
+        <!-- 
+        Id or start are mandatory.
+        id, for further references
+        end-at-line-end, the attempt to match stops at line-end 
+        style-ref, apply a style to the match
+        -->
+        <context id="function" end-at-line-end="true" style-ref="def:statement">
+            <start>\<</start>
+            <end>\></end>
+            <!--
+            Include is optional
+            Any kind of context construction in the include
+            -->
+            <include>
+                <context id="func-name" sub-pattern="1" class="builtin-functions" />
+                <context sub-pattern="2" class="args" />
+            </include>
+        </context>
+? 
+
+
+You've seen them above, subpattern matches match group captures in a regex, 
+?xml
+<context id="func-name" sub-pattern="1" class="builtin-functions" />
+?
+
+==== Reuse a context
+Optionally, contexts have ids. These contexts can then be used in different places.  
+This uses a ''reference' contexts,
+?xml
+<!--
+Ref is mandatory.
+ref, id of another context to use here
+style-ref, apply a style which overides style on the original context
+-->
+<context ref="comment-line" style-ref="def:type"/>
+?
+
+==== Namespacing of style references
+Styles are namespaced by preceeding with the name of the lang file. This appears to be convention, not forced by code assertion.  
+
+Documentation states that the sparator is a semi-colon. It is not, not on my GtkSourceView-3.0, it is a colon,
+?none
+python:builtin
+?
+''def' stands for default. You can see this in the style file discussion up a section. However, def is used fairly loosely. If a teme is associated with a program, then it may provide ''def' styules that are not cross-theme.
+
+
+==== Setting of comments
+the metaclass attribute seems to set with class def:comment, and does nothing special???
+?xml
+    <property name="line-comment-start">#</property>
+?
+
+==== Matching is in order
+In any context, first match wins.
+
+This can be important. As the documentation points out, you need your most particular matches first, or you will never reach later contexts. For the following two rules, one or more pound signs will always match the first contenxt, or ''rule', so never reach the second,
+?xml
+match>#<>
+>match>##<
+?
+These two contexts need to be the other way up,
+?xml
+match>##<>
+>match>#<
+?
+
+==== What is the ''class' attribute?
+???
+
+=== On the whole
+Don't try to grab stretches of regexed code then break them down. The configuration is too limited. Try to find ways to isolate chunks, and highlight them. Expalination follows...
+
+==== OR/AND logic must use fallthrough
+This rather grates with me. To say ''match this keyword, or show error' I'd like to write something like,
+?xml
+<context>
+<Match>([a-z,A-Z]+)<match>
+<include>
+<context ref="keywords">
+<subpattern="1" style-fe="def:error">
+</include>
+</context>
+?
+But you cant do that, full matches means simple context means only subpatter highlighting. You can get close to that effect using fallthrough. Match the keyword first, but if that fails, highlight as an error,
+?xml
+<context ref="keywords">
+<context>
+<Match>([a-z,A-Z]+)<match>
+<include>
+<subpattern="1" style-fe="def:error">
+</include>
+</context>
+?
+I can't think configuration like this generating efficient regexing, but I've not checked.
+
+==== You can't gather contexts
+I'd like to break keywords into batches, then join them. Can't be done, each context must be referenced individually.
+
+==== Can't match keywords on a subpatter
+That would be nice, but is not going to work, Use subpatterns to trim text and you can't voke the keyword context. Don't trim the text and the keywords will not match the untrimmed text.
+
+
+==== New styles
+You can abandon the defaults entirely if you want. Invent new styles for parts of the document. Give them new names. Some of the builtin language definitions do this. Here is python.lang for GTKSourceView3
+
+?xml
+  <style  ... map-to="python:builtin-application"/>
+?
+Yep. It's got a whole new theme, ''python', and this is a new style ''builtin-application'. 
+
+==== Style files
+
+
+== Thoughts
+First, I'd point out that auto-colouring has more use than for computer code. Would you like some configuration files to be coloured for easy reading? Do you have some rough text templates that would be easier to read if coloured? I do, several.
+
+I can grumble about the implementation. For me, XML configuration is always a black mark. I'm sure there was a reason for it, but the limitation on subpattern contexts not nesting seems awkward---with that the system could do some limited parsing (but maybe that is why it is not allowed?). In no way can this system match the power of an EMacs mode---it can't change bindings, represent text content, or do partial-parsing. And the system only covers a few editors for GTK desktops.
+
+But I'm not going to complain. Far from it. The system uses one file, placed in an easily-locatable and readily-edited position. Albeit in GTK's odd we-are-getting-there way, it is documented. The configurattion uses readily understood components and, considering these, makes good results. Maybe only one in 2000 users will have any interest, but I'd say this chunk of code is underpublicised, and a little gem. 
