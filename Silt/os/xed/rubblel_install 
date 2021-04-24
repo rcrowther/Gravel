@@ -1,0 +1,16 @@
+#!/bin/bash
+
+# Install Gedit config for Rubble files.
+# simple utility, no arg checks
+
+echo "*** Install ***"
+xdg_config_path=~/.local/share/gtksourceview-3.0/
+echo "assumes a local config destination $xdg_config_path"
+
+## check if a directory exists
+if [ ! -d "$xdg_config_path" ]; then
+    (>&2 echo "The directory '$xdg_config_path' does not exist"); 
+    exit 1;
+fi
+cp rubble.lang $xdg_config_path/language-specs/
+echo "restart xed"

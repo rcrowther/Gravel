@@ -1,0 +1,17 @@
+#!/bin/bash
+
+# Install Geany config for Rubble files.
+# simple utility, no arg checks
+
+echo "*** Uninstall ***"
+xdg_config_path=~/.local/share/gtksourceview-3.0/
+
+## check if a directory exists
+if [ ! -d "$xdg_config_path" ]; then
+    (>&2 echo "The directory '$xdg_config_path' does not exist"); 
+    exit 1;
+fi
+
+rm $xdg_config_path/language-specs/rubble.lang
+
+echo "restart xed"

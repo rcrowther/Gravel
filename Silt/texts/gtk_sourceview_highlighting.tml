@@ -40,7 +40,7 @@ Edit the new file,
 ?
 and alter these XML elements. A note about the _section attriute. The documentation
 glosses this as ''just put in Script'. This is where the lang will be classed in the GUIs that use the lang file. Me, I have found I have uses for other classifications, especially Source", "Markup".
-?xml
+?xml.fog(url)"some"
 <!--
 Set the id and name attributes. They will be used in the text editor
 -->
@@ -105,7 +105,7 @@ The style files often start with a pallete. Here is from the ''classic.xml'
   <color name="violet"     value="#6A5ACD"/>
   <color name="cyan"       value="#008A8C"/>
   ...
-?
+
 These pallete styles are rarely fully-referenced in the same style file. So they are intended aa general resource, available both for GUI preference setting and further lang file definitions.
 
 ==== Default styles

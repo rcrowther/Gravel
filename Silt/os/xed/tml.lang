@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!--
+cp ~/Code/Gravel/Silt/os/tml.lang ~/.local/share/gtksourceview-3.0/language-specs/
+-->
+<language id="tml" name="Tml" version="2.0" _section="Markup">
+  <metadata>
+    <property name="mimetypes">text/x-tml</property>
+    <property name="globs">*.tml</property>
+  </metadata>
+
+  <styles>
+    <style id="header-text"       name="Heading Text"          map-to="def:statement"/>
+    <style id="mark"              name="Mark"                  map-to="def:special-char"/>
+    <style id="arg-elem"          name="Element Arg"           map-to="def:identifier"/>
+    <!-- def:type is bold, better if not -->
+    <style id="arg-class"         name="Class Arg"             map-to="def:preprocessor"/>
+    <style id="arg-url"           name="URL Arg"               map-to="def:underlined"/>
+    <style id="arg-string"        name="String Arg"            map-to="def:string"/>
+    <style id="mark-uml"          name="UML Mark"              map-to="def:special-char"/>
+  </styles>
+
+  <definitions>
+    <!--  handles elem ~ Option(cssClass) ~ Option(URL) ~ Optionl(string) -->
+    <!-- is this backtracking? -->
+    <define-regex id="mark-args">(\w+)?(\.\w+)?(?:\(([^)]*)\))?(\"[^"]*\")?</define-regex>
+    <define-regex id="punctuation">[\(\)\[\]\,\:\s]</define-regex>
+    <define-regex id="not-punctuation">[^\(\)\[\]\,\:\s]*</define-regex>
+    <define-regex id="identifier">[a-zA-Z]\%{not-punctuation}*</define-regex>
+
+
+
+    <!-- Comments -->
+    <context id="headings">
+      <match>^(\=+)\s+([^\n]+)</match>
+      <include>
+        <context sub-pattern="1" style-ref="mark" />
+        <context sub-pattern="2" style-ref="header-text" />
+      </include>
+    </context>  
+
+    <context id="mark-block" class="no-spell-check">
+      <!-- list items do not duplicate, block marks can -->
+      <match>^([\-~:]|[#+?]{1,2})\%{mark-args}</match>
+      <include>
+        <context sub-pattern="1" style-ref="mark" />
+        <context sub-pattern="2" style-ref="arg-elem" />
+        <context sub-pattern="3" style-ref="arg-class" />
+        <context sub-pattern="4" style-ref="arg-url" />
+        <context sub-pattern="5" style-ref="arg-string" />
+      </include>
+    </context>
+
+    <context id="mark-inline" class="no-spell-check">
+      <match>(\{)\%{mark-args}(\s[^\}]*)?(\})</match>
+      <include>
+        <context sub-pattern="1" style-ref="mark" />
+        <context sub-pattern="2" style-ref="arg-elem" />
+        <context sub-pattern="3" style-ref="arg-class" />
+        <context sub-pattern="4" style-ref="arg-url" />
+        <context sub-pattern="5" style-ref="arg-string" />
+        <context sub-pattern="3" style-ref="mark" />
+      </include>
+    </context>
+
+    
+    <context id="single-quoted-string" end-at-line-end="true">
+      <start>('')</start>
+      <end>(')</end>
+      <include>
+        <context sub-pattern="1" where="start" style-ref="def:string" />
+        <context sub-pattern="1" where="end" style-ref="def:string" />
+      </include>
+    </context>
+
+
+    <!-- UML -->      
+    <context id="double-quoted-string" end-at-line-end="true">
+      <start>("")</start>
+      <end>(")</end>
+      <include>
+        <context sub-pattern="1" where="start" style-ref="def:string" />
+        <context sub-pattern="1" where="end" style-ref="def:string" />
+      </include>
+    </context>    
+
+    <context id="guillemet" end-at-line-end="true" class="no-spell-check">
+      <start>(&lt;&lt;)</start>
+      <end>(&gt;&gt;)</end>
+      <include>
+        <context sub-pattern="1" where="start" style-ref="def:string" />
+        <context sub-pattern="1" where="end" style-ref="def:string" />
+      </include>
+    </context>      
+
+    <context id="uml-special" class="no-spell-check">
+      <!-- Onjects like elipsis are self-explanatory -->
+      <match>((?:\([ctr]\))|(?::m[\-xo]))</match>
+      <include>
+        <context sub-pattern="1" style-ref="mark-uml"/>
+      </include>
+    </context>
+    
+    <context id="tml">
+      <include>
+        <context ref="def:shebang"/>
+        <context ref="headings"/>
+        <context ref="mark-block"/>
+        <context ref="mark-inline"/>
+        <!-- UML -->
+        <context ref="single-quoted-string"/>
+        <context ref="double-quoted-string"/>
+        <context ref="guillemet"/>
+        <context ref="uml-special"/>
+      </include>
+    </context>
+  </definitions>
+</language>

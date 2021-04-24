@@ -1,9 +1,11 @@
-Change dirname to OS or OS_resources
 
 == Mime Icon
-Reposition in local someplace?
 
 == Lang (for xed)
 Generate definition, esp. keywords?
-Separate structurual funcs like ''frame' and ''func'?
+Separate structural funcs like ''frame' and ''func'?
 Undrerscore for URLs
+
+== TML
+Geany
+Lack of keyFunc highlighting especially bad, but Global Tags is not it, and keywords don't work.

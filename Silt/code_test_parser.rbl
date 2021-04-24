@@ -109,7 +109,7 @@ funcMain()
 #--
     #stackAlloc(@stk2 1 Bit64)
 #--
-    stackAlloc(@stk2 Array(Bit64, 8))
+    #stackAlloc(@stk2 Array(Bit64, 8))
     #varStack(@stk2 2 99)
     #println(Bit64 stk2)
     #println(stk2)
@@ -189,7 +189,7 @@ funcMain()
 
 #-- if
     #println(roQuery)
-    ifStart(and(gt('rbx' 777) lte('rbx' 777)))
+    #ifStart(and(gt('rbx' 777) lte('rbx' 777)))
     #    println(roTrue)
     #    ifEnd()
 

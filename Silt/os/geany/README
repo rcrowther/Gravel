@@ -1,0 +1,13 @@
+= Geany highlighters
+Extremely limited by the Geany parsers
+Fails to identify freedesktop mimes???
+
+== TML
+Uses Txt2Tag parser
+Can highlight headlines. Headlines wrongly include strings of '+'
+No symbols detected
+
+== Rubble
+Uses Ruby
+Can only highlight comments
+No symbols

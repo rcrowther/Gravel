@@ -1,0 +1,16 @@
+#!/bin/bash
+
+# Install Geany config for Rubble files.
+# simple utility, no arg checks
+
+echo "*** Install ***"
+
+cp filetypes.rubble.conf ~/.config/geany/filedefs
+
+echo "if not done before, edit the filetype extension config"
+echo "Run Geany then:"
+echo "Tools > Configuration Files > filetype_extensions.conf"
+echo "add the extension and set the group." 
+echo
+echo "In Geany GUI, run Tools > ReloadConfiguration"
+

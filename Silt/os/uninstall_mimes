@@ -1,0 +1,19 @@
+#!/bin/bash
+
+# Uninstall mimetypes for TML and Rubble files.
+mime_register_root=~/.local/share/mime
+echo "= Uninstall File Mimes for TML and Rubble"
+echo "assumes a local config destination $mime_register_root"
+
+## check if a directory exists
+if [ ! -d "$mime_register_root" ]; then
+    (>&2 echo "The directory '$mime_register_root' does not exist"); 
+    exit 1;
+fi
+
+rm  $mime_register_root/packages/tml.xml
+rm  $mime_register_root/packages/rubble.xml
+
+## Update mime cache
+echo "Update cacbhe: $mime_register_root"
+update-mime-database $mime_register_root
