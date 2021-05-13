@@ -10,15 +10,15 @@ import tpl_locationRoot as Loc
 class TestInitialization(unittest.TestCase):
     
     def test_roData(self):
-        Loc.RODataX64('str1')
+        Loc.GlobalROAddressX64('str1')
 
     def test_roData_fail1(self):
         with self.assertRaises(Exception):
-            Loc.RODataX64(9)
+            Loc.GlobalROAddressX64(9)
 
     def test_roData_fail2(self):
         with self.assertRaises(Exception):
-            Loc.RODataX64('rbx')
+            Loc.GlobalROAddressX64('rbx')
                     
     def test_register(self):
         Loc.RegisterX64('rbx')
@@ -55,7 +55,7 @@ class TestInitialization(unittest.TestCase):
             
 # class TestValue(unittest.TestCase):
     # def test_roData(self):
-        # loc = Loc.RODataX64('str1')
+        # loc = Loc.GlobalROAddressX64('str1')
         # self.assertEqual(loc.value(), '[str1]')
 
     # def test_register(self):
@@ -73,7 +73,7 @@ class TestInitialization(unittest.TestCase):
 
 # class TestAddr(unittest.TestCase):
     # def test_roData(self):
-        # loc = Loc.RODataX64('str1')
+        # loc = Loc.GlobalROAddressX64('str1')
         # self.assertEqual(loc.address(), 'str1')
 
     # def test_register(self):
@@ -93,13 +93,13 @@ class TestInitialization(unittest.TestCase):
 # class TestToRegister(unittest.TestCase):
 
     # def test_roData(self):
-        # loc = Loc.RODataX64('str1')
+        # loc = Loc.GlobalROAddressX64('str1')
         # newLoc = loc.toRegister([], 'rax')
         # self.assertEqual(newLoc.lid, 'rax')
 
 
     # def test_loc_unrecognised_register(self):
-        # loc = Loc.RODataX64('str1')
+        # loc = Loc.GlobalROAddressX64('str1')
         # with self.assertRaises(Exception):
             # loc.toRegister([], 777)      
 

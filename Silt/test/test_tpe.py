@@ -107,7 +107,7 @@ class TestContainersBytesize(unittest.TestCase):
 
     def test_pointer(self):
         ptr = Pointer([Bit64])
-        self.assertEqual(ptr.byteSize, 8)
+        self.assertEqual(ptr.byteSize, 16)
 
     def test_array(self):
         ary = Array([Bit64, 3])

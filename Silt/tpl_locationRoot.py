@@ -9,15 +9,9 @@ from exceptions import BuilderError
 # - yet should be at least an input parameter
 # - Tests are arch dependant, though x64/x32 will share most the same code
 
-
-
-
-
-#! This Static return needs looking at becausse it includes the 
-# parameter protection.
-#! such errors need to be asserts to fit in with the other template
-# helpers. See the AccessBuilders. 
+#! These constructions can raise BuilderErrors on parameter params.
 #!? (can be added later if we throw a message up) get position for errors
+#? Should have RO attribute?
 class LocationRoot():
     '''
     Present data as a location within various CPU constructs.
@@ -35,6 +29,7 @@ class LocationRoot():
     '''
     arch = architecture.architectureSolve(architecture.x64)
     isAddressLoc = None
+    isReadOnly = False
     
     # If the src was a label, then an assembler will track the loc,
     # and these classes fo not need to.
@@ -42,7 +37,7 @@ class LocationRoot():
     # location. If so, we need to know the what the original
     # location was. Then if the var is displaced it can be returned to
     # the label value, rather than occupying stack space.
-    # We do this by stashing the location
+    # We do this by stashing the label (as the original location)
     labelLoc = None
     
     def __init__(self, lid):
@@ -79,9 +74,10 @@ class LocationLabel(LocationRoot):
             
 #! bodge. Cant be arsed to build proper            
 NoLoc = LocationLabel('')
+
             
-            
-class RODataX64(LocationLabel):
+# was RODataX64
+class GlobalROAddressX64(LocationLabel):
     '''
     Presents data accessed through a label.
     The lid is a label, an assembler contruct holding a data address.
@@ -89,9 +85,13 @@ class RODataX64(LocationLabel):
     This kind of storage can represent many datatypes, but definition 
     can be awkward for types deeper than one level.
     '''
+    isReadOnly = True
+    
     def __init__(self, label):
         super().__init__(label)
         self.labelLoc = self
+
+
 
 class LocationRegister(LocationRoot):
     def _validInitialLID(self, lid):
@@ -117,11 +117,9 @@ class RegisterX64(LocationRegister):
     This kind of storage can only represent numbers up to the bitWidth.
     '''
     isAddressLoc = False
-
      
     
-    
-        
+            
 class RegisteredAddressX64(LocationRegister):
     '''
     Presents data where the address is in a register.
@@ -152,6 +150,7 @@ class LocationStack(LocationRoot):
             )
             raise BuilderError(msg)
 
+
         
 class StackX64(LocationStack):
     '''
@@ -169,6 +168,7 @@ class StackX64(LocationStack):
         self.stackByteSize = self.arch['bytesize']
 
 
+
 class StackedAddressX64(LocationStack):
 
     isAddressLoc = True
@@ -176,7 +176,3 @@ class StackedAddressX64(LocationStack):
     def __init__(self, slot):
         super().__init__(slot)    
         self.stackByteSize = self.arch['bytesize']
-
-
-    
-    

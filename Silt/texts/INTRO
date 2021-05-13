@@ -19,7 +19,7 @@ If you are a,
 : Average Joe
 ~ Rubble will damage your expertese
 : Expert
-~ Rubble will damage your expertese and reputation
+~ Rubble will damage your reputation and expertese
 +
 
 If you are a,
@@ -27,9 +27,9 @@ If you are a,
 ~ Low-level programmer (Assembly languages)
 : Rubble is a speck in your expensively-aquired learning
 ~ Mid-level programmer (pointers, but abstracted variables)
-: Rubble is a useless tool, and unreliable
+: Rubble is a useless tool, non-portable and unreliable
 ~ High-level programmer (metacode)
-: Here, there is no point
+: What's the point?
 +
 
 
@@ -45,7 +45,6 @@ frame()
 frameEnd()
 ?
 Sometimes Rubble is more like languages of higher abstraction,
-
 ?rbl
 forEach(@generated-var 'rbx' some-var)
     print(generated-var)
@@ -57,18 +56,18 @@ No. Read the above. Rubble generates plain, predictable machine code. It does no
   
 
 == How ''powerful' is Rubble?
-Hard to measure. Rubble is a crude abstraction of basic Assembly code, far below C. 
+Hard to measure. Rubble is an abstraction of assembly code, far below C. 
 
 
 == What is similar to Rubble?
-Autogeneration of Rubble should be easy. So maybe BCPL, the precursor to C, though BCPL is far more elegant. Some bytecodes, though Rubble is more involved and has a verbose interface. Maybe a Hardware Description Language, but for CPU ops.
+Autogeneration of Rubble should be easy. So maybe BCPL, the precursor to C, though BCPL is far more elegant. Some bytecodes, though Rubble is more involved and has a verbose interface. Maybe a Hardware Description Language, but for CPU ops. It can be viewed as a {a(https://en.wikipedia.org/wiki/High-level_assembler) high level assembler}.
 
 
 == Why would I use it?
 Because you asked, this language is probably not for you.
 
 
-== Why not write in an Assembly language?
+== Why not write in an assembly language?
 Go ahead.
 
 

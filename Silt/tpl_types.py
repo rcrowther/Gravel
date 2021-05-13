@@ -2,7 +2,9 @@ import math
 from exceptions import TypePathError
 from collections import OrderedDict
 from tpl_offset_iterators import OffsetIteratorIndexedGenerator
+import architecture
 
+arch = architecture.architectureSolve(architecture.x64)
 
 
 '''
@@ -25,8 +27,10 @@ I'm favouring the instance solution.
 '''
 '''
 Types
-A type is the common, immutable aspeects of the basic data (so far, not
+A type is the common, immutable aspects of the basic data (so far, not
 fuctions). 
+No, it's largely a categorisation of declared data? By encoding and 
+organisation? 
 Somettimes we need to refer to types themselves. For example, in an 
 array, we do not need to know the type of every element, only that 
 every element has a type of X. To do this, we refer to the class itself,
@@ -43,14 +47,14 @@ elements, arbitary types can be built.
 '''
 # Rationale for types
 We were storing bit sizes anyway, because they are neceassary for 
-clutches. That comes close to type info. To add an encoding more or 
-less defines a type. It also expands the system from perhaps 5 
-''types' (bit sizes) to perhaps sixteen ''types' (with the addition
-of encoding). This is still managable. What it will do is give is
-many advantages of defining special instructions, for example, for
-float types, and for prints.
+clutches. That comes close, as commonly understood, to type info. To add
+an encoding more or less defines a type. It also expands the system from
+perhaps 5 ''types' (bit sizes) to perhaps sixteen ''types'. This is 
+till managable. What it will do is give is give advantages for defining
+general, semi-polymorphic, instructions, for example, forfloat types, 
+and for prints.
 What we will not do is introduce any feature that relies on the types,
-such as polymorphic functions.
+such as auto-polymorphic functions.
 We will not type symbols???
 We will not store mutable data like string lengths.
 '''
@@ -79,19 +83,25 @@ UTF8 = Encoding('UTF8')
 
 
 class Type():
-    '''
-    Bytesize of this type.
-    return
-        the bytesize. If the bytesize is varible then None.
-    '''
     #NB this used to contain extensive type analysis code. for example,
     # children(), depth() etc. However, that kind of self-knowledge
-    # has been abandonded for ad-hoc tests outside the type classes
+    # has been abandonded for tests and builders outside the type classes
     # themselves. Ad-hoc the tests may be, but they are better informed
     # about surrounding possibilities, such as relative address 
     # construction, than the types alone can be.
-    byteSize = None
-
+    '''
+    Bytesize of root of the type
+    Never larger than bytesize of the bus, but may be smaller. 
+    If the type is not on a pointer, this is set to the bytecount of 
+    the type.
+    If the top type iss a pointer, this is set to buswidth.
+    If the type is a container, it has an implicit pointer, and is set
+    to buswidth.
+    The value is used to provide hints to the assembler.  
+    return
+        the bytesize of the root type.
+    '''    
+    byteSizeRoot = None
     
     '''
     The type contained by this type.
@@ -112,10 +122,18 @@ class Type():
     #    self.children = []
     #    raise NotImplementedError('A base Type can not be instanciated')
             
-    # @property
-    # def byteSize(self):
-        # return self._byteSize
-        
+    @property
+    def byteSize(self):
+        '''
+        Bytesize of this type.
+        If the type is a container, also includes the bytes needed
+        for the pointer.
+        return
+            the bytesize in full, including descendant types.
+        '''    
+        raise NotImplementedError()
+
+            
     def equals(self, other):
         '''
         Test if this type matches another.
@@ -145,6 +163,7 @@ NoType = _NoType()
 
 
 class TypeSingular(Type):
+    
     def equals(self, other):
         # singular types are instances, so all we need to know is this
         # reference to the same object as that reference?
@@ -152,22 +171,28 @@ class TypeSingular(Type):
         
         
 class TypeNumeric(TypeSingular):
-    pass
+    @property
+    def byteSize(self):
+        return self.byteSizeRoot
 
 # char
 class _Bit8(TypeNumeric):
     encoding = Signed
-    byteSize = 1
+    byteSizeRoot = 1
     #def print(self):
     #    pass
     def __repr__(self):
         return "Bit8"
 Bit8 = _Bit8()
 
+# No C equivalent
+#! is this an encoding?
+Bool = _Bit8()
+
 # short int
 class _Bit16(TypeNumeric):
     encoding = Signed
-    byteSize = 2
+    byteSizeRoot = 2
     #def print(self):
     #    pass
     def __repr__(self):
@@ -177,7 +202,7 @@ Bit16 = _Bit16()
 # int
 class _Bit32(TypeNumeric):
     encoding = Signed
-    byteSize = 4
+    byteSizeRoot = 4
     #def print(self):
     #    pass
     def __repr__(self):
@@ -187,7 +212,7 @@ Bit32 = _Bit32()
 # long int
 class _Bit64(TypeNumeric):
     encoding = Signed
-    byteSize = 8
+    byteSizeRoot = 8
     #def print(self):
     #    pass
     def __repr__(self):
@@ -197,7 +222,7 @@ Bit64 = _Bit64()
 # long long int
 class _Bit128(TypeNumeric):
     encoding = Signed
-    byteSize = 8
+    byteSizeRoot = 8
     #def print(self):
     #    pass
     def __repr__(self):
@@ -211,7 +236,7 @@ class _Bit32F(TypeNumeric):
     in C ''float'
     '''
     encoding = Float
-    byteSize = 4
+    byteSizeRoot = 4
     #def print(self):
     #    pass
     def __repr__(self):
@@ -225,7 +250,7 @@ class _Bit64F(TypeNumeric):
     in C ''double'
     '''
     encoding = Float
-    byteSize = 8
+    byteSizeRoot = 8
     #def print(self):
     #    pass
     def __repr__(self):
@@ -235,12 +260,17 @@ Bit64F = _Bit64F()
 #! ignoring long double (128ish)
 
 
-
+#! not sure if these are singular. Better as Array[Codepoint]?
+#! Array[Byte]?
 class TypeString(TypeSingular):
-    pass
+    @property
+    def byteSize(self):
+        return None
 
 class _StrASCII(TypeString):
     encoding = ASCII
+    byteSizeRoot = arch['bytesize']
+
     #def print(self):
     #    pass
     def __repr__(self):
@@ -249,6 +279,8 @@ StrASCII = _StrASCII()
  
 class _StrUTF8(TypeString):
     encoding = UTF8
+    byteSizeRoot = arch['bytesize']
+
     #def print(self):
     #    pass
     def __repr__(self):
@@ -264,7 +296,8 @@ class TypeContainer(Type):
     '''
     size = 0
     isLabeled = False
-        
+    byteSizeRoot = arch['bytesize']
+
     def __init__(self, elementType):
         self.elementType = elementType
 
@@ -297,14 +330,19 @@ class Pointer(TypeContainer):
         a list with one element, the contained type
     '''
     size = 1
-    #byteSize = arch['bytesize']
-    #byteSize = 8
+
+    byteSizeRoot = arch['bytesize']
+
+    @property
+    def byteSize(self):
+        return self.byteSizeRoot + self.elementType.byteSize
+            
     def __init__(self, args):
         assert (len(args) == 1), 'Pointer: args should be array of 1. args: {}'.format(args)
         elementType = args[0]
         assert (isinstance(elementType, Type)), 'Pointer: elementType not a Type. elementType: {}'.format(type(elementType))
         super().__init__(elementType)
-        self.byteSize = 8
+        #self.byteSize = 8
         
         
 
@@ -312,6 +350,7 @@ class TypeContainerOffset(TypeContainer):
     #? Consider generalising offset methods through all types.
     #? Should they be NotImplemented (means a catch), or return zero 
     # (spurious code)?
+        
     def offsetTypePair(self, lid):
         '''
         Get the offet of a contained element
@@ -329,88 +368,6 @@ class TypeContainerOffset(TypeContainer):
             a locating value (either int or label)
         '''
         raise NotImplementedError()
-        
-        
-        
-class Array(TypeContainerOffset):
-    '''
-    An array of data
-    A fixed length. So the type can return it's bytesize
-    The reason for the unusual and clumsy construction interface is so
-    container types can present a consistent interface.
-    args
-        [containedType, size]
-    '''
-    def __init__(self, args):
-        assert (len(args) == 2), 'Array: args should be array of 2. args: {}'.format(args)
-        elementType = args[0]
-        assert isinstance(elementType, Type), 'Array: first arg not a Type. args: {}'.format(args)
-        super().__init__(elementType)
-        self.size = args[1]
-        self.byteSize =  elementType.byteSize * self.size
-
-                
-    def offsetTypePair(self, lid):
-        '''
-        Get the offset of a contained element
-        lid
-            an integer
-        '''
-        #? Humm. Could precalculate these...
-        return (self.elementType.byteSize * lid, self.elementType,)
-
-    def offsetIt(self):
-        return OffsetIteratorIndexedGenerator(
-            self.size,
-            self.elementType,
-        )
-
-
-
-class ArrayLabeled(TypeContainerOffset):
-    '''
-    An array of data
-    A fixed length. So the type can return it's bytesize
-    The reason for the unusual and clumsy construction interface is so
-    container types can present a consistent interface.
-    args
-        [containedType, label1, label2...]
-    '''
-    isLabeled = True
-
-    def __init__(self, args):
-        elementType = args.pop(0)
-        assert isinstance(elementType, Type), 'ArrayLabeled: first arg not a Type. args: {}'.format(args)
-        self.size = len(args)
-        super().__init__(elementType)
-        
-        # map(label, offset)
-        # and
-        # list(offset, type)
-        labelToPairMap = {}
-        offsetTypePairs = []
-        elemByteSize = elementType.byteSize
-        offsetSum = 0
-        for label in args:
-            pair = (offsetSum, self.elementType,)
-            labelToPairMap[label] = pair
-            offsetTypePairs.append(pair)
-            offsetSum += elemByteSize
-        self.labelToPairMap = labelToPairMap
-        self.offsetTypePairs = offsetTypePairs 
-        self.byteSize = offsetSum
-
-        
-    def offsetTypePair(self, lid):
-        '''
-        Get the offset of a contained element
-        lid
-            a label
-        '''
-        return self.labelToPairMap[lid]        
-        
-    def offsetIt(self):
-        return iter(self.offsetTypePairs)
         
         
         
@@ -436,7 +393,7 @@ class Clutch(TypeContainerOffset):
             offsetTypePairs.append((offsetSum, tpe,))
             offsetSum += tpe.byteSize
         self.offsetTypePairs = offsetTypePairs 
-        self.byteSize = offsetSum
+        # self.byteSize = offsetSum
         super().__init__(args)
         self.size = len(args)
 
@@ -455,6 +412,13 @@ class Clutch(TypeContainerOffset):
                 if (not(r)):
                     break
         return r
+
+    @property
+    def byteSize(self):
+        byteSize = 0
+        for tpe in self.elementType:
+            byteSize += tpe.byteSize
+        return byteSize
         
     def offsetTypePair(self, lid):
         return self.offsetTypePairs[lid]
@@ -503,7 +467,7 @@ class ClutchLabeled(TypeContainerOffset):
             offsetSum += tpe.byteSize
         self.labelToPairMap = labelToPairMap
         self.offsetTypePairs = offsetTypePairs 
-        self.byteSize = offsetSum
+        #self.byteSize = offsetSum
         super().__init__(typeList)
         self.size = len(typeList)
 
@@ -525,7 +489,14 @@ class ClutchLabeled(TypeContainerOffset):
                 if (not(r)):
                     break
         return r
-        
+
+    @property
+    def byteSize(self):
+        byteSize = 0
+        for tpe in self.elementType:
+            byteSize += tpe.byteSize
+        return byteSize
+                
     def offsetTypePair(self, lid):
         return self.labelToPairMap[lid]        
 
@@ -539,6 +510,99 @@ class ClutchLabeled(TypeContainerOffset):
         return self.elementType.keys()
 
 
+
+        
+class Array(TypeContainerOffset):
+    '''
+    An array of data
+    A fixed length. So the type can return it's bytesize
+    The reason for the unusual and clumsy construction interface is so
+    container types can present a consistent interface.
+    args
+        [containedType, size]
+    '''
+    def __init__(self, args):
+        assert (len(args) == 2), 'Array: args should be array of 2. args: {}'.format(args)
+        elementType = args[0]
+        assert isinstance(elementType, Type), 'Array: first arg not a Type. args: {}'.format(args)
+        super().__init__(elementType)
+        self.size = args[1]
+        #self.byteSize =  elementType.byteSize * self.size
+
+    @property
+    def byteSize(self):
+        return self.elementType.byteSize * self.size
+        
+    def offsetTypePair(self, lid):
+        '''
+        Get the offset of a contained element
+        lid
+            an integer
+        '''
+        #? Humm. Could precalculate these...
+        return (self.elementType.byteSize * lid, self.elementType,)
+
+    def offsetIt(self):
+        return OffsetIteratorIndexedGenerator(
+            self.size,
+            self.elementType,
+        )
+
+#? Labels can be either in a type, in which
+# case they do refer to an array
+# or can be builtin to the data i.e. a hash table
+# perhaps they shouldn't be in Rubble?
+# Ada solution:
+#https://learn.adacore.com/courses/intro-to-ada/chapters/arrays.html
+class ArrayLabeled(TypeContainerOffset):
+    '''
+    An array of data
+    A fixed length. So the type can return it's bytesize
+    The reason for the unusual and clumsy construction interface is so
+    container types can present a consistent interface.
+    args
+        [containedType, label1, label2...]
+    '''
+    isLabeled = True
+
+    def __init__(self, args):
+        elementType = args.pop(0)
+        assert isinstance(elementType, Type), 'ArrayLabeled: first arg not a Type. args: {}'.format(args)
+        self.size = len(args)
+        super().__init__(elementType)
+        
+        # map(label, offset)
+        # and
+        # list(offset, type)
+        labelToPairMap = {}
+        offsetTypePairs = []
+        elemByteSize = elementType.byteSize
+        offsetSum = 0
+        for label in args:
+            pair = (offsetSum, self.elementType,)
+            labelToPairMap[label] = pair
+            offsetTypePairs.append(pair)
+            offsetSum += elemByteSize
+        self.labelToPairMap = labelToPairMap
+        self.offsetTypePairs = offsetTypePairs 
+        #self.byteSize = offsetSum
+
+    @property
+    def byteSize(self):
+        return self.elementType.byteSize * self.size
+                
+    def offsetTypePair(self, lid):
+        '''
+        Get the offset of a contained element
+        lid
+            a label
+        '''
+        return self.labelToPairMap[lid]        
+        
+    def offsetIt(self):
+        return iter(self.offsetTypePairs)
+        
+        
 
 #x see also tpl_vars
 # Gonna rethink all this

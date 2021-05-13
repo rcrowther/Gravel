@@ -19,7 +19,7 @@ func(@adder)
 func(@looper)
     frame()
     stackAllocSlots(2)
-    #regDefine(counter, 'rcx' 9)
+    #regNamedDefine(counter, 'rcx' 9)
     #while(GT(counter 0))
         #dec(counter)
     #    whileEnd()
@@ -29,12 +29,18 @@ func(@looper)
 funcMain()
     #comment('gettin funky')
     frame()
+
+#- reg stack
     # Not working due to path sacanning...
     #registersPush('rbx', 'r2')
     #registersVolatilePush()
     #registersPop()
+    #registersVolatilePush('rax' 'rbx' 'rcx')
+    #registersVolatilePop()
 
-#--
+
+#- Alloc/define
+#-- RO Global
 #-- ROStr
     #println(ro1)
 
@@ -44,22 +50,73 @@ funcMain()
 #-- ROUTF
     # println(utf1)
 
-#-- Print string
-    #println(""So Tired of Being Alone")
-
-#-- Reg define
-    regDefine(@reg1 'rbx' 777 Bit64)
+#-- Reg
+#-- Reg Named
+    #regNamedDefine(@reg1 'rbx' 777 Bit64)
     #println(reg1)
-    #regDefine(@reg2 'rbx' 333 Bit64)
+    #regNamedDefine(@reg2 'rbx' 333 Bit64)
     #println(reg2)
 
-#-- define
-    #define(@var1 333 Bit64)
+#-- regDefine
+    #regDefine(@var1 333 Bit64)
     #println(var1)
 
-#--
+#-- heapAlloc
+    #heapAlloc(@heap1 8)
+
+#-- heapDefine
+    #heapDefine(@var1 Bit64 999)
+    #println(var1)
+
+#-- heapDefine2
+    heapDefine(@var1 Array(Clutch(Bit8 Bit64) 3) [[33 77] [55 77] [77 99]])
+    #println(var1)
+
+#-- heapStringDefine
+    # No. What we will do here is define our string handling library
+    #heapStringDefine(@str1 'groovin on a sunny afternoon')
+    #heapStringDefine(@str1 'a long str')
+    #println(str1)
+
+#-- Alloc UTF8
+    # No. What we will do here is define our string handling library
+    # heapDefineStringUtf8(@utf1 'groovin')
+    # println(arith1)
+
+#-- heapAllocBytes
     #Isnt working because what ''type' is a length of bytes?
     #heapAllocBytes(@heap1 8)
+
+#-- Stack
+#-- stackAllocSlots
+    #stackAllocSlots(16)
+    # Throws warning
+    #stackAllocSlots(9)
+
+#-- stackDefine
+    #stackAllocSlots(16)
+    #stackDefine(@stk1 555 Bit64)
+    #stackDefine(@stk2 777 Bit64)
+    #println(stk1)
+    #println(stk2)
+#--
+    #Isnt working because what ''type' is a length of bytes?
+    #stackAllocBytes(@stk1 8, 1)
+    #set(stk1 799)
+    #println(stk1)
+
+#--
+    #stackAlloc(@stk2 1 Bit64)
+#--
+    #stackAlloc(@stk2 Array(Bit64, 8))
+    #varStack(@stk2 2 99)
+    #println(Bit64 stk2)
+    #println(stk2)
+    #stringHeapAlloc(24)
+
+
+
+
 
 #-- set (on reg)
     #define(@var1 333 Bit64)
@@ -87,37 +144,7 @@ funcMain()
     #delete(var2)
     #println(var2)
 
-#-- Alloc UTF8
-    # No. What we will do here is define our string handling library
-    # heapDefineStringUtf8(@utf1 'groovin')
-    # println(arith1)
 
-#-- stackAllocSlots
-    # stackAllocSlots(16)
-    # Throws warning
-    #stackAllocSlots(9)
-
-#--
-    #Isnt working because what ''type' is a length of bytes?
-    #stackAllocBytes(@stk1 8, 1)
-    #set(stk1 799)
-    #println(stk1)
-#--
-    #stackAlloc(@stk2 2 Bit64)
-    #set(stk2 979)
-    #println(stk2)
-#--
-    #stackAlloc(@stk2 1 Bit64)
-#--
-    #stackAlloc(@stk2 Array(Bit64, 8))
-    #varStack(@stk2 2 99)
-    #println(Bit64 stk2)
-    #println(stk2)
-    #stringHeapAlloc(24)
-
-#-- reg push
-    #registersVolatilePush('rax' 'rbx' 'rcx')
-    #registersVolatilePop()
 
 #-- arithmetic
 #-- dec/inc
@@ -132,9 +159,21 @@ funcMain()
     #add(var1 555)
     #println(var1)
 
+#-- add
+    #define(@var1 333 Bit64)
+    #define(@var2 555 Bit64)
+    #add(var1 var2)
+    #println(var1)
+
 #-- add (from heap)
     #heapAlloc(@var1 Bit64)
     #set(var1 333)
+    #add(var1 555)
+    #println(var1)
+
+#-- add (from stack)
+    #stackAllocSlots(16)
+    #stackDefine(@var1 333 Bit64)
     #add(var1 555)
     #println(var1)
 
@@ -156,45 +195,54 @@ funcMain()
     #println(var1)
 
 #-- sub (from var)
-    define(@var1 333 Bit64)
-    define(@var2 555 Bit64)
-    sub(var1 var2)
-    println(var1)
+    #define(@var1 333 Bit64)
+    #define(@var2 555 Bit64)
+    #sub(var1 var2)
+    #println(var1)
 
 #-- mul/div
     # must be a reg
-    #regDefine(@arith1 'rbx' 3 Bit64)
+    #regNamedDefine(@arith1 'rbx' 3 Bit64)
     #mul(arith1 7)
     #println(arith1)
 
 # -- shl/shr
     # must be a reg
-    # regDefine(@arith1 'rbx' 128 Bit64)
+    # regNamedDefine(@arith1 'rbx' 128 Bit64)
     #shr(arith1 1)
     # shl(arith1 1)
     # println(arith1)
 
-#-- cmp
-    #regDefine(@rbx1 'rbx' 77 Bit64)
-    #regDefine(@rcx2 'rcx' 3 Bit64)
-    #cmp(rbx1 lt(rcx2 5) )
-    #println(rbx1)
+
 
 #-- ifRange
-    #regDefine(@rbx1 'rbx' 3 Bit64)
+    #regNamedDefine(@rbx1 'rbx' 3 Bit64)
     #println(roQuery)
     #ifRangeStart(rbx1 3 9)
     #    println(roTrue)    
     #    ifRangeEnd()
 
 #-- if
+    #define(@var1 555 Bit64)
     #println(roQuery)
-    #ifStart(and(gt('rbx' 777) lte('rbx' 777)))
+    #ifStart(and(gt(var1 333) lte(var1 777)))
     #    println(roTrue)
     #    ifEnd()
 
+#-- cmp
+    #regNamedDefine(@rbx1 'rbx' 77 Bit64)
+    #regNamedDefine(@rcx2 'rcx' 3 Bit64)
+    #cmp(rbx1 lt(rcx2 5) )
+    #println(rbx1)
+
+#-- cmp2
+    #stackAllocSlots(2)
+    #heapAllocSlots(4)
+    #set(heap2 799)
+
+
 #-- switch
-    #regDefine(@rbx1 'rbx' 8 Bit64)
+    #regNamedDefine(@rbx1 'rbx' 8 Bit64)
     #switchStart(rbx1)
     #    whenStart(7)
     #        println(roTrue)
@@ -209,7 +257,7 @@ funcMain()
 
 #-- loops
 #-- forRange
-    #regDefine(@reg1 'rbx' 2 Bit64)
+    #regNamedDefine(@reg1 'rbx' 2 Bit64)
     #println(roQuery)
     #forRange('rbx' 0 -2)
     #    println(roTrue)
@@ -240,6 +288,11 @@ funcMain()
     #    println(elem)
     #    registersPop()
     #    forEachUnrolledEnd()
+
+
+#-- Print string
+    #println(""So Tired of Being Alone")
+
 #--
     # general exit
     printFlush()

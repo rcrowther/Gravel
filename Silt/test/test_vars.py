@@ -39,7 +39,7 @@ class TestUpdateLocationROToReg(unittest.TestCase):
     def setUp(self):
         self.ul = Var.UpdateLocationBuilder(arch)
         tpe = Bit64
-        loc = Loc.RODataX64('pi')
+        loc = Loc.GlobalROAddressX64('pi')
         self.var = Var.Var('testVar', loc, tpe) 
         self.b = Builder()        
         self.ul.toRegister(self.b, self.var, 'rbx')  

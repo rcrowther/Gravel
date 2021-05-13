@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Compike and run the test file
-gcc -Wall -no-pie -o test test.c
+gcc -Wall -fpic  -o test test.c
 ./test
 rm test
 

@@ -1,5 +1,6 @@
+= Intro in depth
 == Plain?
-Well, yeh, there's a bit of theorising behind that. For example, once upon a time there was {a() Duffs mechanism}, and it made some code fast. But the micro-ops on modern architectures made that redundant. In other words, assembly language is no different to higher level languages, it's a moving target for performance and readability. You could optimise like mad, Use Duff on old architectures and other solutions on new machines. Or you could accept that plain code is ok, and let people optimise if they want to. At least users will know what they have. That's the Rubble way. 
+Well, yeh, there's theorising behind that. For example, once upon a time there was {a() Duffs Mechanism}, and it made some code fast. But the micro-ops on modern architectures made Duffs Mechanism redundant. In other words, assembly language is no different to higher level languages, a moving target for performance and readability. You could optimise like mad, Use Duff's Mechanism on old architectures and other solutions on new machines. Or you could accept that plain code is ok, and let people optimise if they want to. At least users will know what they have. That's the Rubble way. 
 
 == Why not write in assembly?
 Well, let's say you want to.

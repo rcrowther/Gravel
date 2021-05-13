@@ -53,12 +53,22 @@ typedef struct str_builder str_builder_t;
 
 int main()
 {
-    //int x = 5;
-    int *test = malloc(8);
-    *test = 1931503470;
-    printf("is: %d\n", *test);
-    free(test);
+    //int *test = malloc(8);
+    //*test = 1931503470;
+    //printf("is: %d\n", *test);
 
+    int *test = malloc(8*3);
+    //test[1] = 1869357153;
+    test[2] = 1931503470;
+    //printf("is: %d\n", test[1]);
+    printf("is: %d\n", test[2]);
+    //char *test = (char*) malloc(12*sizeof(char));
+    //strcpy(test, "testingonly");
+    //char *test = strdup("testingonly");
+    //printf("string is: %s\n",test);
+     
+     free(test);
+    //int x = 5;
     //switch(x) {
       //case 1:
         //printf("%d" , 33);
@@ -70,7 +80,7 @@ int main()
         //printf("%d" , 77);
     //}
 
-    //printf("block call?");
+    //printf("block call?\n");
     //testCall();
     //long trip = 1;
        //switch(trip) {

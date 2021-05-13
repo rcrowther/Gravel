@@ -56,6 +56,9 @@ class ArgList(list):
     
 class Path(list):
     pass
+    
+class AggregateVals(list):
+    pass   
 
 
 class ProtoSymbol():
@@ -417,6 +420,12 @@ class Syntaxer(SyntaxerBase):
                             
     #! I'd need to tokenise for double brackets.
     # because we cant peek. Gnnnaaarr!
+    #! whats the difference between a path and an value list?
+    # Scala
+    #
+    # Ada 
+    # (10, December, 1815)
+    # (Day => 29, Month => February, Year => 2020)
     def path(self, argsB):
         commit = self.isToken(LSQUARE)
         if (commit):
@@ -435,7 +444,34 @@ class Syntaxer(SyntaxerBase):
             self.skipTokenOrError('path', RSQUARE)
             argsB.append(path)
         return commit
-        
+
+    def aggregateRec(self, b):
+        # Assume commitment to aggregate rule, but no move from 
+        # opening bracket
+        self._next() 
+        av = AggregateVals()
+        while (True):
+            if(self.isToken(STRING)):
+                av.append(self.textOf())
+                self._next() 
+            elif(self.isToken(INT_NUM)):
+                av.append(int(self.textOf()))
+                self._next() 
+            elif(self.isToken(FLOAT_NUM)):
+                av.append(float(self.textOf()))
+                self._next() 
+            elif(self.isToken(LSQUARE)):
+                self.aggregate(av)
+            else:
+                break
+        self.skipTokenOrError('aggregateVals', RSQUARE)
+        b.append(av)
+            
+    def aggregate(self, argsB):
+        commit = self.isToken(LSQUARE)
+        if (commit):
+            self.aggregateRec(argsB)
+        return commit
         
     def arg(self, argsB):
         r = False
@@ -452,7 +488,8 @@ class Syntaxer(SyntaxerBase):
             # ater booleans and funcs, so identifiers must be a symbol
             or self.symbol(argsB)
             or self.argList(argsB)
-            or self.path(argsB)
+            #or self.path(argsB)
+            or self.aggregate(argsB)
         ):
             r = True
             

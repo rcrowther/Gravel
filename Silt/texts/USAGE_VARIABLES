@@ -1,3 +1,4 @@
+= Usage, variables
 == Vsriables
 In Rubble, when data is created and destroyed, labels are attached, and therse are called ''variables'.
 
@@ -9,7 +10,7 @@ Most high-level languages model this system, to some extent. They give abstract 
 === Rubble variables are not high-level language variables
 Rubble variable are further removed from mathematics. They know where they are located in the computer architecture. They can be deleted, and also altered/mutated. I consisdered calling them ''data labels', not ''variables', but that seemed clumsy. They are an abstraction and label for data, so I called them ''variables'. The idea works enough.
 
-=== Uding Rubble variables
+= Uding Rubble variables
 You can use Rubble variables like other high level languages. They will work,
 
 ?rl

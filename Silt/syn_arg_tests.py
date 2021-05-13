@@ -8,6 +8,7 @@ from Syntaxer import (
     ProtoSymbol,
     ArgList,
     Path, 
+    AggregateVals,
     FuncBoolean
 )
 from tpl_vars import Var
@@ -94,10 +95,43 @@ def argListVal():
     return InstanceTest("ArgList (of strings)", ArgList)
     
 def pathVal():
-    return InstanceTest("Path (array of ineces and labels)", Path)
+    return InstanceTest("Path (array of indeces and labels)", Path)
     
 def booleanFuncVal():
     return InstanceTest("(tree of) Boolean logic", FuncBoolean) 
+
+class AggregateTest():
+    def __init__(self, typeString):
+        self.typeString = typeString
+        
+    def isLiteralVal(self, val):
+        if (isinstance(val, AggregateVals)):
+            r = True
+            for e in val:
+                r = (r and self.isLiteralVal(e))
+            return r
+        else:
+            return (isinstance(val, int) or
+                    isinstance(val, float) or
+                    isinstance(val, str)
+                    )
+                
+    def __call__(self, val):
+        return self.isLiteralVal(val)        
+        # return (isinstance(val, AggregateVals) or
+                # isinstance(val, int) or
+                # isinstance(val, float) or
+                # isinstance(val, str)
+                # )
+
+    def __str__(self):
+        return "AggregateTest({})".format(self.typeString)
+                
+#! should include standalone value
+def aggregateAny():
+    return AggregateTest("Literal, or nested lists of literals") 
+
+
 
 #def listVal():
     #! With this mechanism, we can test internal types
@@ -109,6 +143,9 @@ def anyVar():
 
 def anyType():
     return InstanceTest("Compiler Type", Type)
+
+def numericType():
+    return InstanceTest("Compiler Type", TypeNumeric)
 
 
 

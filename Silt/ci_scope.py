@@ -45,6 +45,8 @@ class SymOwnerIt():
         else:
             raise StopIteration()  
   
+#! rebane
+# Not a scope at all. It's a symbol map (attached to a scope).
 class Scope():
     '''
     Handles data scoping.

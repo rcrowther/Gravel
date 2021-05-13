@@ -23,7 +23,29 @@ from tpl_label_generators import LabelGen
 from tpl_autostore import AutoStoreX64
 
 
+#? Issues arrising
+#- X What is PIC code?
+#- Autostore must renew and stack stack allocation?
+#- X Can ops like mov and sub accept double relaative adresses? If not, 
+# what's the strategy?
+#? lesser issues
+#- X Full bytesize reporting
+#- args reporting position
+#- better code capture  
+#- How to test for small numbers in a non-arch way?
+#- Howto handle larger than arch numbers
+#- What if a var is redefined? does it transfr type? If this a case that
+# concerns me much? (setting data seems more critical)
 
+#! Ok, we have an issue
+# most data is on a pointer. Stack (effectively), heap, and labels 
+# (when used for large types). However,
+#- labels used for small types
+#- registers used for small types
+#- if we introduce small direct memory types (unlikely)
+# all use data directly. If we move pointer data location to registers 
+# then back
+# is it's pointer preserved?
 class BuilderAPI():
     '''
     A base for building code.
@@ -86,31 +108,33 @@ class BuilderAPI():
         'delete': [anyVar()],
         
         ## Arithmetic
-        'dec' : [anyVar()],
-        'inc' : [anyVar()],
+        'dec' : [numericVar()],
+        'inc' : [numericVar()],
         #? should be int or float. Anyway...
         #? Should be more verbose
         #! and it's freer than these parameters define. Memory locations
         # are ok for destination too.
         # but not teo memory locs together
-        'add' : [anyVar(), intOrVarNumeric()],
-        'sub' : [anyVar(), intOrVarNumeric()],
-        'mul' : [regVar(), intOrVarNumeric()],
-        #'divi' : [regVar(), intOrVarNumeric()],
-        #'div' : [regVar(), intOrVarNumeric()],
-        'shl' : [regVar(), intVal()],
-        'shr' : [regVar(), intVal()],
+        'add' : [intOrVarNumeric(), intOrVarNumeric()],
+        'sub' : [intOrVarNumeric(), intOrVarNumeric()],
+        'mul' : [intOrVarNumeric(), intOrVarNumeric()],
+        #'divi' : [intOrVarNumeric(), intOrVarNumeric()],
+        #'div' : [intOrVarNumeric(), intOrVarNumeric()],
+        'shl' : [numericVar(), intVal()],
+        'shr' : [numericVar(), intVal()],
         
         ## Allocs
+        'RODefine': [protoSymbolVal(), intVal(), anyType()],
         'ROStringDefine': [protoSymbolVal(), strVal()],
         'ROStringUTF8Define': [protoSymbolVal(), strVal()],
-        'RODefine': [protoSymbolVal(), intVal(), anyType()],
-        'regDefine': [protoSymbolVal(), strVal(), intOrVarNumeric(), anyType()],
-        'define': [protoSymbolVal(), intOrVarNumeric(), anyType()],
-        'heapAllocBytes': [protoSymbolVal(), intVal()],
+        'regDefine': [protoSymbolVal(), intOrVarNumeric(), numericType()],
+        'regNamedDefine': [protoSymbolVal(), strVal(), intOrVarNumeric(), anyType()],
         'heapAlloc': [protoSymbolVal(), anyType()],
-        'heapAlloc': [protoSymbolVal(), anyType()],     
+        'heapDefine': [protoSymbolVal(), anyType(), aggregateAny()],
+        'heapStringDefine': [protoSymbolVal(), strVal()],     
+        'heapBytesAlloc': [protoSymbolVal(), intVal()],
         'stackAllocSlots':  [intVal()],   
+        'stackDefine': [protoSymbolVal(), intVal(), anyType()],
         #'stackAllocBytes': [protoSymbolVal(), intVal(), intVal()],
         #'stackAlloc': [protoSymbolVal(), intVal(), anyType()],
 
@@ -119,7 +143,7 @@ class BuilderAPI():
         'ifRangeEnd':[],
         'ifStart': [booleanFuncVal()],
         'ifEnd': [],
-        'cmp': [regVar(), booleanFuncVal()],
+        'cmp': [anyVar(), booleanFuncVal()],
         'switchStart': [regVar()],
         'whenStart': [intVal()],
         'whenDefaultStart': [],
@@ -183,13 +207,33 @@ class BuilderAPIX64(BuilderAPI):
     arch = architecture.architectureSolve(architecture.x64)
     printers = PrintX64()
 
+    # handles all var creation.update(location), delete
     # arch, sizeSlots, offset
     autoStore = AutoStoreX64(arch, 3, 1)
 
-    def literalOrVarAccessValue(self, varOrConstant):
+    ## Arg handlers
+    def varValueSnippet(self, var):
         '''
-        Return snippets for literals and variables.
+        Return accesss snippet for a variable value.
         Can't handle offsets or registers, but s useful func.
+        usual args: strVal intVal, regVar 
+        intOrVarNumeric strOrVarStr strOrVarAny
+        stringVar etc.
+        '''
+        # var set of new or existing var
+        # var access for single ops like 
+        # - dec (no constants), 
+        # - shift (only var and const)
+        # - zero
+        # We do use acces value api. For example, it may be a stack
+        # offset location.
+        return AccessValue(var.loc).result()
+
+    def litOrVarValueSnippet(self, varOrConstant):
+        '''
+        Return access snippet for a literal/variable value.
+        Can't handle offsets or registers, but s useful func.
+        Usually args: anyVar intOrVarNumeric
         '''
         if (not(isinstance(varOrConstant, Var))):
             # its a constant
@@ -197,9 +241,31 @@ class BuilderAPIX64(BuilderAPI):
         else:
             return AccessValue(varOrConstant.loc).result()
 
-            
-  
-
+    def oneRegEnsure(self, b, litOrVarDst, litOrVarSrc):
+        '''
+        Ensure one of a pair of variable values is on a register.
+        This ensures relative addressing does not appear as source and 
+        destination on an op.
+        If both of the args are off-register variables, one is moved 
+        onto a register (the other can use relative addressing).
+        For simplicity, both args can be literals. If either are, then
+        the var, on or off register, will not be moved.
+        '''
+        # if both are vars and both are not on registers...
+        if (
+            isinstance(litOrVarDst, Var)
+            and isinstance(litOrVarSrc, Var)
+            and (not(
+                isinstance(litOrVarDst.loc, Loc.LocationRegister)
+                and isinstance(litOrVarSrc.loc, Loc.LocationRegister)
+            ))):
+                # One needs to go on a register. check prioritiies,
+                # if similar, prefer the destination on the register
+                if (litOrVarSrc.priority > litOrVarDst.priority):
+                    self.autoStore.toRegAny(b, litOrVarSrc)
+                else:
+                    self.autoStore.toRegAny(b, litOrVarDst)
+                            
 
     ## basics
     def comment(self, b, args):
@@ -257,7 +323,6 @@ class BuilderAPIX64(BuilderAPI):
         #print(protoSymbolLabel)
         b._code.append('{}:'.format(protoSymbolLabel))
         b._code.append('; beginFunc')
-        #self.compiler.envAddClosure()
         self.compiler.scopeStackPush()
         return MessageOptionNone
 
@@ -272,7 +337,6 @@ class BuilderAPIX64(BuilderAPI):
         End a function with return.
         '''
         self.autoStore.deleteAll([])
-        #self.compiler.envDelClosure()
         self.compiler.scopeStackPop()
         b._code.append('ret')
         b._code.append('; endFunc')
@@ -280,13 +344,11 @@ class BuilderAPIX64(BuilderAPI):
 
     def funcMain(self, b, args):
         self.func(b, [ProtoSymbol('@main')])
-        #self.compiler.envAddClosure()
         self.compiler.scopeStackPush()
         return MessageOptionNone
         
     def funcMainEnd(self, b, args):
         #self.compiler.scopePrint()
-        #self.compiler.envDelClosure()
         self.compiler.scopeStackPop()
         b._code.append('; endFunc')
         return MessageOptionNone
@@ -326,11 +388,26 @@ class BuilderAPIX64(BuilderAPI):
 
 
 
-    ## Allocs
+    ## Allocs and defines
+    #? several possibilities here
+    # def/alloc
+    #- numbers
+    #- containers
+    #? Maybe containers/numbers together
+    #- strings
+    #- maybe UTF8
+    # ...to
+    #- RO
+    #- register
+    #- stack
+    # rather a lot....
+
+    ### RO Global
     #! sting/numeric could be joined?
     #! could be any numeric vla, including variables
     #! type cannot be container, or can it?
-    #? and its called RODataDefine
+    #! tesst size
+    #! no containers, how to define contents?
     def RODefine(self, b, args):
         '''
         Define a number to a label
@@ -403,9 +480,43 @@ class BuilderAPIX64(BuilderAPI):
         self.compiler.symbolSetGlobal(var) 
         return MessageOptionNone
 
+    ### register
+    # For sure a number
+
+            
+    #! size test
+    #! shouldn't this transfer the type, if destyination is a var
+    #! a general define is possible for heap, bit registers
     def regDefine(self, b, args):
         '''
-        Define a value in a register
+        Define a variable with a numeric value.
+        The value will usually go to a register but, if registers are 
+        full, it will go to stack.
+            var number type
+            [protoSymbolVal(), intOrVarNumeric(), numericType()]
+        '''
+        protoSymbolLabel = args[0].toString()
+        value = args[1]
+        tpe = args[2]
+        var = self.autoStore.varRegAnyCreate(b, 
+            protoSymbolLabel, 
+            tpe, 
+            1
+        )
+        b._code.append("mov {}, {}".format(
+            #TypesToASMName[tpe],
+            self.varValueSnippet(var),
+            self.litOrVarValueSnippet(value),
+        ))
+        self.compiler.symSet(var)
+        return MessageOptionNone
+
+    #! test size
+    def regNamedDefine(self, b, args):
+        '''
+        Define a value in a named register
+        A speciality for debugging and tests, not intended for common 
+        use.
             protoSymbol, registerName, intOrVarNumeric, type
             [protoSymbolVal(), strVal(), intOrVarNumeric(), anyType()]
          '''
@@ -424,66 +535,21 @@ class BuilderAPIX64(BuilderAPI):
         )
         b._code.append("mov {}, {}".format(
             #TypesToASMName[tpe],
-            AccessValue(var.loc).result(),
-            self.literalOrVarAccessValue(varOrConst),
+            self.varValueSnippet(var),
+            self.litOrVarValueSnippet(varOrConst),
         ))
-        self.compiler.symSet(var)
-        return MessageOptionNone
-            
-    # Unnamed register var creation?
-    def define(self, b, args):
-        '''
-        Define a variable with a value.
-        The value will usually go to a register but, if registers are 
-        full, it will go to stack.
-            var
-            [anyVar()],
-        '''
-        protoSymbolLabel = args[0].toString()
-        value = args[1]
-        tpe = args[2]
-        var = self.autoStore.varRegAnyCreate(b, 
-            protoSymbolLabel, 
-            tpe, 
-            1
-        )
-        b._code.append("mov {}, {}".format(
-            #TypesToASMName[tpe],
-            AccessValue(var.loc).result(),
-            self.literalOrVarAccessValue(value),
-        ))
-        self.compiler.symSet(var)
-        return MessageOptionNone
-                
-    def heapAllocBytes(self, b, args):
-        '''
-        Allocate bytes to malloc
-        Size
-            count of raw bytes
-            [protoSymbolVal(), intVal()]
-        '''
-        #? Should that be number of slots, not raw bytes?
-        self.extern(b, ['malloc'])
-        protoSymbolLabel = args[0].toString()
-        size = args[1]
-        var = self.autoStore.varRegAddrCreate(b, 
-            protoSymbolLabel, 
-            self.arch['returnRegister'],
-            Type.Array(size, Type.Bit8),
-            1
-        )
-        b._code.append("mov {}, {}".format(self.arch['cParameterRegisters'][0], size))
-        b._code.append("call malloc")
         self.compiler.symSet(var)
         return MessageOptionNone
         
+                        
+    ### heap
     def heapAlloc(self, b, args):
         '''
-        Alloc space for a type on the heap
+        Alloc space for a type on the heap.
+            varName type
             [protoSymbolVal(), anyType()]
         '''
         self.extern(b, ['malloc'])
-        #! Need to return bytesizeFull(), I think
         protoSymbolLabel = args[0].toString()
         tpe = args[1]
         var = self.autoStore.varRegAddrCreate(b, 
@@ -497,33 +563,224 @@ class BuilderAPIX64(BuilderAPI):
             tpe.byteSize
         ))
         b._code.append("call malloc")
-        # var = Var(
-            # protoSymbolLabel,
-            # Loc.RegisteredAddressX64(self.arch['returnRegister']), 
-            # tpe
-        # )
-        #print('huh?')
-        #print(str(tpe))
         self.compiler.symSet(var)
         return MessageOptionNone
 
-                        
-    # def stringHeapDefine(self, b, args):
-        # '''
-        # Allocate and define a malloced string
-        # UTF-8
-        # '''
+    #! worst recursion ever
+    #! fixes
+    #- need float type
+    #- need to limit ASMWord
+    def _literalAggregateTestRec(self, tpe, literalAggregate):
+        # print(str(literalAggregate))
+        # print(str(tpe))
+        
+        #! needs float/int, when we have those types
+        if (isinstance(tpe, Type.TypeNumeric)):
+            if (not(isinstance(literalAggregate, int))):
+                return MessageOption.error(f'Type expects int. Found:{literalAggregate}')
+        elif (isinstance(tpe, Type.TypeString)):
+            if (not(isinstance(literalAggregate, str))):
+                return MessageOption.error(f'Type expects string. Found:{literalAggregate}')
+        elif (isinstance(tpe, Type.TypeContainerOffset)):
+            if (not(isinstance(literalAggregate, AggregateVals))):
+                return MessageOption.error(f'Type expects array of vals. Found:{literalAggregate}')
+            elif (tpe.size != len(literalAggregate)):
+                return MessageOption.error(f'LiteralAggregate size not match Type size. typeSize:{tpe.size}')
+            i = 0
+            mo = MessageOptionNone
+            for offset, elemTpe in tpe.offsetIt():
+                mo = self._literalAggregateTestRec(elemTpe, literalAggregate[i])
+                i += 1
+            return mo
+        return MessageOption.warning(f'Unrecognised Type. tpe:{tpe}')
+
+    def _literalAggregateTest(self, tpe, literalAggregate):
+        return self._literalAggregateTestRec(tpe, literalAggregate)
+
+    # import BuilderAPI
+    # import tpl_types as Type
+    # from tpl_codeBuilder import Builder
+    # api = BuilderAPI.BuilderAPIX64()
+    # b = Builder()
+    # dataRoot = 'rax'
+    # tpe = Type.Bit64
+    # literalAggregate = 33
+    # tpe = Type.Array([Type.Bit64, 3])
+    # literalAggregate = [33, 77, 99]
+    # api._literalAggregateSet(b, dataRoot, tpe, literalAggregate)
+    # b._code
+    def _literalAggregateSetRec(self, b, dataRoot, offset, tpe, literalAggregate):
+        if (isinstance(tpe, Type.TypeNumeric) or isinstance(tpe, Type.TypeString)):
+            # aggregate is singular literal
+            b._code.append("mov {} [{}+{}], {}".format(
+                #! needs refinement, this
+                'dword',
+                dataRoot, 
+                offset,
+                literalAggregate
+            ))
+        if (isinstance(tpe, Type.TypeContainerOffset)):
+            # aggregate is [a, b, c....]
+            i = 0
+            for elemOff, elemTpe in tpe.offsetIt():
+                self._literalAggregateSetRec(
+                    b,
+                    dataRoot,
+                    offset + elemOff,
+                    elemTpe, 
+                    literalAggregate[i]
+                )
+                i += 1       
+
+    def _literalAggregateSet(self, b, dataRoot, tpe, literalAggregate):
+        self._literalAggregateSetRec(b, dataRoot, 0, tpe, literalAggregate)
+
+    # scala
+    # a2: Array[Int] = Array(3, 6, 9)
+    # Ada
+    # https://learn.adacore.com/courses/intro-to-ada/chapters/more_about_types.html#aggregates
+    # Lisp
+    #(setq avector [1 two '(three) "four" [five]])
+    # I guess we need something like
+    # [[a, b, c,] [d, e, f]]
+    def heapDefine(self, b, args):
+        '''
+        Alloc space then define a type on the heap.
+            varName type data
+            [protoSymbolVal(), anyType(), aggregateAny()]
+        '''
+        self.extern(b, ['malloc'])
+        #! Need to return bytesizeFull(), I think
+        protoSymbolLabel = args[0].toString()
+        tpe = args[1]
+        data = args[2]
+        literalAggregate = args[2] 
+        
+        # Make var
+        var = self.autoStore.varRegAddrCreate(b, 
+            protoSymbolLabel, 
+            self.arch['returnRegister'],
+            tpe,
+            1
+        )        
+        
+        # malloc space
+        b._code.append("mov {}, {}".format(
+            self.arch['cParameterRegisters'][0], 
+            tpe.byteSize
+        ))
+        b._code.append("call malloc")
+        
+        # Define contents
+        # i = 0
+        # for d, i in data:
+            # b._code.append("mov [{}+{}], {}".format(
+                # self.arch['cParameterRegisters'][0], 
+                # i,
+                # d
+            # ))
+            # i += 4
+        mo = self._literalAggregateTest(
+            tpe, 
+            literalAggregate
+        )
+
+        if (mo.isOk()):
+            self. _literalAggregateSet(
+                b, 
+                self.arch['returnRegister'], 
+                tpe, 
+                literalAggregate
+            )             
+        self.compiler.symSet(var)
+        return mo
+        
+    #! U can do lots better than this R.C.
+    def _bytesToNumber(self, b, byteArray, bytesInNumber, func):
+        size = len(byteArray)
+        limit = bytesInNumber
+        i = 0
+        j = 0
+        number = 0
+        step = 0
+        buff = bytearray(bytesInNumber)
+        while (i < size):
+            if (j >= limit):
+                func(b, i - bytesInNumber, int.from_bytes(buff, 'little'))
+                j = 0
+                number = 0
+            buff[j] = byteArray[i]
+            j += 1
+            i += 1
+            
+        # remainder
+        if (j):
+            func(b, (i - j), int.from_bytes(buff[0:j], 'little'))
+
+    def _returnRegOffsetMove(self, b, offset, value):
+        b._code.append("mov {} [{}+{}], {}".format(
+            'dword',
+            self.arch['returnRegister'],
+            offset, 
+            value
+        ))              
+        
+    #)
+    def heapStringDefine(self, b, args):
+        '''
+        Define a byte-width string to heap.
+        Uses malloc.
+            varName string
+            [protoSymbolVal(), strVal()]
+        '''
         # byteSize = self.byteSize() * size
         # b._code.append("mov {}, {}".format(arch['cParameterRegister'][0], byteSize))
         # b._code.append("call malloc")
         # return LocationRootRegisterX64('rax') 
+        self.extern(b, ['malloc'])
+        protoSymbolLabel = args[0].toString()
+        string = args[1]
+        string += '\0'
+        mo = MessageOptionNone
+        #if not string.isascii():
+        if False:
+            mo = MessageOption.error(f'String is not ascii. string:{string}')
+        else:
+            # Plus 1 for the null terminator
+            asciiStr = string.encode("ascii")
+            byteSize = len(asciiStr)
+            var = self.autoStore.varRegAddrCreate(
+                b,
+                protoSymbolLabel, 
+                self.arch['returnRegister'],
+                Type.StrASCII,
+                1
+            )
+            b._code.append("mov {}, {}".format(
+                self.arch['cParameterRegisters'][0], 
+                byteSize
+            ))
+            b._code.append("call malloc")
 
+            #? why only a dword?
+            #???
+            self._bytesToNumber(
+                b,
+                asciiStr, 
+                #? Humm. The 64Bit bussize is often 32Bit  
+                #self.arch['bytesize'],
+                4,
+                self._returnRegOffsetMove
+            )
+            self.compiler.symSet(var)
+        return mo
+        
     ## Unicode?
     # No I think what this might be about is not, how to creat a UTF 
     # string But more, what will our string handling be like?
     # Note the import utypes
     # https://unicode-org.github.io/icu-docs/apidoc/released/icu4c/utypes_8h.html
-    # def heapDefineStringUtf8(self, b, args):
+    # def heapStringUtf8Define(self, b, args):
         # '''
         # Alloc space for a type on the heap
             # [protoSymbolVal(), strVal()]
@@ -535,7 +792,7 @@ class BuilderAPIX64(BuilderAPI):
 
         # self.raw(b, ['; UTF here'])
         # # temp, until figure stringlen
-        # var = self.heapAllocBytes( b, [args[0], 20])
+        # var = self.regNamedDefine( b, [args[0], 20])
         
         # # can I have a 'immediate' string in unicode?
         # # can it go to malloced, or do we copy?
@@ -553,9 +810,39 @@ class BuilderAPIX64(BuilderAPI):
        
         # self.raw(b, ['; UTF unhere'])
         # return MessageOptionNone
-            
+
+    def heapBytesAlloc(self, b, args):
+        '''
+        Allocate bytes on heap.
+        Uses Malloc.
+            var size
+            [protoSymbolVal(), intVal()]
+        '''
+        #? Should that be number of slots, not raw bytes?
+        self.extern(b, ['malloc'])
+        protoSymbolLabel = args[0].toString()
+        size = args[1]
+        var = self.autoStore.varRegAddrCreate(b, 
+            protoSymbolLabel, 
+            self.arch['returnRegister'],
+            Type.Array(size, Type.Bit8),
+            1
+        )
+        b._code.append("mov {}, {}".format(self.arch['cParameterRegisters'][0], size))
+        b._code.append("call malloc")
+        self.compiler.symSet(var)
+        return MessageOptionNone
+                    
     ## Stack
     # Do we need a MaybeReg define? Or is that, varDefine?
+    #! Deep issue: 
+    # The coder sets a size by stackAllocSlots.
+    # But that's irrelevant to autostore. Autostore hard-sets
+    # its stack allocation.
+    # To be effective
+    # Autostores must be created/removed with scopes. 
+    # Or at frame changes (which are not always scopes?)
+    # Or the stack part of autostore should be replacable.
     def stackAllocSlots(self, b, args):
         '''
         Allocate stack storage for autostore.
@@ -588,7 +875,39 @@ class BuilderAPIX64(BuilderAPI):
                 slotCount
             ))
         return msg
-        
+      
+    #! somewhat limited. Since the dst is a relative address, con not 
+    # use a relative address i.e. var as source
+    # Or could we detect for a two-step process, so we can use vars too?
+    # if var, move to reg
+    # mov slot, valOrReg
+    #? Currenttly looks very generalised, so would work for reg too?
+    def stackDefine(self, b, args):
+        '''
+        Alllocate a value to the stack.
+        Auto-allocated, the return ver knows the location.
+        Assumes space has been allocated on the stack.
+            [protoSymbolVal(), intVal(), anyType()]
+        '''
+        protoSymbolLabel = args[0].toString()
+        val = args[1]
+        tpe = args[2]
+
+        var = self.autoStore.varStackCreate(
+            protoSymbolLabel, 
+            tpe,
+            1
+         )    
+
+        b._code.append("mov {} {}, {}".format(
+            TypesToASMName[var.tpe], 
+            self.varValueSnippet(var),
+            val
+        )) 
+        self.compiler.symSet(var)
+        return MessageOptionNone
+
+    # def varStackCreate(self, name, tpe, priority):
     #! account for data types
     # and align
     # Unnecessary?
@@ -661,7 +980,7 @@ class BuilderAPIX64(BuilderAPI):
         # self.compiler.symSet(var)
         # return MessageOptionNone
 
-                  
+
     ## Var actions
     def set(self, b, args):
         '''
@@ -674,19 +993,22 @@ class BuilderAPIX64(BuilderAPI):
         mo = MessageOptionNone
         
         # By definition, RO is not possible
-        if (isinstance(var.loc, Loc.RODataX64)):
+        if (var.loc.isReadOnly):
             mo = MessageOption.error('Cant set a RO variable!')
 
         # Needs a path for deeper peeks
         if (not(isinstance(var.tpe, Type.TypeSingular))):
             mo = MessageOption.error('Need path to set on complex type? var:{}'.format(var))
+
+        # if two vars, get one onto register
+        self.oneRegEnsure(b, var, valOrVarInt)
             
         # Only if ok (could throw errors)
         if (mo.isOk()):
             b._code.append("mov {} {}, {}".format(
                 TypesToASMName[var.tpe], 
-                AccessValue(var.loc).result(),
-                self.literalOrVarAccessValue(valOrVarInt)
+                self.varValueSnippet(var),
+                self.litOrVarValueSnippet(valOrVarInt)
             ))
         return mo
 
@@ -777,13 +1099,13 @@ class BuilderAPIX64(BuilderAPI):
     #? Will need widths?
     def dec(self, b, args):
         '''
-        [anyVar()]
+        [numericVar()]
         '''
         # Yes works with relative addresses
         var = args[0]
         b._code.append("dec {} {}".format(
             TypesToASMName[var.tpe],
-            AccessValue(var.loc).result()
+            self.varValueSnippet(var)
         ))      
         return MessageOptionNone
 
@@ -794,7 +1116,7 @@ class BuilderAPIX64(BuilderAPI):
         var = args[0]
         b._code.append("inc {} {}".format(
             TypesToASMName[var.tpe],
-            AccessValue(var.loc).result()
+            self.varValueSnippet(var)
         ))       
         return MessageOptionNone
         
@@ -802,18 +1124,20 @@ class BuilderAPIX64(BuilderAPI):
         # are ok for destination too.
         # but not two memory locs together
     #? should work signed
-    #!? can currently add varAddr to varrAddr = error
+    #! can be anyyVar
     def add(self, b, args):
         '''
         [regVar(), intOrVarNumeric()]
         '''
-        varD = args[0]
-        valOrVarInt = args[1]
-        self.autoStore.toRegAny(b, varD)
+        varDst = args[0]
+        litOrVarSrc = args[1]
+
+        # if two vars, get one onto register
+        self.oneRegEnsure(b, varDst, litOrVarSrc)
         b._code.append("add {} {}, {}".format(
-            TypesToASMName[varD.tpe],
-            AccessValue(varD.loc).result(),
-            self.literalOrVarAccessValue(valOrVarInt)
+            TypesToASMName[varDst.tpe],
+            self.varValueSnippet(varDst),
+            self.litOrVarValueSnippet(litOrVarSrc)
         ))       
         return MessageOptionNone
         
@@ -821,14 +1145,16 @@ class BuilderAPIX64(BuilderAPI):
         '''
         [regVar(), intOrVarNumeric()]
         '''
-        varD = args[0]
-        valOrVarInt = args[1]
-        self.autoStore.toRegAny(b, varD)
+        varDst = args[0]
+        litOrVarSrc = args[1]
+
+        # if two vars, get one onto register
+        self.oneRegEnsure(b, varDst, litOrVarSrc)
         b._code.append("sub {} {}, {}".format(
-            TypesToASMName[varD.tpe],
-            AccessValue(varD.loc).result(),
-            self.literalOrVarAccessValue(valOrVarInt)
-        ))       
+            TypesToASMName[varDst.tpe],
+            self.varValueSnippet(varDst),
+            self.litOrVarValueSnippet(litOrVarSrc)
+        ))    
         return MessageOptionNone
         
     def mul(self, b, args):
@@ -837,13 +1163,16 @@ class BuilderAPIX64(BuilderAPI):
         '''
         # imul
         # https://www.felixcloutier.com/x86/imul
-        varD = args[0]
-        valOrVarInt = args[1]
+        varDst = args[0]
+        litOrVarSrc = args[1]
+
+        # if two vars, get one onto register
+        self.oneRegEnsure(b, varDst, litOrVarSrc)
         b._code.append("imul {} {}, {}".format(
-            TypesToASMName[varD.tpe],
-            AccessValue(varD.loc).result(),
-            self.literalOrVarAccessValue(valOrVarInt)
-        ))       
+            TypesToASMName[varDst.tpe],
+            self.varValueSnippet(varDst),
+            self.litOrVarValueSnippet(litOrVarSrc)
+        ))        
         return MessageOptionNone        
 
     
@@ -866,43 +1195,56 @@ class BuilderAPIX64(BuilderAPI):
         [regVar(), intOrVarNumeric()]
         '''
 
+    #! can accept anyVar, intLitOrVar arg
     def shr(self, b, args):
         '''
         [regVar(), intVal()]
         '''
-        varD = args[0]
-        varS = args[1]
+        varDst = args[0]
+        litOrVarSrc = args[1]
         
         # Keep numerics down
         if (
-            not(isinstance(varS, Var)) 
-            and (varS > self.arch['bytesize'] - 1)
+            not(isinstance(litOrVarSrc, Var)) 
+            and (litOrVarSrc > self.arch['bytesize'] - 1)
         ):
-            self.compiler.warning('Given shiftsize is too large for arch. Will compile, but not do as intended. size:{}'.format(varS))
+            self.compiler.warning('Shiftsize too large for arch. Will compile, but not do as intended. size:{}'.format(
+                litOrVarSrc
+            ))
+            
+        # if two vars, get one onto register
+        self.oneRegEnsure(b, varDst, litOrVarSrc)
         b._code.append("shr {} {}, {}".format(
-            TypesToASMName[varD.tpe],
-            AccessValue(varD.loc).result(),
-            self.literalOrVarAccessValue(varS)
+            TypesToASMName[varDst.tpe],
+            self.varValueSnippet(varDst),
+            self.litOrVarValueSnippet(litOrVarSrc)
         ))       
         return MessageOptionNone
 
+    #! can accept anyVar, intLitOrVar arg
     def shl(self, b, args):
         '''
         [regVar(), intVal()]
         '''
-        varD = args[0]
-        varS = args[1]
+        varDst = args[0]
+        litOrVarSrc = args[1]
         
-        # Keep numerics down
+         # Keep numerics down
         if (
-            not(isinstance(varS, Var)) 
-            and (varS > self.arch['bytesize'] - 1)
+            not(isinstance(litOrVarSrc, Var)) 
+            and (litOrVarSrc > self.arch['bytesize'] - 1)
         ):
-            self.compiler.warning('Given shiftsize is too large for arch. Will compile, but not do as intended. size:{}'.format(varS))
-        b._code.append("shl {}, {}".format(
-            AccessValue(varD.loc).result(),
-            self.literalOrVarAccessValue(varS)
-        ))       
+            self.compiler.warning('Shiftsize too large for arch. Will compile, but not do as intended. size:{}'.format(
+                litOrVarSrc
+            ))
+     
+        # if two vars, get one onto register
+        self.oneRegEnsure(b, varDst, litOrVarSrc)
+        b._code.append("shl {} {}, {}".format(
+            TypesToASMName[varDst.tpe],
+            self.varValueSnippet(varDst),
+            self.litOrVarValueSnippet(litOrVarSrc)
+        ))  
         return MessageOptionNone
 
 
@@ -912,9 +1254,9 @@ class BuilderAPIX64(BuilderAPI):
 
     def ifRangeStart(self, b, args):
         '''
-        Conditionally ecaluate between two numbers.
+        Conditionally test between two numbers.
         Cantt test the variables so allows messing about. Underneath,
-        the test is lessThan | GreaterThanEqeals.
+        the test is lessThan | GreaterThanEquals.
         var
             to test
         from
@@ -924,15 +1266,15 @@ class BuilderAPIX64(BuilderAPI):
             [intOrVarNumeric(), intOrVarNumeric(), intOrVarNumeric()],
         '''
         #NB Range can't be tested, as it may be vars.
-        # but both range numbers can be register, as the tests are 
-        # seeperate.
+        # but both range numbers can be off-register, as the tests are 
+        # seperate.
         var = args[0]
         froom = args[1]
         to = args[2]
         falseLabel = self.labelGenerate('ifRangeFalse')
-        accessSnippet = self.literalOrVarAccessValue(var)
-        fromSnippet = self.literalOrVarAccessValue(froom)
-        toSnippet = self.literalOrVarAccessValue(to)
+        accessSnippet = self.litOrVarValueSnippet(var)
+        fromSnippet = self.litOrVarValueSnippet(froom)
+        toSnippet = self.litOrVarValueSnippet(to)
         b._code.append("cmp {}, {}".format(accessSnippet, fromSnippet))
         b._code.append("jl " + falseLabel)
         b._code.append("cmp {}, {}".format(accessSnippet, toSnippet))
@@ -1034,17 +1376,11 @@ class BuilderAPIX64(BuilderAPI):
         else:
             # Must be a Comparison
             # Resolve whatever has been sent
-            #! MUST be a more appropriate place to place this little stunt
-            # The stunt is, either pass the value, but if its a Var, run through
-            # the builder---without any offsets or register relative addressing
-            arg0 = logicTree.args[0]
-            arg1 = logicTree.args[1]
-            if isinstance(arg0, Var):
-                arg0 = AccessValue(arg0.loc).result()
-            if isinstance(arg1, Var):
-                arg1 = AccessValue(logicTree.args[1].loc).result()
+            #! can comp operate with relative addresses on both sides?
+            self.oneRegEnsure(b, logicTree.args[0], logicTree.args[1])
+            arg0 = self.litOrVarValueSnippet(logicTree.args[0])
+            arg1 = self.litOrVarValueSnippet(logicTree.args[1])
             b._code.append("cmp {}, {}".format(arg0, arg1))            
-            #b._code.append("cmp {}, {}".format(logicTree.args[0], logicTree.args[1]))
             jumpOp = self.jumpOps[logicTree.name]
             label = trueLabel
             
@@ -1081,9 +1417,10 @@ class BuilderAPIX64(BuilderAPI):
         if...then flow control from boolean logic.
             [booleanFuncVal()]
         '''
+        #NB for now, has a scope too. Controversial
         boolLogic = args[0]
         
-        # Now need some booleana logic to get us there...
+        # Now need some boolean logic to get us there...
         falseLabel = self.labelGenerate('ifFalse')
         trueLabel = self.labelGenerate('ifTrue')
         self.logicBuilder(b, boolLogic, trueLabel, falseLabel)
@@ -1092,24 +1429,56 @@ class BuilderAPIX64(BuilderAPI):
         b._code.append(trueLabel + ':')        
         b._code.append('; beginBlock')        
         self.compiler.closureDataPush(falseLabel)
+        self.compiler.scopeStackPush()
         return MessageOptionNone
                 
     def ifEnd(self, b, args):
         # Put the false label at block end
         falseLabel = self.compiler.closureDataPop()
-        #self.compiler.envDelClosure()
-        #self.compiler.scopeStackPop()
         b._code.append('; endBlock')
         b._code.append(falseLabel + ':')        
+        self.compiler.scopeStackPop()
         return MessageOptionNone
 
-    # Like an it
+    def _toReG(self):
+        '''
+        Force a var to reg
+        This is sometimes useful to turn anyReg into a variable that
+        can be used effectively in 
+        '''
+        pass
+
+    def _varZero(self, b, var):
+        '''
+        Set a var to zero
+        This ibuilds various kinds of code, depends on the var.
+        But avoids moving the var location.
+        Can throw an error
+        '''
+        mo = MessageOptionNone
+        #if (var.isReadOnly):
+        #    mo = MessageOption.error(f'Read-only. var:{var}')
+            
+        if (isinstance(var.loc, Loc.LocationRegister)):
+            b._code.append('xor {}, {}'.format(
+                var.loc.lid,
+                var.loc.lid
+            ))        
+        else:
+            b._code.append('mov {}, 0'.format(
+                self.varValueSnippet(var)
+            ))
+        return mo
+            
+    # Like an if
     # This has the problem we need a Boolean type, probably.
     # And to go with it, a compare flag location.
+    # Presumably should make the var to bool?
+    # how do we cast and allocate to bool?
     # Howsoever, it is working
     def cmp(self, b, args):
         '''
-        Move a comparison reault to a var
+        Move a comparison result to a var
             [anyVar(), booleanFuncVal()]
         '''
         #! insist targetVar is a varReg
@@ -1118,11 +1487,12 @@ class BuilderAPIX64(BuilderAPI):
         booleanFunc = args[1]
 
         # zero the targetVar
-        b._code.append('xor {}, {}'.format(
-            targetVar.loc.lid,
-            targetVar.loc.lid
-        ))
-
+        # b._code.append('xor {}, {}'.format(
+            # targetVar.loc.lid,
+            # targetVar.loc.lid
+        # ))
+        mo = self._varZero(b, targetVar)
+        
         # Now need some boolean logic to get us a result...
         falseLabel = self.labelGenerate('ifFalse')
         trueLabel = self.labelGenerate('ifTrue')
@@ -1133,8 +1503,10 @@ class BuilderAPIX64(BuilderAPI):
         b._code.append('; beginBlock') 
 
         # if true, set targetVar to one
-        b._code.append('mov {}, 1'.format(targetVar.loc.lid))
-        
+        b._code.append('mov {}, 1'.format(
+            self.varValueSnippet(targetVar)
+        ))
+                    
         # Then end it
         b._code.append('; endBlock')
         b._code.append(falseLabel + ':')  
@@ -1180,7 +1552,6 @@ class BuilderAPIX64(BuilderAPI):
         self.compiler.instructionsStore()
 
         # Create an environment
-        #self.compiler.envAddClosure()
         self.compiler.scopeStackPush()
         mo = MessageOptionNone
         return mo
@@ -1473,7 +1844,8 @@ class BuilderAPIX64(BuilderAPI):
 
             b._code.append("mov {}, {}".format(
                 # shortcut. It's always a register, got to be the lid.
-                varGen.loc.lid, 
+                #varGen.loc.lid, 
+                self.varValueSnippet(varGen),
                 srcB.result()
             ))
             
@@ -1575,7 +1947,8 @@ class BuilderAPIX64(BuilderAPI):
         srcB.addRegister(countReg)
         #print()
         b._code.append("mov {}, {}".format(
-            varGen.loc.lid, 
+            #varGen.loc.lid, 
+            self.varValueSnippet(varGen),
             srcB.result()
         ))
         

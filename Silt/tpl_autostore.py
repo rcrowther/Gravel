@@ -226,9 +226,13 @@ class AutoStoreStack():
 class AutoStoreX64():
     '''
     Operate a AutoStoreReg and a AutoStoreStack together.
+    If an autostore is being used, it supplies all variable creation,
+    updates and deletion with regards to location.
+    It does not track the variables, that needs a Scope.
+    It does not acess the vaiable, which needs AccessBuilders. 
     Is a builder. However, it only builds code when it needs to move 
     variable data to other store types. It does not allocate, 
-    deallocate, regisster on deregister with environments.
+    deallocate, register on deregister with environments.
     '''
     # This works in itself. But is fouling up because stack is
     # held by environment, but registers and labels are universal
@@ -247,13 +251,12 @@ class AutoStoreX64():
     #! my problem... do I want to put var creators in here?
     # They belong here, but that would make this non-optional
     # used, though need them all,
-    # RODataX64
-    # RODataX64
+    # GlobalROAddressX64
     # RegisterX64
     # RegisteredAddressX64
     # StackX64
     #
-    #? This is complex, and I don't like. Rasons
+    #? This is complex, and I don't like. Reasons
     # - Location data is in two places, the location, and the lists
     # held by the store classes. I don't see how this can be clarified.
     # - the store indexes are an index for operations otherwise difficult to
@@ -388,8 +391,8 @@ class AutoStoreX64():
         Move an existing var to a register.
         Silently protects against moving an existing varReg. 
         Other variables go to the lowest priority register.
-        Guarentees register placement. that may cause variable 
-        displacemet.
+        Guarentees register placement. That may cause variable 
+        displacement.
         '''
         if (not(isinstance(var.loc, Loc.LocationRegister))):
             regName = self.autoReg.regBest()
@@ -419,6 +422,7 @@ class AutoStoreX64():
         self._toStack_common(b, var)
 
     #! yes, but labels should go back to being labels!!!
+    #x use offReg()
     def toStack(self, b, var):
         '''
         Move an existing var to stack.
@@ -501,7 +505,7 @@ class AutoStoreX64():
         ''' 
         var = Var(
             name,
-            Loc.RODataX64(name), 
+            Loc.GlobalROAddressX64(name), 
             tpe
         )
         var.priority = priority
