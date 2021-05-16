@@ -74,6 +74,10 @@ Float = Encoding('float')
 ASCII = Encoding('ascii')
 UTF8 = Encoding('UTF8')
 
+#! not enabled
+# In fact, not yet considered
+#? Boolean is is kind of encoding, yes
+Boolean = Encoding('Boolean')
 
 #?x
 #from collections import namedtuple
@@ -90,11 +94,36 @@ class Type():
     # about surrounding possibilities, such as relative address 
     # construction, than the types alone can be.
     '''
+    Type recordss for use in Rubble.
+    The number of tyypes is small. All types 
+    represent assembly code practicalities. Currently, nll types have
+    fixed bounds.
+    Singular types are represented by instances. Container types are
+    represeented by replicable records. 
+    The tree of classification has many branches,
+    Type
+    - TypeSingular
+     - TypeNumeric
+      - TypeInt
+       - Bit8
+       - Bit32
+       - Bit64
+       - Bit128
+      - TypeFloat
+        - Bit32F
+        - Bit64F
+    - TypeContainer
+     - Pointer
+     - TypeContainerOffset
+      - Clutch
+      - Array
+    '''
+    '''
     Bytesize of root of the type
     Never larger than bytesize of the bus, but may be smaller. 
     If the type is not on a pointer, this is set to the bytecount of 
     the type.
-    If the top type iss a pointer, this is set to buswidth.
+    If the top type is a pointer, this is set to buswidth.
     If the type is a container, it has an implicit pointer, and is set
     to buswidth.
     The value is used to provide hints to the assembler.  
@@ -175,8 +204,11 @@ class TypeNumeric(TypeSingular):
     def byteSize(self):
         return self.byteSizeRoot
 
+class TypeInt(TypeNumeric):
+    pass
+    
 # char
-class _Bit8(TypeNumeric):
+class _Bit8(TypeInt):
     encoding = Signed
     byteSizeRoot = 1
     #def print(self):
@@ -190,7 +222,7 @@ Bit8 = _Bit8()
 Bool = _Bit8()
 
 # short int
-class _Bit16(TypeNumeric):
+class _Bit16(TypeInt):
     encoding = Signed
     byteSizeRoot = 2
     #def print(self):
@@ -200,7 +232,7 @@ class _Bit16(TypeNumeric):
 Bit16 = _Bit16()
 
 # int
-class _Bit32(TypeNumeric):
+class _Bit32(TypeInt):
     encoding = Signed
     byteSizeRoot = 4
     #def print(self):
@@ -210,7 +242,7 @@ class _Bit32(TypeNumeric):
 Bit32 = _Bit32()
 
 # long int
-class _Bit64(TypeNumeric):
+class _Bit64(TypeInt):
     encoding = Signed
     byteSizeRoot = 8
     #def print(self):
@@ -220,7 +252,7 @@ class _Bit64(TypeNumeric):
 Bit64 = _Bit64()    
 
 # long long int
-class _Bit128(TypeNumeric):
+class _Bit128(TypeInt):
     encoding = Signed
     byteSizeRoot = 8
     #def print(self):
@@ -229,8 +261,14 @@ class _Bit128(TypeNumeric):
         return "Bit128"
 Bit128 = _Bit128()    
 
+
+
+
+class TypeFloat(TypeNumeric):
+    pass
+
 # float
-class _Bit32F(TypeNumeric):
+class _Bit32F(TypeFloat):
     '''
     A 32bit float
     in C ''float'
@@ -244,7 +282,7 @@ class _Bit32F(TypeNumeric):
 Bit32F = _Bit32F()
 
 # double
-class _Bit64F(TypeNumeric):
+class _Bit64F(TypeFloat):
     '''
     A 32bit float
     in C ''double'
@@ -255,13 +293,18 @@ class _Bit64F(TypeNumeric):
     #    pass
     def __repr__(self):
         return "Bit64F"
+        
 Bit64F = _Bit64F()
 
 #! ignoring long double (128ish)
 
 
 #! not sure if these are singular. Better as Array[Codepoint]?
-#! Array[Byte]?
+#! How do we supply lengths?
+#! leave unresolved.
+# if an array, we do not know irs length, and it needs to be
+#  initialised at start
+#class TypeString(Array):
 class TypeString(TypeSingular):
     @property
     def byteSize(self):
@@ -276,7 +319,8 @@ class _StrASCII(TypeString):
     def __repr__(self):
         return "StrASCII"
 StrASCII = _StrASCII() 
- 
+
+#class TypeString(Array): 
 class _StrUTF8(TypeString):
     encoding = UTF8
     byteSizeRoot = arch['bytesize']

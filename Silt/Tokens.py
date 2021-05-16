@@ -23,6 +23,9 @@ tokenBase = {
     49 : ('rsquare' , 'RSQUARE' ),
     # 50 : ('solidus' , 'SOLIDUS' ),
     51 : ('linefeed' , 'LINEFEED' ),
+    
+    60 : ('keyvalue mark' , 'KEY_VALUE' ),
+    
 }
 
 # Set the codes as attributes on the module

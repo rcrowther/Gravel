@@ -1,5 +1,5 @@
 = Usage, variables
-== Vsriables
+== Variables
 In Rubble, when data is created and destroyed, labels are attached, and therse are called ''variables'.
 
 === Mathematical variables
@@ -87,10 +87,11 @@ delete(screenWidth1)
 ?
 
 Please note that ''delete' will not, for example, ''free' a malloc. The ''delete' function deletes a var from Rubble's system of tracking variables. 
-===
 
-???
-=== Allocation
+=== Retrieval
+
+==========================
+
 Sometimes you make a variable. What really happenins is that data is returned from a function that will be stored for later use. This data is associated with a label for later use. 
 ??
 stringRODefine(@ro1 ""In a Silent Way")
@@ -100,21 +101,81 @@ Note the ''@' symbol. It says, ""Here is some text that will be used as a label 
 stringRODefine(@ro1 ""In a Silent Way")
 println(StrASCII ro1)
 ?
+=================
+== Allocation and definition
+Most high-level languages avoid mentioning allocation at all. Allocation is a low level detail that interferes with the flow of argument and proof of code. Rubble, however, is close to assembly, where all data must be allocated space before the data is written to the new space. Only a few exceptions exist, and most of these are convenience methods.
 
 
-=== Allocation and definition are seperate
-In Rubble, allocation is often separated from definition,
+
+
+
+=== Allocate Examples
+
+Allocate empty space on the heap,
 ?rubble
-stackAlloc(@str1 ASCII 15)
-set(str1 "In a Silent Way")
+heapAlloc(@var1 Array(Bit64 3))
 ?
+or the stack,
+?rubble
+stackAlloc(@var1 Array(Bit8 3))
+?
+Rubble works out the sizes (yes, that is a trivial calculation, but it does stop clutter in the code).
 
-=== Definition
-Definition is fairly simple, if a bit crude at times. Put ''777' in index ''3' of an array,
+==== String conveniences
+
+==== Defining global RO
+Definitions are only fundamental in one situation, when the data is a read-only global. Whatever the actual implementation, if you say storage is read-only, you can't allocate then set it. Definition is simple, if a bit crude at times. Put ''777' in index ''3' of an array,
 ?rbl
-define(@array1 3 777)
+RODefine(@var1 797 Bit64)
 ?
 
-=== Retrieval
+=== Setting variables; aggregates
+Other languages provide definitions not only because they satifies mathematical and phillosphical principles. Practially, perhaps 10 out of 11 varivles are not empty structures, like buffers, but need data setting on them. To do this for singular types like a string or integer is a trivial assignmant.  For containers, most langauges gat by with some parameter passing to constructors, using whatever data constructions are natural to the language. 
+
+However, Rubble has already caused extra work by reflecting the assembly language process of allocation then setting. To help out with the setting, Rubble implements a limited form of what are called aggregates. Aggregates are an extended form of literals that can set values in containers. They might be more fully called, ''aggregatedLiterals'. In implementation, aggregates are a micro-language. The other language that fully concieves of and implements aggregates is Ada. Rubble's aggregates are not as powerful as Ada's aggregates, but the concept is similar.
+  
+Rubble aggregate-literals can be no more than a singular type like ''99', to fill a Bit32. But they can be a sequence, too, which is marked with suqare brackets,
+#rbl
+[...] 
+#
+The literals inside can be any of string, int or float. So this allocates an array then sets the data inside,
+#rble
+heapAlloc(@var1 Array(Bit64 3))
+set(@var1, [9 7 9])
+#
+Also, sequences can be embedded, so here is an array of clutches being set by an aggregate,
+#rble
+heapAlloc(@var1 Array(Clutch(Bit32 Bit8) 3))
+set(@var1, [[999999 8] [995555 8] [773333 8]])
+#
+You can see how this is getting powerful, and restoring some of the conveniece lost by having no definitions.
+
+??? labels
+
+
+=== Aggregate conditions
+The rules of agreggates are that their structure must match the variable type, so this will return an error, because the embedded aggregate does not match the type, 
+#rble
+heapAlloc(@var1 Array(Bit64 3))
+set(@var1, [9 7 [5 9]])
+#
+And an aggregate must fully fill the variable (other functions are used to partially fill data strucures, but ''set' will error), This will error because there is too much data in the aggregate,
+#rble
+heapAlloc(@var1 Array(Bit64 3))
+set(@var1, [9 7 5 9])
+#
+And the types of literals in aggregates must match the variable type as seen by the lexer. This will return an error, because a float is not an int,
+#rble
+heapAlloc(@var1 Array(Bit64 3))
+set(@var1, [9 7 9.5])
+#
+However, Rubble does not check for type boundaries. So this will pass, though the generated code will crash,
+#rble
+heapAlloc(@var1 Array(Bit8 2))
+set(@var1, [9 795959595])
+#
+Since checking aggregate consistency is unecessary for compilation, most compilers will have an option to skip the checks. But as default, the checks will run.  
+
+
 
 

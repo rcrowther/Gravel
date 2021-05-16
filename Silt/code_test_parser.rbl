@@ -62,14 +62,14 @@ funcMain()
     #println(var1)
 
 #-- heapAlloc
-    #heapAlloc(@heap1 8)
+    #heapAlloc(@heap1 Array(Bit8 3))
 
 #-- heapDefine
-    #heapDefine(@var1 Bit64 999)
+    heapDefine(@var1 Bit64 [jepp ~> 888])
     #println(var1)
 
 #-- heapDefine2
-    heapDefine(@var1 Array(Clutch(Bit8 Bit64) 3) [[33 77] [55 77] [77 99]])
+    #heapDefine(@var1 Array(Clutch(Bit8 Bit64) 3) [[33 77] [55 77] [77 99]])
     #println(var1)
 
 #-- heapStringDefine

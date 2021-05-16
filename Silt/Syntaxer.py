@@ -60,6 +60,16 @@ class Path(list):
 class AggregateVals(list):
     pass   
 
+#import collections
+#AggregateKV = collections.namedtuple('AggregateKV', ['label', 'value'])
+
+class KeyValue():
+    def __repr__(self):
+        return f"KeyValue(key:{self.key}. value:{self.value})"
+        
+    def __str__(self):
+        return f"[{self.key} ~> {self.value}]"
+        
 
 class ProtoSymbol():
     def __init__(self, name):
@@ -137,7 +147,7 @@ class Syntaxer(SyntaxerBase):
             # cast as a symbol or a Protosymbol.
             if (ord(name[0]) == Codepoints.AT):
                 if (len(name) < 2):
-                    msg = '"@" codepoint stands alone in args ("@" opens a string to form a variable).' 
+                    msg = '"@" codepoint stands alone ("@" opens a string to form a variable).' 
                     self.errorWithPos(pos, msg)
                 arg = ProtoSymbol(name)
             else:
@@ -308,7 +318,7 @@ class Syntaxer(SyntaxerBase):
         # Clutch [type1, type2 ...} 
         # ArrayLabeled [containedType, label1, label2...]
         # Array [containedType, size]
-        # So we're nob being clever or OCD. If its a arg type thats
+        # So we're not being clever or OCD. If its a arg type thats
         # acceptable, it's in. But order or signature ignored.
         # For now.
         commit = (
@@ -445,32 +455,66 @@ class Syntaxer(SyntaxerBase):
             argsB.append(path)
         return commit
 
-    def aggregateRec(self, b):
+    def keyValue(self, b):
+        '''
+        identifier ~ ''~>' ~ aggregateValues
+        '''
+        # Similar to, but not a symbol, because it isn't a symbol, 
+        # its a label. And so far, can only occur here, inside 
+        # square brackets
+        commit = (self.isToken(IDENTIFIER))
+        if (commit):
+            label = self.textOf()
+            kv = KeyValue()
+            
+            #! label defense against protosymbols etc.
+            kv.key = label
+            self._next() 
+
+            # skip the separator
+            self.skipTokenOrError('aggregateKeyValue', KEY_VALUE)
+
+            # get the value, which can itself be any aggregate
+            valueB = AggregateVals()
+            
+            #? What this means is a label must always have a aggregate
+            # as value, cannot have another label. 
+            # [fortune -> [nonsense -> 33]]
+            # not
+            # [fortune -> nonsense -> 33]
+            # Is that right? ...I think so
+            if(not(
+                self.constant(valueB) or
+                self.aggregate(valueB)
+            )):
+                self.expectedRuleError(
+                    "keyValue", 
+                    "A literal or aggregated literal"
+                )
+            kv.value = valueB
+            b.append(kv)
+        return commit
+        
+    def aggregateArgs(self, b):
         # Assume commitment to aggregate rule, but no move from 
         # opening bracket
         self._next() 
         av = AggregateVals()
-        while (True):
-            if(self.isToken(STRING)):
-                av.append(self.textOf())
-                self._next() 
-            elif(self.isToken(INT_NUM)):
-                av.append(int(self.textOf()))
-                self._next() 
-            elif(self.isToken(FLOAT_NUM)):
-                av.append(float(self.textOf()))
-                self._next() 
-            elif(self.isToken(LSQUARE)):
-                self.aggregate(av)
-            else:
-                break
-        self.skipTokenOrError('aggregateVals', RSQUARE)
+        
+        # can call recursively, to nest
+        while (
+            self.constant(av)            
+            or self.aggregate(av)
+            or self.keyValue(av)
+            ):
+            pass
         b.append(av)
             
     def aggregate(self, argsB):
         commit = self.isToken(LSQUARE)
         if (commit):
-            self.aggregateRec(argsB)
+            self.aggregateArgs(argsB)
+            self.skipTokenOrError('aggregate', RSQUARE)
         return commit
         
     def arg(self, argsB):
@@ -487,8 +531,12 @@ class Syntaxer(SyntaxerBase):
             # No expressions allowed nested,
             # ater booleans and funcs, so identifiers must be a symbol
             or self.symbol(argsB)
+            
+            #? What's the arglist for
             or self.argList(argsB)
+            
             #or self.path(argsB)
+            # or aggregategated values
             or self.aggregate(argsB)
         ):
             r = True

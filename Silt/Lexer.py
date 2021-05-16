@@ -69,7 +69,7 @@ class Lexer(LexerBase):
     #! need to remove plus/minus if go with dispatchMathSigns()
     def scanNumber(self):
         '''
-        [+=] ~ oneOrMore([0-9]) ~ optional('.' ~ oneOrMore([0-9])
+        optional[+=] ~ oneOrMore([0-9]) ~ optional('.' ~ oneOrMore([0-9])
         '''
         if (self.isNumeric() or self.isPlusMinus()):
             self.tok = Tokens.INT_NUM
@@ -120,7 +120,7 @@ class Lexer(LexerBase):
           
     def scanPunctuation(self):
         '''
-        Matches [punctuation] codepoints.
+        Match [punctuation] codepoints.
         ''' 
         if (self.cp in punctuationCodepointToToken):
             self.tok = punctuationCodepointToToken[self.cp] 
@@ -128,6 +128,21 @@ class Lexer(LexerBase):
             return True
         return False
 
+    def scanKV(self):
+        '''
+        '~' ~ '>'
+        '''
+        if (self.cp == TILDE):
+            self.tok = Tokens.KEY_VALUE              
+            self._next()
+            if (self.cp == RIGHT_ANGLE):
+                self._next()
+            else:
+                msg = "Stanalone tithe must be followed ny a' >'"
+                self.error(msg)
+            return True
+        return False
+                    
     def scanComment(self):
         if (self.cp == HASH):
             self.tok = Tokens.COMMENT              
@@ -176,6 +191,8 @@ class Lexer(LexerBase):
         elif (self.scanComment()):
             pass
         elif (self.scanIdentifier()):
+            pass
+        elif (self.scanKV()):
             pass
         else:
             r = False

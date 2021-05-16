@@ -575,9 +575,12 @@ class BuilderAPIX64(BuilderAPI):
         # print(str(tpe))
         
         #! needs float/int, when we have those types
-        if (isinstance(tpe, Type.TypeNumeric)):
+        if (isinstance(tpe, Type.TypeInt)):
             if (not(isinstance(literalAggregate, int))):
                 return MessageOption.error(f'Type expects int. Found:{literalAggregate}')
+        if (isinstance(tpe, Type.TypeFloat)):
+            if (not(isinstance(literalAggregate, float))):
+                return MessageOption.error(f'Type expects float. Found:{literalAggregate}')
         elif (isinstance(tpe, Type.TypeString)):
             if (not(isinstance(literalAggregate, str))):
                 return MessageOption.error(f'Type expects string. Found:{literalAggregate}')
@@ -592,9 +595,20 @@ class BuilderAPIX64(BuilderAPI):
                 mo = self._literalAggregateTestRec(elemTpe, literalAggregate[i])
                 i += 1
             return mo
-        return MessageOption.warning(f'Unrecognised Type. tpe:{tpe}')
+        return MessageOption.warning(f'Type not recognised. tpe:{tpe}')
 
     def _literalAggregateTest(self, tpe, literalAggregate):
+        '''
+        Test a lliteral agreegate against a type.
+        This will report an error if the the size or structure of the 
+        aggregate does not match the given type.
+        It also reports if the types of the elements in the aggregate
+        do not match those in the type. It does not test for boundaries
+        and encoding, but it does test for the classes as seen by the 
+        lexer, which are int, float, and string.
+        return
+            a MessageOption
+        '''
         return self._literalAggregateTestRec(tpe, literalAggregate)
 
     # import BuilderAPI
@@ -619,7 +633,7 @@ class BuilderAPIX64(BuilderAPI):
                 offset,
                 literalAggregate
             ))
-        if (isinstance(tpe, Type.TypeContainerOffset)):
+        elif (isinstance(tpe, Type.TypeContainerOffset)):
             # aggregate is [a, b, c....]
             i = 0
             for elemOff, elemTpe in tpe.offsetIt():
@@ -650,7 +664,6 @@ class BuilderAPIX64(BuilderAPI):
             [protoSymbolVal(), anyType(), aggregateAny()]
         '''
         self.extern(b, ['malloc'])
-        #! Need to return bytesizeFull(), I think
         protoSymbolLabel = args[0].toString()
         tpe = args[1]
         data = args[2]
@@ -671,21 +684,15 @@ class BuilderAPIX64(BuilderAPI):
         ))
         b._code.append("call malloc")
         
-        # Define contents
-        # i = 0
-        # for d, i in data:
-            # b._code.append("mov [{}+{}], {}".format(
-                # self.arch['cParameterRegisters'][0], 
-                # i,
-                # d
-            # ))
-            # i += 4
+
+        # test the aggregate value against the type
         mo = self._literalAggregateTest(
             tpe, 
             literalAggregate
         )
 
-        if (mo.isOk()):
+        # Define contents
+        if (mo.isOk()):            
             self. _literalAggregateSet(
                 b, 
                 self.arch['returnRegister'], 
