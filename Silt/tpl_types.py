@@ -397,7 +397,7 @@ class TypeContainerOffset(TypeContainer):
         
     def offsetTypePair(self, lid):
         '''
-        Get the offet of a contained element
+        Get the offset of a contained element
         Only works on the top level type.
         lid
             a locating value (either int or label)

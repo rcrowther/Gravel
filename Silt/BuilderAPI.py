@@ -584,6 +584,15 @@ class BuilderAPIX64(BuilderAPI):
         elif (isinstance(tpe, Type.TypeString)):
             if (not(isinstance(literalAggregate, str))):
                 return MessageOption.error(f'Type expects string. Found:{literalAggregate}')
+                
+        #! labeled not an existing attribute or subtype
+        # elif (isinstance(tpe, Type.Labeled)):
+            # if (not(isinstance(literalAggregate, KeyValue))):
+                # return MessageOption.error(f'Type expects key ~> value. Found:{literalAggregate}')
+            
+            # #! error on key not available
+            # elemTpe = tpe.offsetTypePair[1]
+            # mo = self._literalAggregateTestRec(elemTpe, literalAggregate.value)
         elif (isinstance(tpe, Type.TypeContainerOffset)):
             if (not(isinstance(literalAggregate, AggregateVals))):
                 return MessageOption.error(f'Type expects array of vals. Found:{literalAggregate}')

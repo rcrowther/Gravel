@@ -9,6 +9,7 @@ from Syntaxer import (
     ArgList,
     Path, 
     AggregateVals,
+    KeyValue,
     FuncBoolean
 )
 from tpl_vars import Var
@@ -110,6 +111,8 @@ class AggregateTest():
             for e in val:
                 r = (r and self.isLiteralVal(e))
             return r
+        elif (isinstance(val, KeyValue)):
+            return self.isLiteralVal(val.value)
         else:
             return (isinstance(val, int) or
                     isinstance(val, float) or

@@ -477,12 +477,14 @@ class Syntaxer(SyntaxerBase):
             # get the value, which can itself be any aggregate
             valueB = AggregateVals()
             
-            #? What this means is a label must always have a aggregate
+            # What this means is a label must always have a aggregate
             # as value, cannot have another label. 
             # [fortune -> [nonsense -> 33]]
             # not
             # [fortune -> nonsense -> 33]
-            # Is that right? ...I think so
+            # Is that right? ...I think so. If we do this, we can't 
+            # parse for aggregateArgs, as that allows a freestanding
+            # KeyValue
             if(not(
                 self.constant(valueB) or
                 self.aggregate(valueB)
