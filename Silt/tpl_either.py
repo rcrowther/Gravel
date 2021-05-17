@@ -49,7 +49,14 @@ class MessageOption(Option):
         '''
         # NB. Not not(obj is None). Status wins
         return (not(self.status == self.ERROR))
-    
+
+    def notOk(self):
+        '''
+        May still have messaage if ok
+        '''
+        # NB. Not not(obj is None). Status wins
+        return (self.status == self.ERROR)    
+
     def hasMessage(self):
         return (not(self.status == self.NO_MESSAGE))
 
@@ -119,7 +126,14 @@ class Either(Option):
         '''
         # NB. Not not(obj is None). Status wins
         return (not(self.status == self.ERROR))
-    
+
+    def notOk(self):
+        '''
+        May still have messaage if ok
+        '''
+        # NB. Not not(obj is None). Status wins
+        return (self.status == self.ERROR)
+            
     def hasMessage(self):
         return (not(self.status == self.NO_MESSAGE))
 

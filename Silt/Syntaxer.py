@@ -496,18 +496,41 @@ class Syntaxer(SyntaxerBase):
             kv.value = valueB
             b.append(kv)
         return commit
+
+    def repeatMark(self, b):
+        '''
+        ''*'
+        '''
+        # Similar to, but not a symbol, because it isn't a symbol, 
+        # its a label. And so far, can only occur here, inside 
+        # square brackets
+        commit = (self.isToken(REPEAT))
+        if (commit):
+            b.append('*')
+            self._next() 
+        return commit
         
     def aggregateArgs(self, b):
         # Assume commitment to aggregate rule, but no move from 
         # opening bracket
         self._next() 
         av = AggregateVals()
-        
-        # can call recursively, to nest
+
+        # if (self.repeatMark(av)):
+            # (
+                # self.constant(av)            
+                # or self.aggregate(av)
+                # or self.keyValue(av)
+            # )
+        # else:
+            # can call recursively, to nest
+            #? same-to-end mark
+            #? put commas in
         while (
             self.constant(av)            
             or self.aggregate(av)
             or self.keyValue(av)
+            or self.repeatMark(av)
             ):
             pass
         b.append(av)

@@ -60,5 +60,7 @@ class TestLexer(unittest.TestCase):
             Tokens.IDENTIFIER, Tokens.IDENTIFIER, Tokens.IDENTIFIER,
             Tokens.LINEFEED,
             Tokens.KEY_VALUE,
+            Tokens.LINEFEED,
+            Tokens.REPEAT,
         ]
         self.assertEqual(outStream, anticipatedStream)

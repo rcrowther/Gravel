@@ -130,7 +130,7 @@ class BuilderAPI():
         'regDefine': [protoSymbolVal(), intOrVarNumeric(), numericType()],
         'regNamedDefine': [protoSymbolVal(), strVal(), intOrVarNumeric(), anyType()],
         'heapAlloc': [protoSymbolVal(), anyType()],
-        'heapDefine': [protoSymbolVal(), anyType(), aggregateAny()],
+        'heapSet': [anyVar(), aggregateAny()],
         'heapStringDefine': [protoSymbolVal(), strVal()],     
         'heapBytesAlloc': [protoSymbolVal(), intVal()],
         'stackAllocSlots':  [intVal()],   
@@ -241,6 +241,14 @@ class BuilderAPIX64(BuilderAPI):
         else:
             return AccessValue(varOrConstant.loc).result()
 
+    def regEnsure(self, b, var):
+        '''
+        Ensure a variable is on a register.
+        This ensures register operations such as relative addressing or
+        arithmetic can be performed.
+        '''
+        self.autoStore.toRegAny(b, var)
+
     def oneRegEnsure(self, b, litOrVarDst, litOrVarSrc):
         '''
         Ensure one of a pair of variable values is on a register.
@@ -265,7 +273,7 @@ class BuilderAPIX64(BuilderAPI):
                     self.autoStore.toRegAny(b, litOrVarSrc)
                 else:
                     self.autoStore.toRegAny(b, litOrVarDst)
-                            
+
 
     ## basics
     def comment(self, b, args):
@@ -568,23 +576,25 @@ class BuilderAPIX64(BuilderAPI):
 
     #! worst recursion ever
     #! fixes
-    #- need float type
     #- need to limit ASMWord
-    def _literalAggregateTestRec(self, tpe, literalAggregate):
-        # print(str(literalAggregate))
-        # print(str(tpe))
+    def _literalAggregateTestRec(self, mo, tpe, literalAggregate):
+        print("_literalAggregateTestRec")
+        print(str(literalAggregate))
+        print(str(mo))
         
-        #! needs float/int, when we have those types
+        #print(str(tpe))
+        #print(str(type(literalAggregate)))
+        # print(str(tpe))        
         if (isinstance(tpe, Type.TypeInt)):
             if (not(isinstance(literalAggregate, int))):
-                return MessageOption.error(f'Type expects int. Found:{literalAggregate}')
-        if (isinstance(tpe, Type.TypeFloat)):
+                mo[0] = MessageOption.error(f'Type expects int. Found:{literalAggregate}')
+        elif (isinstance(tpe, Type.TypeFloat)):
             if (not(isinstance(literalAggregate, float))):
-                return MessageOption.error(f'Type expects float. Found:{literalAggregate}')
+                mo[0] = MessageOption.error(f'Type expects float. Found:{literalAggregate}')
         elif (isinstance(tpe, Type.TypeString)):
             if (not(isinstance(literalAggregate, str))):
-                return MessageOption.error(f'Type expects string. Found:{literalAggregate}')
-                
+                mo[0] = MessageOption.error(f'Type expects string. Found:{literalAggregate}')
+
         #! labeled not an existing attribute or subtype
         # elif (isinstance(tpe, Type.Labeled)):
             # if (not(isinstance(literalAggregate, KeyValue))):
@@ -595,16 +605,42 @@ class BuilderAPIX64(BuilderAPI):
             # mo = self._literalAggregateTestRec(elemTpe, literalAggregate.value)
         elif (isinstance(tpe, Type.TypeContainerOffset)):
             if (not(isinstance(literalAggregate, AggregateVals))):
-                return MessageOption.error(f'Type expects array of vals. Found:{literalAggregate}')
+                mo[0] = MessageOption.error(f'Type expects array of vals. Found:{literalAggregate}')
+            elif (literalAggregate[0] == '*'):
+                if (not(isinstance(tpe, Type.Array))):
+                    mo[0] = MessageOption.error(f'Repeat mark must referr to Array. Found:{tpe}')
+                else:
+                    #NB syntaxer doesn't catch too few arguments
+                    if (len(literalAggregate) != 2):
+                        mo[0] = MessageOption.error(f'Repeat mark must be followed by one arg.')
+                    else:
+                        #print(str(tpe))
+                        #print(str(literalAggregate))
+                        #print(str(tpe.elementType))
+                        #print(str(literalAggregate[1]))
+                        self._literalAggregateTestRec(
+                            mo,
+                            tpe.elementType,
+                            literalAggregate[1]
+                        )
             elif (tpe.size != len(literalAggregate)):
-                return MessageOption.error(f'LiteralAggregate size not match Type size. typeSize:{tpe.size}')
-            i = 0
-            mo = MessageOptionNone
-            for offset, elemTpe in tpe.offsetIt():
-                mo = self._literalAggregateTestRec(elemTpe, literalAggregate[i])
-                i += 1
-            return mo
-        return MessageOption.warning(f'Type not recognised. tpe:{tpe}')
+                mo[0] = MessageOption.error(f'LiteralAggregate size not match Type size. typeSize:{tpe.size}')
+            else:
+                i = 0
+                for offset, elemTpe in tpe.offsetIt():
+                    self._literalAggregateTestRec(
+                        mo,
+                        elemTpe, 
+                        literalAggregate[i]
+                    )
+                    
+                    # if error in an element, abandon testing
+                    if (mo[0].notOk()):            
+                        break
+                    i += 1
+        else:
+            #i should never get here. It's a catch
+            mo[0] = MessageOption.warning(f"Type not recognised.  Found:{literalAggregate}, tpe:{tpe}")
 
     def _literalAggregateTest(self, tpe, literalAggregate):
         '''
@@ -618,8 +654,12 @@ class BuilderAPIX64(BuilderAPI):
         return
             a MessageOption
         '''
-        return self._literalAggregateTestRec(tpe, literalAggregate)
-
+        #i This list is just to make the messageOption a reference. So 
+        # it can be updated in place. Not Pynthonic...
+        mo = [MessageOptionNone]
+        self._literalAggregateTestRec(mo, tpe, literalAggregate)
+        return mo[0]
+        
     # import BuilderAPI
     # import tpl_types as Type
     # from tpl_codeBuilder import Builder
@@ -643,17 +683,31 @@ class BuilderAPIX64(BuilderAPI):
                 literalAggregate
             ))
         elif (isinstance(tpe, Type.TypeContainerOffset)):
-            # aggregate is [a, b, c....]
-            i = 0
-            for elemOff, elemTpe in tpe.offsetIt():
-                self._literalAggregateSetRec(
-                    b,
-                    dataRoot,
-                    offset + elemOff,
-                    elemTpe, 
-                    literalAggregate[i]
-                )
-                i += 1       
+            if (literalAggregate[0] == '*'):
+                #? undry
+                i = 0
+                for elemOff, elemTpe in tpe.offsetIt():
+                    self._literalAggregateSetRec(
+                        b,
+                        dataRoot,
+                        offset + elemOff,
+                        elemTpe, 
+                        literalAggregate[1]
+                    )
+                    i += 1                  
+            else:
+                # aggregate is [a, b, c....]
+                #? undry
+                i = 0
+                for elemOff, elemTpe in tpe.offsetIt():
+                    self._literalAggregateSetRec(
+                        b,
+                        dataRoot,
+                        offset + elemOff,
+                        elemTpe, 
+                        literalAggregate[i]
+                    )
+                    i += 1       
 
     def _literalAggregateSet(self, b, dataRoot, tpe, literalAggregate):
         self._literalAggregateSetRec(b, dataRoot, 0, tpe, literalAggregate)
@@ -666,49 +720,37 @@ class BuilderAPIX64(BuilderAPI):
     #(setq avector [1 two '(three) "four" [five]])
     # I guess we need something like
     # [[a, b, c,] [d, e, f]]
-    def heapDefine(self, b, args):
+    def heapSet(self, b, args):
         '''
-        Alloc space then define a type on the heap.
-            varName type data
-            [protoSymbolVal(), anyType(), aggregateAny()]
+        Set data on a heap alloc.
+            varName literalAggregate
+            [anyVar(), aggregateAny()]
         '''
-        self.extern(b, ['malloc'])
-        protoSymbolLabel = args[0].toString()
-        tpe = args[1]
-        data = args[2]
-        literalAggregate = args[2] 
+        var = args[0]
+        literalAggregate = args[1] 
+        mo = MessageOptionNone
         
-        # Make var
-        var = self.autoStore.varRegAddrCreate(b, 
-            protoSymbolLabel, 
-            self.arch['returnRegister'],
-            tpe,
-            1
-        )        
-        
-        # malloc space
-        b._code.append("mov {}, {}".format(
-            self.arch['cParameterRegisters'][0], 
-            tpe.byteSize
-        ))
-        b._code.append("call malloc")
-        
+        # By definition, RO is not possible
+        if (var.loc.isReadOnly):
+            mo = MessageOption.error('Cant set a RO variable!')
 
         # test the aggregate value against the type
         mo = self._literalAggregateTest(
-            tpe, 
+            var.tpe, 
             literalAggregate
         )
 
+        #i or relative addressing will fail 
+        self.regEnsure(b, var)
+
         # Define contents
         if (mo.isOk()):            
-            self. _literalAggregateSet(
+            self._literalAggregateSet(
                 b, 
-                self.arch['returnRegister'], 
-                tpe, 
+                var.loc.lid,
+                var.tpe, 
                 literalAggregate
             )             
-        self.compiler.symSet(var)
         return mo
         
     #! U can do lots better than this R.C.

@@ -142,6 +142,16 @@ class Lexer(LexerBase):
                 self.error(msg)
             return True
         return False
+        
+    def scanRepeat(self):
+        '''
+        '*'
+        '''
+        if (self.cp == ASTERISK):
+            self.tok = Tokens.REPEAT              
+            self._next()
+            return True
+        return False        
                     
     def scanComment(self):
         if (self.cp == HASH):
@@ -193,6 +203,8 @@ class Lexer(LexerBase):
         elif (self.scanIdentifier()):
             pass
         elif (self.scanKV()):
+            pass
+        elif (self.scanRepeat()):
             pass
         else:
             r = False

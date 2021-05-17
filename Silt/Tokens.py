@@ -25,7 +25,7 @@ tokenBase = {
     51 : ('linefeed' , 'LINEFEED' ),
     
     60 : ('keyvalue mark' , 'KEY_VALUE' ),
-    
+    61 : ('repeat' , 'REPEAT' ),
 }
 
 # Set the codes as attributes on the module
