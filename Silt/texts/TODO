@@ -12,9 +12,18 @@ Like, a novel, but anyhow...
 # casts
 # null
 
+(Type can be abandoned, in a Scala-like way, by the use of Any???)
+
+Silt types data and functions, but not metadata (as a LISP, for example, might type it's own symbols)
+
 
 == Simple ops
 # arithmetic, need a divide strategy
+
+
+== functions
+Inlining Silt functions can be inlined, but not automatically.
+
 
 = Flow
 # switch loop

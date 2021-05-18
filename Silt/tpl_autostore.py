@@ -531,7 +531,7 @@ class AutoStoreX64():
 
     def varRegAddrCreate(self, b, name, regName, tpe, priority):
         '''
-        Create a var on a named register.
+        Create an address var on a named register.
         If the register has an existing var it is moved to another 
         register or stack. The destination depends on the
         priority of the displaced var, and may cascade.
@@ -546,8 +546,19 @@ class AutoStoreX64():
         var.priority = priority
         self.autoReg._set(regName, var)
         return var
-        
-    def varRegAnyCreate(self, b, name, tpe, priority):
+
+    def varRegAnyAddrCreate(self, b, name, tpe, priority):
+        '''
+        Create a var on a register.
+        If the register has an existing var it is moved to another 
+        register or stack. The destination depends on the
+        priority of the displaced var, and may cascade.
+        '''  
+        regName = self.autoReg.regBest()
+        var = self.varRegAddrCreate(b, name, regName, tpe, priority)
+        return var
+                
+    def varRegMaybeCreate(self, b, name, tpe, priority):
         '''
         Attempt to create a var on a register.
         If the var has sufficient priority or registers are free, it

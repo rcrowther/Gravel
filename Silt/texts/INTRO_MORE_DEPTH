@@ -5,7 +5,7 @@ Well, yeh, there's theorising behind that. For example, once upon a time there w
 == Why not write in assembly?
 Well, let's say you want to.
 
-Like most languages, assembly languages such as GAS, MASM, NASM etc. are good at what they do. They are durable, and wouldn't be if they were not. However, most practical assembly language requires a raft of base learning. In practice, it is very easy to start assembly programming, far easier than, say, Java, or Javascript. but you will soon ask yourself if you can make even a simple function. Which is where you may start to think about Rubble.
+Like most languages, assembly languages such as GAS, MASM, NASM etc. are good at what they do. They are durable, and wouldn't be if they were not good. However, most practical assembly language requires a raft of base learning. In practice, it is very easy to start assembly programming, far easier than, say, Java, or Javascript. but you will soon ask yourself if you can make even a simple function. Which is where you may start to think about Rubble.
 
 Ok, I admit that sometimes Rubble is overwrought. Let's move some data into ''rax;,
 
@@ -45,7 +45,39 @@ pop rdx
 pop rsi
 pop rdi
 ?
-But hey, it's your choice.
+And you should see what a foreach on some Arrays of Clutches generates. But hey, it's your choice.
 
 
 
+== Dealbreakers
+All languagues have their oddities. Rubble less than many, I like to think, but it has them. And they are big. Here are the two biggest,
+++
+~ Functions only take one argument
+: ...and one return. GCC does summersaults to allow up to twenty parameters. That said, you can fiddle with registers to do as you wish. There's functions for protection also. But the only builtin functions account for one argument. Reason is, this policy saves us a swathe of code and unpredictable output.  
+~ There is no if..else
+: Again, if you wish, you can fiddle with Rubble to provide an if..else, but there is no builtin function. If..else is splendidly intuitive, and has been provided in high level languages since it's introduction in C. It is also predictable code. But it is a syntactical mass, and a basty twist in output code. It also multiplies problems with proving code. Rubble can live without it.
++
+
+There's more. which will be explained in greater detail somewhere or other but, quickly,
+++
+~ Functions take a fixed number of parameters
+: There are no vargs. Though there is an ability to pass in arrays
+~ 
+:
++ 
+
+Worth knowing is that there's a general policy, ''Rubble never stops you writing crazy code, if the looseness the code allows also allows you to do good thengs'. There is plenty of fore-warnings and aft-measures, but Rubble will not stop you outright.
+
+
+== General features
+Silt is not a language with a paradigm to sell. However, the Silt language contains several concepts that are part of the language, Some of them are unusual. Here are the most obvious in order roughly of annoyance,
+++
+- Functions only accept one parameter (and return one parameter)
+- The ''if..' construct does not accept an ''else'
+- No implicit action or defaulting is available anywhere. The exception is that Literal data has builtin defaults (""string" is implicitly Literal(UTF8, ""string"))
+- All data is passed by reference
+- There is a collection called ''clutch' (it's a C ''struct', or ''tuple')
+- Clutches can be traversed
+- Clutches can be built by buffer
+- Silt has a weird conditional multi-loop construct
++ 

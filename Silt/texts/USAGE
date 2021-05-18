@@ -1,25 +1,5 @@
 = Usage
 
-== Dealbreakers
-All languagues have their oddities. Rubble less than many, I like to think, but it has them. And they are big. Here are the two biggest,
-++
-~ Functions only take one argument
-: The builtin function handles one argument and one return only. If you wish or need more, set them yourself
-~ There is no if..else
-: Only if.. Again, you can fiddle with Rubble to provide if..else functionality
-+
-
-There's more dealbreaker. which will be explained in greater detail somewhere or other but, quickly,
-++
-~ Functions take a fixed number of parameters
-: There are no vargs. If you need that, pass in arrays
-~ 
-:
-+ 
-
-Worth knowing is that there's a general policy, ''Rubble never stops you writing bad, if it can do good'. There is plenty of protection, warnings, and aftmeasure, but Rubble will not stop you outright.
-
-
 == Base Syntax
 All instructions in Rubble is are functions (not a ''lambda' or ''proc'). All functions have brackets. In the current compiler, functions are one per line,
 
@@ -38,7 +18,7 @@ frame()
     ...
 frameEnd()
 ?
-
+This is similar to a Ruby ""do..end" block, or Ada's ""func FuncName..endFuncName".
 
 === Whitespace and layout
 In the current compiler, Rubble functions must be one per line. Other whitespace is irrelevant, so code can be spaced how you wish. I lean towards Python-style indenting,
@@ -152,7 +132,7 @@ Array(Bit8, 4)
 === Type in Rubble is not for type-checking
 You need to get past this. Rubble has types to reduce the syntax to a minimum. We can cover a lot of instructions by saying, ""This is an ''add' operation with type Bit64." Or Bit32, whatever.
 
-In the high-level sense, the current compile does not check types at all. Even if a compiler or linter is produced that checks types, it will never stop you from redeclaring or casting them.
+In the high-level sense, the current compile does not check types at all. Even if a compiler or linter is produced that checks types, it will never stop you from re-declaring or casting types.
 
 
 === There is no way to add to the collection of types
@@ -163,8 +143,8 @@ In other languages, a ''class' definition will become a type. Rubble has no such
 == Vsriables
 Rubble has some notion of ''variables'. The idea of variables is not a full abstraction. What happens is that you declare a variable, and the name is attached to some kind of storage. Sometimes a Rubble variable can loose track of the storage, and sometimes storage can be used without a variable. That's why Rubble's variables are not a full mathematic representation. But the idea works a lot of the time.
 
-=== Allocation
-Sometimes you make a variable. What really happenins is that data is returned from a function that will be stored for later use. This data is associated with a label for later use. 
+=== Creating a variable
+To make a variable you use various setting and definition functions. What really happenins is that data is returned from a function is stored for later use. This data is associated with a label. 
 ??
 stringRODefine(@ro1 ""In a Silent Way")
 ?
@@ -173,20 +153,28 @@ Note the ''@' symbol. It says, ""Here is some text that will be used as a label 
 stringRODefine(@ro1 ""In a Silent Way")
 println(StrASCII ro1)
 ?
+''@' is an error in any other locaation.
 
 
-=== Allocation and definition are seperate
-In Rubble, allocation is often separated from definition,
+=== Allocation and definition are often seperate
+In most languages, allocation and deffinition are the same,
+
+?ruby
+ro1 = "In a Silent Way"
+?
+
+In Rubble, variables are either created by one-off definiton functions,
+?rbl
+?
+or allocation and the ability to set data on an allocated space,
 ?rubble
 stackAlloc(@str1 ASCII 15)
 set(str1 "In a Silent Way")
 ?
+Allocation/setting is used much more than in other languages. Also, you will find that, depending on the kind of storage that you wish to use, only one way is possible. 
 
-=== Definition
-Definition is fairly simple, if a bit crude at times. Put ''777' in index ''3' of an array,
-?rbl
-define(@array1 3 777)
-?
+
+
 
 === Retrieval
 
@@ -199,7 +187,7 @@ Rubble may not be a clever thing, but it has weird moments. If you are an expert
 
 === Arithmetic
 
-=== Boolean and switches
+=== Boolean 
 
 ==== cmp
 Put a boolean into a variable,
@@ -208,93 +196,6 @@ cmp(reg1, booleanCondition)
 ?
 In Assembly, thats a painful job. In Rubble, it's bad Assembly.
 
-==== ifRange
-If x is in the range from...until. This branch construct is a help,
-?rl
-ifRange([ntVar], from, to)
+=== switches
 
-ifrraangeEnd()
-?
-
-==== If
-?rl
-ifStart (booleanCondition)
-ifEnd()
-?
-
-===== Rubble has no ''if..else' statement
-Nope. No ''else'. Use two ifs in a row. Or get clever.
- 
-
-
-==== Switch
-Rubble has a multi-way switch on numeric values. The default is optional,
-?rl
-switchStart(varInt)
-whenStart(valInt)
-whenEnd()
-whenDefaultStart()
-whenEnd()
-switchEnd()
-?
-
-e.g.
-
-?rl
-switchStart(varInt)
-    whenStart(3)
-        println('Free!')
-        whenEnd()
-
-    whenStart(4)
-        println('Fore!')
-        whenEnd()
-
-    whenDefaultStart()
-        println('Anynum!')
-        whenEnd()
-switchEnd()
-?
-
-Rubble's switch is weird. First, Pascal-like, it has no fallthrough. Second, unPascallike, there is no way to define multiple values to one codeblock. Third, if nothing matches, it does nothing. Like an if(). Optionally, you use ''whenDefaultStart' to catch. 
-
-
-== Loops
-=== forRange
-A numeric run from..until. Like this,
-?rl
-forRangeStart(protosymbol, reg, varOrInt)
-forRangeEnd()
-?
-
-It makes a variable then runs through the numbers. 
-?rl
-forRangeStart(@loop, 'rbx', 10, -3)
-    println(loop)
-    forRangeEnd()
-?
-Prints the numbers from 10 to -2.
-
-It's not a real range. Range doesn't exist as an object.
-
-
-=== while
-Evaluate a boolean condition to repeat,
-?rl
-whileStart(gt(x 0))
-    println(x)
-    whileEnd()
-?
-
-
-=== forEach
-forEach works on any collection,
-?rl
-    heapAlloc(@heap3 Array(Bit64 3))
-    setPath(heap3 [0] 555)
-    setPath(heap3 [2] 999)
-    forEach(@elem 'r12' heap3)
-        registersPush(('rax' 'r12' 'rbx' 'rcx'))
-        println(elem)
-        registersPop()
-?
+=== loops

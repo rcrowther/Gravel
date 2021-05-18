@@ -1,6 +1,6 @@
 import architecture
 from syn_arg_tests import *
-
+import math
 
 
 from tpl_Printers import PrintX64
@@ -134,9 +134,11 @@ class BuilderAPI():
         'heapStringDefine': [protoSymbolVal(), strVal()],     
         'heapBytesAlloc': [protoSymbolVal(), intVal()],
         'stackAllocSlots':  [intVal()],   
-        'stackDefine': [protoSymbolVal(), intVal(), anyType()],
-        #'stackAllocBytes': [protoSymbolVal(), intVal(), intVal()],
-        #'stackAlloc': [protoSymbolVal(), intVal(), anyType()],
+        'stackAlloc': [protoSymbolVal(), anyType()],
+        'stackSet' : [anyVar(), aggregateAny()],
+        'stackBytesAlloc': [protoSymbolVal(), intVal()],
+
+        #'stackDefine': [protoSymbolVal(), intVal(), anyType()],
 
         ## Conditional
         'ifRangeStart': [intOrVarNumeric(), intOrVarNumeric(), intOrVarNumeric()],
@@ -211,6 +213,19 @@ class BuilderAPIX64(BuilderAPI):
     # arch, sizeSlots, offset
     autoStore = AutoStoreX64(arch, 3, 1)
 
+    def alignedSize16(self, byteSize):
+        '''
+        A number of bytes aligned to 2 byte boundaries
+        So bytesize 1 returns 2, 2 returns 2, 3 returns 4, 4 returns 4,
+        5 returns 6...
+        For x64 assembluy, aligning the stack to 16bits is a call 
+        convention. A stack without this alignment cannot call C or, 
+        usually, exit.
+        return 
+            a bytesize rounded up to 2 byte/16bit boundaries
+        '''
+        return (math.ceil(byteSize/2) << 1)
+        
     ## Arg handlers
     def varValueSnippet(self, var):
         '''
@@ -493,7 +508,7 @@ class BuilderAPIX64(BuilderAPI):
 
             
     #! size test
-    #! shouldn't this transfer the type, if destyination is a var
+    #! shouldn't this transfer the type, if destination is a var
     #! a general define is possible for heap, bit registers
     def regDefine(self, b, args):
         '''
@@ -506,7 +521,7 @@ class BuilderAPIX64(BuilderAPI):
         protoSymbolLabel = args[0].toString()
         value = args[1]
         tpe = args[2]
-        var = self.autoStore.varRegAnyCreate(b, 
+        var = self.autoStore.varRegMaybeCreate(b, 
             protoSymbolLabel, 
             tpe, 
             1
@@ -560,17 +575,23 @@ class BuilderAPIX64(BuilderAPI):
         self.extern(b, ['malloc'])
         protoSymbolLabel = args[0].toString()
         tpe = args[1]
+
+        # create a regVar for the pointer
         var = self.autoStore.varRegAddrCreate(b, 
             protoSymbolLabel, 
             self.arch['returnRegister'],
             tpe,
             1
         )        
+
+        # allocate the size
         b._code.append("mov {}, {}".format(
             self.arch['cParameterRegisters'][0], 
             tpe.byteSize
         ))
         b._code.append("call malloc")
+
+        # set the var on the context
         self.compiler.symSet(var)
         return MessageOptionNone
 
@@ -740,7 +761,7 @@ class BuilderAPIX64(BuilderAPI):
             literalAggregate
         )
 
-        #i or relative addressing will fail 
+        #i reg ensure, or relative addressing will fail 
         self.regEnsure(b, var)
 
         # Define contents
@@ -880,14 +901,21 @@ class BuilderAPIX64(BuilderAPI):
         self.extern(b, ['malloc'])
         protoSymbolLabel = args[0].toString()
         size = args[1]
+        tpe = Type.Array([Type.Bit8, size])
+
+        # create a regVar for the pointer
         var = self.autoStore.varRegAddrCreate(b, 
             protoSymbolLabel, 
             self.arch['returnRegister'],
-            Type.Array(size, Type.Bit8),
+            tpe,
             1
         )
+        
+        # allocate the size
         b._code.append("mov {}, {}".format(self.arch['cParameterRegisters'][0], size))
         b._code.append("call malloc")
+
+        # set the var on the context
         self.compiler.symSet(var)
         return MessageOptionNone
                     
@@ -933,111 +961,190 @@ class BuilderAPIX64(BuilderAPI):
                 slotCount
             ))
         return msg
-      
+
+        
+    #! bad thing here, we don't know where stack starts, so only works 
+    # on empty stackframe
+    # If we use base pointer, we have issues. 
+    # - We usually need 
+    # to allocate some space for autostore vatrs, so we are not going
+    # to start at xBP, but an offset from it.
+    # - stack needs to be aligned (which heap disguises)
+    # - using an offset value is sad. It's a valuable relative address 
+    # argument reduction. And it means inconsistency with heap
+    # - The xSP moves! in response to anything
+    # I figure we have a few tactics,
+    # - Store offset from the base pointer
+    # : rock solid root, but auto allocations must be the first in the 
+    # chain. Any manual allocations before that, xSP will be off. Also,
+    # doesn't really know about autoStore allocation
+    # - Store offset from the stack pointer
+    # : if auto-allocation used, manual allocation disallowed, because
+    # xSP must not be used. However, will work on top of autoStore
+    # - Store an absolute address to stack (from xSP, like heap's absolute address return)
+    # : rock solid root. Unaffected by other allocations. Unaffected by 
+    # autoStore. But register spill creates a strange effect, a later
+    # ''get' from a pointer spilled from a register must restore the 
+    # pointer to a register by offset from the spill-space 
+    # (on stack!), then access. That means an extra move. 
+    # (
+    # It also means a whole new set of stack processing, alongside
+    # existing slot provision 
+    # )
+    # On the whole, I prefer version three all-round. It's the most
+    # obvious, and allows manual stack tinkering. 
+    def stackAlloc(self, b, args):
+        '''
+        Allocate space for a type on the stack.
+        Like a heap allocation, returns a pointer to the stack. Works 
+        from the stack pointer, not stackbase pointer. So
+        is unaffected by state of the stack, manual adjustments etc.
+            varName type
+            [protoSymbol, anyType]
+        '''
+        protoSymbolLabel = args[0].toString()
+        tpe = args[1]
+
+        # create a regVar for the pointer
+        var = self.autoStore.varRegAnyAddrCreate(b, 
+            protoSymbolLabel, 
+            tpe,
+            1
+        ) 
+        
+        # allocate the size
+        #! x64 this appears to be in bits, not bytes
+        #i needs to be 2 byte aligned
+        b._code.append("sub rsp, {}".format(
+             self.alignedSize16(tpe.byteSize) << 3
+        )) 
+
+        # move the new address into the reg
+        #i by doing this after the allocation, data is added by positive 
+        # offsets into the newly allocated space
+        #! do we go up stack or down? What does printf use, for example?
+        b._code.append("mov {}, rsp".format(
+             var.loc.lid
+        ))
+        
+        # set the var on the context
+        self.compiler.symSet(var)
+        return MessageOptionNone
+
+    #i why alloc and set what can in assembler be defined? Because a 
+    # simple bitwidth numeric can be defined easily, but not a complex
+    # data
+    #! currently exactly the same as heapSet
+    def stackSet(self, b, args):
+        '''
+        Set data on a stack alloc.
+            varName literalAggregate
+            [anyVar(), aggregateAny()]
+        '''
+        var = args[0]
+        literalAggregate = args[1] 
+        mo = MessageOptionNone
+        
+        # By definition, RO is not possible
+        if (var.loc.isReadOnly):
+            mo = MessageOption.error('Cant set a RO variable!')
+
+        # test the aggregate value against the type
+        mo = self._literalAggregateTest(
+            var.tpe, 
+            literalAggregate
+        )
+
+        #i reg ensure, or relative addressing will fail 
+        self.regEnsure(b, var)
+
+        # Define contents
+        if (mo.isOk()):            
+            self._literalAggregateSet(
+                b, 
+                var.loc.lid,
+                var.tpe, 
+                literalAggregate
+            )             
+        return mo
+
     #! somewhat limited. Since the dst is a relative address, con not 
     # use a relative address i.e. var as source
     # Or could we detect for a two-step process, so we can use vars too?
     # if var, move to reg
     # mov slot, valOrReg
     #? Currenttly looks very generalised, so would work for reg too?
-    def stackDefine(self, b, args):
-        '''
-        Alllocate a value to the stack.
-        Auto-allocated, the return ver knows the location.
-        Assumes space has been allocated on the stack.
-            [protoSymbolVal(), intVal(), anyType()]
-        '''
-        protoSymbolLabel = args[0].toString()
-        val = args[1]
-        tpe = args[2]
+    # def stackDefine(self, b, args):
+        # '''
+        # Alllocate a value to the stack.
+        # Auto-allocated, the return ver knows the location.
+        # Assumes space has been allocated on the stack.
+            # [protoSymbolVal(), intVal(), anyType()]
+        # '''
+        # protoSymbolLabel = args[0].toString()
+        # val = args[1]
+        # tpe = args[2]
 
-        var = self.autoStore.varStackCreate(
-            protoSymbolLabel, 
-            tpe,
-            1
-         )    
+        # var = self.autoStore.varStackCreate(
+            # protoSymbolLabel, 
+            # tpe,
+            # 1
+         # )    
 
-        b._code.append("mov {} {}, {}".format(
-            TypesToASMName[var.tpe], 
-            self.varValueSnippet(var),
-            val
-        )) 
-        self.compiler.symSet(var)
-        return MessageOptionNone
+        # b._code.append("mov {} {}, {}".format(
+            # TypesToASMName[var.tpe], 
+            # self.varValueSnippet(var),
+            # val
+        # )) 
+        # self.compiler.symSet(var)
+        # return MessageOptionNone
 
-    # def varStackCreate(self, name, tpe, priority):
+
     #! account for data types
     # and align
     # Unnecessary?
     # Look, one would allocate by type, one by bytes. But there
     # is some question wether bytes are needed anyhow?
     # May be better looking at fullBytes in types.
-    # def stackAllocBytes(self, b, args):
-        # '''
-        # Allocate stack storage
-            # protoSymbol, slotIndex, int
-        # '''
-        # protoSymbolLabel = args[0].toString()
-        # index = args[1]
-        # allocSpace = args[2]
-        # BPRoffset = allocSpace + (self.arch['bytesize'] * index)
-        # b._code.append("lea rsp, [rbp - {}]".format(BPRoffset)) 
-
-        # var = self.autoStore.varStackCreate(b, 
-            # protoSymbolLabel, 
-            # tpe,
-            # 1
-        # )
-        # # No, it has no ''Type', hence the Loc return above
-        # #? really? this a Location, not a var
-        # var = Var(
-            # protoSymbolLabel,
-            # Loc.StackX64(index),
-            # #??? 
-            # Type.StrASCII
-        # )
-        # self.compiler.symSet(var)
-        # return MessageOptionNone
+    def stackBytesAlloc(self, b, args):
+        '''
+        Allocate bytes on stack.
+        Like a heap allocation, returns a pointer to the stack. Works 
+        from the stack pointer, not stackbase pointer. So
+        is unaffected by state of the stack, manual adjustments etc.
+            protoSymbol, size
+            [protoSymbolVal(), intVal()]
+        '''
+        protoSymbolLabel = args[0].toString()
+        size = args[1]
+        tpe = Type.Array([Type.Bit8, size])
         
-    #! bad thing here, we don't know where stack starts, so only works 
-    # on empty stackframe
-    # can't allocate stack multiple slots with current setup, unless 
-    # use slot -> addresses like heap?
-    # def stackAlloc(self, b, args):
-        # '''
-        # Allocate stack storage
-        # Resets the Stack pointer register e.g. 'esp' etc. 
-        # The calculation is absolute, from the index
-        # So set index to a calculated top (unless you are writing trick 
-        # code).
-        # It's ok to alloc at a slot above the current stack hight, 
-        # but an alloc below the stack height will reset the pointer 
-        # towards the base pointer. Subsequent action could overwrite
-        # required data. 
-            # [protoSymbol, slotIndex, type]
-        # '''
-        # protoSymbolLabel = args[0].toString()
-        # index = args[1]
-        # tpe = args[2]
-        # #tpe.byteSize
-        # var = self.autoStore.varStackCreate(b, 
-            # protoSymbolLabel, 
-            # tpe,
-            # 1
-        # ) 
-        # # We can not account for bytesize, only allocate the slot
-        # # must be aligned on 16 bytes?
-        # b._code.append("lea rsp, [rbp - {}]".format(
-             # self.arch['bytesize'] * index 
-        # )) 
-        # var = Var(
-            # protoSymbolLabel,
-            # index, 
-            # tpe
-        # )
-        # self.compiler.symSet(var)
-        # return MessageOptionNone
+        # create a regVar for the pointer
+        var = self.autoStore.varRegAnyAddrCreate(b, 
+            protoSymbolLabel, 
+            tpe,
+            1
+        ) 
 
+        # allocate the size
+        #! x64 this appears to be in bits, not bytes
+        #i needs to be 2 byte aligned
+        b._code.append("sub rsp, {}".format(
+             self.alignedSize16(tpe.byteSize) << 3
+        )) 
+        
+        # move the new address into the reg
+        #i by doing this after the allocation, data is added by positive 
+        # offsets into the newly allocated space
+        #! do we go up stack or down? What does printf use, for example?
+        b._code.append("mov {}, rsp".format(
+             var.loc.lid
+        ))
+        
+        # set the var on the context
+        self.compiler.symSet(var)
+        return MessageOptionNone
+                    
 
     ## Var actions
     def set(self, b, args):

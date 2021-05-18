@@ -1,0 +1,94 @@
+= Code Flow
+There are various means of infuenceing and encapsulating code flow. they tend to follow a BCPL rather than a function model.
+
+== Switches
+=== ifRange
+If x is in the range from...until. This branch construct is a help,
+?rl
+ifRange([ntVar], from, to)
+
+ifrraangeEnd()
+?
+
+=== If
+?rl
+ifStart (booleanCondition)
+ifEnd()
+?
+
+==== Rubble has no ''if..else' statement
+Nope. No ''else'. Use two ifs in a row. Or get clever.
+ 
+
+
+=== Switch
+Rubble has a multi-way switch on numeric values. The default is optional,
+?rl
+switchStart(varInt)
+whenStart(valInt)
+whenEnd()
+whenDefaultStart()
+whenEnd()
+switchEnd()
+?
+
+e.g.
+
+?rl
+switchStart(varInt)
+    whenStart(3)
+        println('Free!')
+        whenEnd()
+
+    whenStart(4)
+        println('Fore!')
+        whenEnd()
+
+    whenDefaultStart()
+        println('Anynum!')
+        whenEnd()
+switchEnd()
+?
+
+Rubble's switch is weird. First, Pascal-like, it has no fallthrough. Second, unPascallike, there is no way to define multiple values to one codeblock. Third, if nothing matches, it does nothing. Like an if(). Optionally, you use ''whenDefaultStart' to catch. 
+
+
+== Loops
+=== forRange
+A numeric run from..until. Like this,
+?rl
+forRangeStart(protosymbol, reg, varOrInt)
+forRangeEnd()
+?
+
+It makes a variable then runs through the numbers. 
+?rl
+forRangeStart(@loop, 'rbx', 10, -3)
+    println(loop)
+    forRangeEnd()
+?
+Prints the numbers from 10 to -2.
+
+It's not a real range. Range doesn't exist as an object.
+
+
+=== while
+Evaluate a boolean condition to repeat,
+?rl
+whileStart(gt(x 0))
+    println(x)
+    whileEnd()
+?
+
+
+=== forEach
+forEach works on any collection,
+?rl
+    heapAlloc(@heap3 Array(Bit64 3))
+    setPath(heap3 [0] 555)
+    setPath(heap3 [2] 999)
+    forEach(@elem 'r12' heap3)
+        registersPush(('rax' 'r12' 'rbx' 'rcx'))
+        println(elem)
+        registersPop()
+?

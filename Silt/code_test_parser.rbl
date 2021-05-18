@@ -66,9 +66,9 @@ funcMain()
     #heapAlloc(@heap1 Array(Bit8 3))
 
 #-- heapSet1
-    heapAlloc(@var1 Bit64)
-    heapSet(var1 333)
-    println(var1)
+    #heapAlloc(@var1 Bit64)
+    #heapSet(var1 333)
+    #println(var1)
 
 #-- heapSet2
     #heapAlloc(@var1 Array(Clutch(Bit8 Bit64) 3))
@@ -76,8 +76,9 @@ funcMain()
     #println(var1)
 
 #-- heapSet3
+    #heapAlloc(@var1 Bit64)
     # parses, but fails
-    #heapDefine(@var1 Bit64 [jepp ~> 888])
+    #heapSet(var1 [jepp ~> 888])
     #println(var1)
 
 #-- heapStringDefine
@@ -86,14 +87,17 @@ funcMain()
     #heapStringDefine(@str1 'a long str')
     #println(str1)
 
-#-- Alloc UTF8
+#-- heapDefineStringUtf8
     # No. What we will do here is define our string handling library
     # heapDefineStringUtf8(@utf1 'groovin')
     # println(arith1)
 
-#-- heapAllocBytes
-    #Isnt working because what ''type' is a length of bytes?
-    #heapAllocBytes(@heap1 8)
+#-- heapBytesAlloc
+    #! cant print
+    #heapBytesAlloc(@var1 3)
+    #heapSet(var1 [* 5])
+    #println(var1)
+
 
 #-- Stack
 #-- stackAllocSlots
@@ -101,26 +105,40 @@ funcMain()
     # Throws warning
     #stackAllocSlots(9)
 
+
+#--stackAlloc
+    #stackAlloc(@var1 Bit64)
+
+#--stackAlloc2
+    #stackAlloc(@var1 Array(Clutch(Bit8 Bit64) 3))
+
+#-- stackSet1
+    #stackAlloc(@var1 Bit64)
+    #stackSet(var1 333)
+    #println(var1)
+
+#-- stackSet2 (triggers align)
+    #stackAlloc(@var1 Bit8)
+    #stackSet(var1 333)
+    #println(var1)
+
+#-- stackSet3
+    #stackAlloc(@var1 Array(Clutch(Bit8 Bit64) 3))
+    #stackSet(var1 [* [33 77]])
+    #println(var1)
+
 #-- stackDefine
     #stackAllocSlots(16)
     #stackDefine(@stk1 555 Bit64)
     #stackDefine(@stk2 777 Bit64)
     #println(stk1)
     #println(stk2)
-#--
-    #Isnt working because what ''type' is a length of bytes?
-    #stackAllocBytes(@stk1 8, 1)
-    #set(stk1 799)
-    #println(stk1)
 
-#--
-    #stackAlloc(@stk2 1 Bit64)
-#--
-    #stackAlloc(@stk2 Array(Bit64, 8))
-    #varStack(@stk2 2 99)
-    #println(Bit64 stk2)
-    #println(stk2)
-    #stringHeapAlloc(24)
+#-- stackBytesAlloc
+    #! cant print
+    #stackBytesAlloc(@var1 3)
+    #stackSet(var1 [* 5])
+    #println(var1)
 
 
 

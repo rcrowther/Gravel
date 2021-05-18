@@ -1,5 +1,5 @@
 = Intro
-Rubble is a computer language.
+Rubble is a compiler. It defines a computer language.
 
 == Why you may not want to use Rubble
 +dl
@@ -8,7 +8,7 @@ Rubble is a computer language.
 ~ It's made by someone who doesn't know what they are doing
 : The author has no books on assembly programming, and does not work as a programmer
 ~ It's not supported by any expertese or community
-: The author is not famous. And the author has no weight of Google, finance, or government behind him. Please bear in mind how important celebrity, authority, and review are to computing
+: The author is not famous. And the author has no weight of Google, finance, or government behind him. Please bear in mind how important celebrity, authority and review are to computing
 +
 
 == Guide to Rubble for categories of programmers
@@ -38,10 +38,10 @@ One description of Rubble might be, ""To generate prodictable, plain assembly co
 
 
 == Come again? What's it like?
-A sequence of simple functions. Sometimes Rubble is like an intermediate language. You deal with registers and the stack directly, not abstracted variable bindings,
+A sequence of functions. Sometimes Rubble is like an intermediate language. You deal with registers and the stack directly, not abstracted variable bindings,
 ?rbl
 frame()
-
+...
 frameEnd()
 ?
 Sometimes Rubble is more like languages of higher abstraction,
@@ -56,11 +56,11 @@ No. Read the above. Rubble generates plain, predictable machine code. It does no
   
 
 == How ''powerful' is Rubble?
-Hard to measure. Rubble is an abstraction of assembly code, far below C. 
+Hard to measure. Rubble is an abstraction of assembly code, below C, above assembly code. 
 
 
 == What is similar to Rubble?
-Autogeneration of Rubble should be easy. So maybe BCPL, the precursor to C, though BCPL is far more elegant. Some bytecodes, though Rubble is more involved and has a verbose interface. Maybe a Hardware Description Language, but for CPU ops. It can be viewed as a {a(https://en.wikipedia.org/wiki/High-level_assembler) high level assembler}.
+Autogeneration of Rubble should be easy. So maybe BCPL, the precursor to C, though BCPL is far more elegant. Some bytecodes, though Rubble is more involved and has a verbose interface. Maybe a Hardware Description Language, but for CPU ops. It could be viewed as a {a(https://en.wikipedia.org/wiki/High-level_assembler) high level assembler}.
 
 
 == Why would I use it?
@@ -72,7 +72,7 @@ Go ahead.
 
 
 ==  Why not implement in LLVM?
-LLVM is layered, pipelined, flexible and written in C++. So LLVM is not plain, is packed with optimisations, and is not predictable. LLVM does not support the stated aims of Rubble.
+LLVM is layered, pipelined, flexible and written in C++. So LLVM is not plain, is packed with optimisations, and is not predictable. LLVM does not support the stated and unstated aims of Rubble.
 
 
 == What's written in Rubble?

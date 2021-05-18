@@ -1,102 +1,39 @@
-= Usage
+= Rationale
 
-== Dealbreakers
-All languagues have their oddities. Rubble less than many, I like to think, but it has them. And they are big. Here are the two biggest,
+== Overall Rationale
+Rubble draws common assembly idoms together.
+
+Rubble has some sub-aims. To be,
 ++
-~ Functions only take one argument
-: ...and one return. You can fiddle with registers to do as you wish. There's functions for protection also. So rubble can be used to pass more arguments of you wish. GCC does summersaults to allow un to twenty, but the only builtin functions account for one argument. Reason is, this policy saves us a swathe of code and unpredictable output.  
-~ There is no if..else
-: Again, you can fiddle with Rubble to provide an if..else if you wish, but there is no builtin function. If..else is splendidly intuitive, and has been provided in high level languages since it's introduction in C. It is also predictable code. But it is a syntactical mass, and a basty twist in output code. It also multiplies problems with prooving code. Rubble can live without it.
+- an easy parse
+- cross-platform
+- reduced syntax
 +
+Where there is conflict, sub-aims do not override the main aim.
 
-There's more. which will be explained in greater detail somewhere or other but, quickly,
-++
-~ Functions take a fixed number of parameters
-: There are no vargs. Though there is an ability to pass in arrays
-~ 
-:
-+ 
+An easy parse, because languages have for too long leaned on complex input code to resolve ''what I would like to say' without thinking through the issues (several languages have syntax ambiguities that make creating tools difficult).
 
-Worth knowing is that there's a general policy, ''Rubble never stops you writing crazy code, if the looseness the code allows also allows you to do good thengs'. There is plenty of protection, warnings, and aftmeasure, but Rubble will not stop you outright.
+Cross-platform because assembly code is not.
+
+A reduced syntax both for academic purpose of generating useful abstracctions, and for potential machine generation of code (use of Rubble as an intermediate language)
 
 
-== Base Syntax
-Rubble implemrnts a simple base syntax. Everything is a function (not a ''lambda' or ''proc'). All functions have brackets. Functions are one per line,
+== Layout
+Rubble functions must be one per line. Other languages grapple with syntax for multiline strings, and spacious parameter layout, but that's not necessary in Rubble. At the expense of these conveniences, line-based code is easier to read, parse, and gives better error messages. 
 
-?rubble
-# function name ~ '(' ~ arguments ~')'
-dec()
-?
-
-All functions take a fixed number of arguments.
-
-Most of Rubbles' functions are close to assembly language nuggets e.g.
-
-?rubble
-frame()
-...
-frameEnd()
-?
-
-Some are highrer level,
-
-?rubble
-forEach(@genVar 'rac' someVar)
-    println(genVar)
-    forEachEnd()
-?
-
-
-== How Rubble handles brackets in generated code
-As you saw above, bracketing in generated code is explicitly stated, 
-?rubble
-frame()
-    ...
-frameEnd()
-?
-implies a bracketed section. This is similar to a Ruby ""do..end" block, or Ada's ""func FuncName..endFuncName".
-
-
-==== Rationale
-Rubble draws common assembly idoms together. A reduced syntax makes sense, both for academic purpose of generating useful abstracctions, and for potential machine generation of code (use of Rubble as an intermediate language)
+=== Commas
+People like to type commas, and many other languages use commas. Rubble is assumed to be a languge which will be used at the same time as other languages, so commas are allowed. Commas may also improve readability.
 
 
 
-=== Layout
-Rubble functions must be one per line. But other whitespace is irellevsant, so they can be spaced how you wish. I lean towards a python-style indenting,
-?rubble
-func(name: type)
-    ...
-    endFunc()
-? 
-but whitespace sizing is irellevant.
+== Rubble functions
+Functions use what is often called Algol-like layout. That is, the symbol is outside the brackets. Rubble would by base policy use LISP-like inside-bracket placement for function symbols. But the line-layout, and simplistic syntax, mean Rubble can unabiguously use Algol placement. This is much easier to read.
 
+=== Arguments
+Rubble's arguments are always of fixed size. Actually, vargs are possible by passing in arrays. This is nowhere near the readablity of high-level languages and their elipses. But, again, it is easy to parse, and at Rubble's level of coding, appropriate.
 
-== Arguments
-Every function can have arguments. These are bone-simple. 
-+
-134 = number
-5.4 = float (because there's a period. Also 2.0)
-""goof" = a string. note the double opening quotes
-'doof' = also a string
-+
-Types default to the machine base. See later.
-
-
-== Arguments for allocation
-Sometimes you make a variable. What really happenins is that data is returned from a function that will be stored for later use. This data is associated with a label for later use. 
-??
-stringRODefine(@ro1 ""In a Silent Way")
-?
-Note the ''@' symbol. It says, ""Here is some text that will be used as a label for the data next time I use it". like this, 
-??
-stringRODefine(@ro1 ""In a Silent Way")
-println(StrASCII ro1)
-?
-
-
-==== Rationale
-Other languages use parsers and alternate syntxes to make symbol  allocation readable. Infixed operators like ''=' would allow the usual cute, high-level, mathematical,
+=== Functions only
+Other languages use parsers and alternate syntxes to make symbol allocation readable. Infixed operators like ''=' would allow the usual cute, high-level, mathematical,
 
 ?ruby
 ro1 = "In a Silent Way"
@@ -109,105 +46,56 @@ def ROData(rp1 "In a Silent Way")
 
 The small syntax is seen as more important.
 
-Also,  the ''@' syntax is unusual. All languages must resolve the issue that when a ''symbol' is defined, the arrgument given is not the symbol, it is text that will be used to create the symbol. The ''@' solution is an unambiguaous, easily parsed, way of doing this (as opposed the the more general methods of most LISPs, such as unquoting).
+=== The @ symbol mark
+The ''@' syntax is unusual. All languages must resolve the issue that when a ''symbol' is defined, the arrgument given is not the symbol, it is text that will be used to create the symbol. The ''@' solution is an unambiguaous, easily parsed, way of doing this (as opposed the the more general methods of most LISPs, such as unquoting).
 
-I agree this is not the most readable solution, but it removes a swathe of complexity from the parser.
-
-
-=== Commas
-Rubble treats commas between arguments as whitespace. It will replace them. So mostly you are free to put commas in or not, 
-??
-sub(reg1, 30)
-?
-Same as,
-??
-sub(reg1,30)
-?
-Same as,
-?rubble
-sub(reg1 30)
-?
-
-But in other places the replacement of commas can have an effect on parsing, You can't give a func this name
-?rubble
-func(@n,s,e,w 99)
-?
-That would parse as seperate arguments, and the function return an error.
+I agree this is not the most readable solution, but it removes a swathe of complexity from the parsing.
 
 
-==== Rationale
-People like to type commas, and many other languages use commas. Rubble is assumed to be a languge which will be used at the same time as other languages, so commas are allowed. Commas may also improve readability.
 
 
-== Typing
-Rubble includes a notion of type. In many higher level languages declaring a class creates a new type. Not so in Rubble (there is no notion of class anyway). The types are a small fixed set.
 
-Types look like this,
-??
-Bit8
+== Types
+In most computer languages, the idea of type exists so compiler/interpreters can report type changes to the user. these type changes are assumed to be unintentional, so are usually reported as errors. Ok, Users of OCaml and Haskel may have a different notion, and users of Ruby especially (also Python) will be used to ''duck-typing' where the idea of type is avoided (however, it should be noted that types still exist in these languages, they are mostly hidden though, in fairness, they are only assessed as they arrive).
 
-ASCIIString
+Rubble does not use types for this purpose. Rubble uses type to DRY the core function set. Machine code is awaash with opcode and variants even for a simple move. Even assembly langauges struggle to fully embrace the possibilities. Rubble does not aim to fully embrace the possibilities of machine or assembly code, and reduced syntax is an aim of Rubble.
 
-Array(Bit8, 4)
-?
+=== No additions to the typeset
+Most high-level languages have the option to extend the typeset by declaring a ''class'. Rubble does not implement classes, and anyway, prefers to keep the typeset reduced and close to assembly language usage. Since that's how the idea arose, that's how it stays.
 
 
-=== Type in Rubble is not for type-checking
-In most computer languages, the idea of type exists so compiler/interpreters can report type changes to the user. these type changes are assumed to be unintentional, so are usually reported as errors. Ok, Users of OCaml and Haskel may have a different notion, and users of Ruby especially (also Python) will be used to ''duck-typing' where the idea of type is avoided (however, it should be noted that types still exist in these languages, they are mostly hidden and, in fairness, they are only assessed as they arrive).
 
-Rubble does not use types for this purpose. The current compiler does not check type consistency agross instructions, not at all through the program, and only moves types about as a convenience to DRY out code in some places. Repeat---Rubble does not check type consistency, and if a Specification is ever published for Rubble, then it will be explicit that type can be checked and changes warned, but must never throw errors.
+== Data structures
+Rubbles base data structures represent assembly code idioms.
 
-Why have type expressions then? Because with type expressions Rubble can summaries many assembly-level instructions with one ploy. For example, it is common for an assembly programmer to only move a small number using a part register. This can save quite a few clock cycles. Even on a 64Bit computer, if I know the number will be no bigger than 32 bit, I'd use the 32 bit move,
-??
-move eax, 99
-?
-not the 64Bit move,
-??
-mov rax, 99
-?
-(as long as I know the register is zeroed and I won't finish with garbage).
+Rubble includes container data types, because they are used so frequently, and some machine code has been developed to apply to them (e.g. string handling operations). the reasons for container data types are also influenced by the arguments for types, that they allow Rubble to reduce syntax.
 
-further, on modern chips, there are several kinds of move instruction, this for ???, 
-??
-movd rax
-?
-Using a type hint system, Rubble can boil many of these instructions to one instuction, plus a type,
-??
-?
-Reduced syntax is a primary aim of Rubble.
+Rubble's container data types are few. They are a non consistent sequence, called a ''Clutch', which is somewhat like ''tuples' or ''structs' in higher-level languages. And a consistent data sequence, called an ''Array', which is very like an array in mid-level languages (but nothing like the ''lists' in Pytohn, or a Ruby ''array'). And that's all, because other data types such as linked lists can be built from these. the decision on the teo types is somewhat similar to ''records' and ''lists' in EMACS LISP, which serve something like the same purpose, though there was no influence.
+
+
+
+
+
+
+
+
+
+== Variables
+Rubble has a notion of variables. This came about from a natural joining of data locations to types. The variables do not have the abstraction level of most computing languages, and are fatr short of a mathematical notation. However, Rubble is only concerned with the the fact that wariables, tracking location and carrying type, have enough abstraction to disguise cross-platform differences. This is an aim of Rubble.
+
+
+=== Not many definitions, and by policy
+Definitions are the usual aim of high-level languages, because they mimic the full abstraction of mathematics. Rubble follows lower-level methods, so frequently breaks from definitions into  allocation/set functions. 
+
+The use of definition or allocation/set functions follows a policy. If data is read-only, then it has no reasonable allocation/set policy (you can't ''set' readonly data!), so Rubble provides definitons. It also provides definitions if underlying machine-code or assembly is capable of  expressing a definition. You don't allocate a register (though you may stash it's contents, or ''clear' it). In these cases Rubble provides definition functions. In all other cases, it provides allocation/set functions. 
+
+=== Why allocation/set
+Even when they allocate, many mid-level languages, and upwards, attempt to maintin the clarity of definitions. However, most assembly code works like an allocate/set paiing. It is an aim of Rubble to reflect such work.
+
+=== Aggregates
+Most languages use classes and what are called constructor functions to fil larger structures with data. Rubble has no interest in either.
  
-
-== Allocation and definition are seperate
-In most languages, allocation and deffinition arre the same,
-
-?ruby
-ro1 = "In a Silent Way"
-?
-
-In C-family languages, alllocation is sometimes separated from definition,
-
-?c
-*str1 = mallloc(15)
-str1 = "In a Silent Way"
-?
-
-In Rubble, allocation is often separated from definition,
-?rubble
-stackAlloc(@str1 ASCII 15)
-set(str1 "In a Silent Way")
-?
-
-
-==== Rationale
-High level languages use their parsers and optimisers to resolve what must happen in allocation and dealocation. They will scan a function/proceedure/method to find what space is needed, and where.
-
-Assembly coders are used to, for example, mallocing a large general space in one go. It is verging on unpredicatable to scan and decide storage areas for the coder. So Rubble provides the general methods.
-
-There are two exceptions. First, if an architecture can not handle a given register request, the storage will be put on stack. Second, it is possibble to allocate and define global string storage in one command,
-?rubble
-roDataDefine(@str1 "In a Silent Way")
-?
-This must be because most such definitions are read-only.
+There is a language called Ada that has a different approach. It uses what is in parsing a micro-language to fill large structures. These are called Aggregates (''aggregated data'). Rubble is concerned with with representing underlying realities, so it uses set functions where emany languages would use definitions or constructor functions. However, Rubble is not concerned with torturing coders. So it also provides an aggregate language for filling larger structures. The Rubble aggregate language is nowhere near as powerful as the Ada solution, but will be adequate for the needs of Rubble users.
 
 
 
