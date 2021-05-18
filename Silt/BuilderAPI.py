@@ -136,6 +136,7 @@ class BuilderAPI():
         'stackAllocSlots':  [intVal()],   
         'stackAlloc': [protoSymbolVal(), anyType()],
         'stackSet' : [anyVar(), aggregateAny()],
+        'stackStringDefine': [protoSymbolVal(), strVal()],
         'stackBytesAlloc': [protoSymbolVal(), intVal()],
 
         #'stackDefine': [protoSymbolVal(), intVal(), anyType()],
@@ -599,10 +600,9 @@ class BuilderAPIX64(BuilderAPI):
     #! fixes
     #- need to limit ASMWord
     def _literalAggregateTestRec(self, mo, tpe, literalAggregate):
-        print("_literalAggregateTestRec")
-        print(str(literalAggregate))
-        print(str(mo))
-        
+        #print("_literalAggregateTestRec")
+        #print(str(literalAggregate))
+        #print(str(mo))
         #print(str(tpe))
         #print(str(type(literalAggregate)))
         # print(str(tpe))        
@@ -631,14 +631,10 @@ class BuilderAPIX64(BuilderAPI):
                 if (not(isinstance(tpe, Type.Array))):
                     mo[0] = MessageOption.error(f'Repeat mark must referr to Array. Found:{tpe}')
                 else:
-                    #NB syntaxer doesn't catch too few arguments
+                    #i syntaxer doesn't catch too few arguments
                     if (len(literalAggregate) != 2):
                         mo[0] = MessageOption.error(f'Repeat mark must be followed by one arg.')
                     else:
-                        #print(str(tpe))
-                        #print(str(literalAggregate))
-                        #print(str(tpe.elementType))
-                        #print(str(literalAggregate[1]))
                         self._literalAggregateTestRec(
                             mo,
                             tpe.elementType,
@@ -803,7 +799,39 @@ class BuilderAPIX64(BuilderAPI):
             offset, 
             value
         ))              
-        
+
+    def _bytesToNumberWrite(self, b, pointerRegister, byteArray, bytesInNumber):
+        size = len(byteArray)
+        limit = bytesInNumber
+        i = 0
+        j = 0
+        number = 0
+        step = 0
+        buff = bytearray(bytesInNumber)
+        while (i < size):
+            if (j >= limit):
+                b._code.append("mov {} [{}+{}], {}".format(
+                    'dword',
+                    pointerRegister,
+                    i - bytesInNumber, 
+                    int.from_bytes(buff, 'little')
+                )) 
+                j = 0
+                number = 0
+            buff[j] = byteArray[i]
+            j += 1
+            i += 1
+            
+        # remainder
+        if (j):
+            b._code.append("mov {} [{}+{}], {}".format(
+                'dword',
+                pointerRegister,
+                i - j, 
+                int.from_bytes(buff[0:j], 'little')
+            )) 
+
+                
     #)
     def heapStringDefine(self, b, args):
         '''
@@ -812,22 +840,21 @@ class BuilderAPIX64(BuilderAPI):
             varName string
             [protoSymbolVal(), strVal()]
         '''
-        # byteSize = self.byteSize() * size
-        # b._code.append("mov {}, {}".format(arch['cParameterRegister'][0], byteSize))
-        # b._code.append("call malloc")
-        # return LocationRootRegisterX64('rax') 
         self.extern(b, ['malloc'])
         protoSymbolLabel = args[0].toString()
         string = args[1]
+        
+        # add string terminator now
         string += '\0'
         mo = MessageOptionNone
         #if not string.isascii():
         if False:
             mo = MessageOption.error(f'String is not ascii. string:{string}')
         else:
-            # Plus 1 for the null terminator
             asciiStr = string.encode("ascii")
             byteSize = len(asciiStr)
+
+            # create a regVar for the pointer
             var = self.autoStore.varRegAddrCreate(
                 b,
                 protoSymbolLabel, 
@@ -835,12 +862,15 @@ class BuilderAPIX64(BuilderAPI):
                 Type.StrASCII,
                 1
             )
+
+            # allocate the size
             b._code.append("mov {}, {}".format(
                 self.arch['cParameterRegisters'][0], 
                 byteSize
             ))
             b._code.append("call malloc")
 
+            # convert string to numbers then write down
             #? why only a dword?
             #???
             self._bytesToNumber(
@@ -851,6 +881,8 @@ class BuilderAPIX64(BuilderAPI):
                 4,
                 self._returnRegOffsetMove
             )
+
+            # set the var on the context
             self.compiler.symSet(var)
         return mo
         
@@ -918,6 +950,8 @@ class BuilderAPIX64(BuilderAPI):
         # set the var on the context
         self.compiler.symSet(var)
         return MessageOptionNone
+             
+             
                     
     ## Stack
     # Do we need a MaybeReg define? Or is that, varDefine?
@@ -1099,7 +1133,67 @@ class BuilderAPIX64(BuilderAPI):
         # self.compiler.symSet(var)
         # return MessageOptionNone
 
+    #)
+    def stackStringDefine(self, b, args):
+        '''
+        Define a byte-width string to stack.
+        Like a heap allocation, returns a pointer to the stack. Works 
+        from the stack pointer, not stackbase pointer. So
+        is unaffected by state of the stack, manual adjustments etc.
+            varName string
+            [protoSymbolVal(), strVal()]
+        '''
+        protoSymbolLabel = args[0].toString()
+        string = args[1]
 
+        # add string terminator now
+        string += '\0'
+        mo = MessageOptionNone
+        
+        #if not string.isascii():
+        if False:
+            mo = MessageOption.error(f'String is not ascii. string:{string}')
+        else:
+            asciiStr = string.encode("ascii")
+            byteSize = len(asciiStr)
+
+            # create a regVar for the pointer
+            var = self.autoStore.varRegAnyAddrCreate(b, 
+                protoSymbolLabel, 
+                Type.StrASCII,
+                1
+            ) 
+
+            # allocate the size
+            #! x64 this appears to be in bits, not bytes
+            #i needs to be 2 byte aligned
+            b._code.append("sub rsp, {}".format(
+                 self.alignedSize16(byteSize) << 3
+            )) 
+
+            # move the new address into the reg
+            #i by doing this after the allocation, data is added by positive 
+            # offsets into the newly allocated space
+            b._code.append("mov {}, rsp".format(
+                 var.loc.lid
+            ))
+            
+            # convert string to numbers then write down
+            #? why only a dword?
+            #???
+            self. _bytesToNumberWrite(
+                b, 
+                var.loc.lid, 
+                asciiStr, 
+                #? Humm. The 64Bit bussize is often 32Bit  
+                #self.arch['bytesize'],
+                4
+            )
+
+            # set the var on the context
+            self.compiler.symSet(var)
+        return mo
+        
     #! account for data types
     # and align
     # Unnecessary?

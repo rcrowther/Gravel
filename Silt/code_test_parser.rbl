@@ -134,6 +134,13 @@ funcMain()
     #println(stk1)
     #println(stk2)
 
+#-- stackStringDefine
+    # No. What we will do here is define our string handling library
+    stackStringDefine(@var1 'groovin on a sunny afternoon')
+    stackStringDefine(@var2 'a long str')
+    println(var1)
+    println(var2)
+
 #-- stackBytesAlloc
     #! cant print
     #stackBytesAlloc(@var1 3)
