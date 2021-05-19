@@ -30,14 +30,17 @@ funcMain()
     #comment('gettin funky')
     frame()
 
-#- reg stack
-    # Not working due to path sacanning...
-    #registersPush('rbx', 'r2')
+#- stackRegisters
+    #registersPush(('rbx', 'r14'))
+    #registersPop()
     #registersVolatilePush()
     #registersPop()
-    #registersVolatilePush('rax' 'rbx' 'rcx')
-    #registersVolatilePop()
-
+    # prints warning
+    registersPush(('rbx', 'r99'))
+    registersPop()
+    # throws error
+    #registersPush(('rbx'))
+    #registersPop()
 
 #- Alloc/define
 #-- RO Global
@@ -136,10 +139,10 @@ funcMain()
 
 #-- stackStringDefine
     # No. What we will do here is define our string handling library
-    stackStringDefine(@var1 'groovin on a sunny afternoon')
-    stackStringDefine(@var2 'a long str')
-    println(var1)
-    println(var2)
+    #stackStringDefine(@var1 'groovin on a sunny afternoon')
+    #stackStringDefine(@var2 'a long str')
+    #println(var1)
+    #println(var2)
 
 #-- stackBytesAlloc
     #! cant print
@@ -330,7 +333,7 @@ funcMain()
     # general exit
     printFlush()
     frameEnd()
-    funcMainEnd(0) 
+    funcMainEnd(0)
 
 
 #While(OR([LT('rax', 5), LT('b', 7), LT('c', 9)  ]))

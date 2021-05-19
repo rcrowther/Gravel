@@ -400,16 +400,35 @@ class BuilderAPIX64(BuilderAPI):
 
     ## Register utilities
     # #! needs datapush
-    def registersPush(self, b, args):
-        '''
-            [argList]
-        '''
-        registerList = args[0].value
-        if (len(registerList) & 1):
-            self.compiler.warning("Uneven n number of pushes will unbalance the stack?")
+    def _registersPush(self, b, registerList):
         for r in registerList:
             b._code.append('push ' + r)
         self.compiler.closureDataPush(registerList)
+        
+    #! arg error pointer in wrong position
+    def registersPush(self, b, args):
+        '''
+        Push registers.
+            list of registers
+            [argList]
+        '''
+        registerList = args[0].value
+        
+        # test list will not unbalance stack
+        if (len(registerList) & 1):            
+            self.compiler.warningWithPos(
+                args[0].position,
+                "Uneven number of pushes will unbalance the stack"
+            )
+            
+        # test registers exist
+        for regStr in registerList:
+            if (not(regStr in self.arch['generalPurposeRegisters'])):
+                self.compiler.errorWithPos(
+                    args[0].position,
+                    f"Register not recognised. register:'{regStr}'"
+                )
+        self._registersPush(b, registerList)
         return MessageOptionNone
 
     def registersPop(self, b, args):
@@ -423,9 +442,9 @@ class BuilderAPIX64(BuilderAPI):
         Protect the volatile registers 
         i.e. those used for parameter passing.
         '''
-        self.registersPush(
-            b, 
-            [ArgList(self.arch['cParameterRegisters'].copy())]
+        self._registersPush(
+            b,
+            ArgList(self.arch['cParameterRegisters'].copy()),
         )
         return MessageOptionNone
 

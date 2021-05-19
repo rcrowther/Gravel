@@ -32,28 +32,32 @@ but whitespace sizing is irrelevant.
 
 === Arguments
 Every function can have arguments. These are bone-simple. 
-+
+??
 134 = number
 5.4 = float (because there's a period. Also 2.0)
 ""goof" = a string. note the double opening quotes
 'doof' = also a string
-+
-Types default to the machine base. See later.
+?
+Types default to the machine base. See later
 
-There is one twist. You can give some functions an argument list. An argument that is a list is formed with ''(' and '')',
+Other syntax allowed. Some functions want an argument as a list. A list is formed with ''(' and '')',
 ?rbl
 registersProtect(('rax', 'rbx'))
 ?
+and ''aggregates' (sequences) of literals, are formed with ''[' and '']',
+?rbl
+set(@var1, [9 7 9])
+?
+For information and usage of both of these, see later.
 
 
-
-=== An arg can not be another function
+==== An arg can not be another function
 Rubble is not a LISP. This will give an error,
 ?rbl
 whileStart(dec(reg1))
 ?
 
-There are two exceptions (eccept they are specific kinds). Declarations of data types, and of Boolean logic. See the relevant sections.
+There are two exceptions (except they are compiler kinds). Declarations of data types and Boolean logic. See the relevant sections.
 
 
 === Commas

@@ -184,11 +184,14 @@ class SyntaxerBase:
         if(self.tok != token):
             self.expectedTokenError(ruleName, token)
         self._next()
-              
+         
+    #?! These do the same
     def skipToken(self, token):
         '''
-        Pass over a token
+        (optionally) Pass over a token
         When you know what it is, and are not interested (e.g. brackets)
+        return
+            If skips, returns True.
         '''
         r = False
         if (self.tok == token):
@@ -196,10 +199,12 @@ class SyntaxerBase:
             self._next()
         return r
 
+    #?! These do the same
     def optionallySkipToken(self, token):
         '''
         Optionally skip a token.
-        If skips, returns True.
+        return
+            If skips, returns True.
         ''' 
         r = (token == self.tok)
         if (r):

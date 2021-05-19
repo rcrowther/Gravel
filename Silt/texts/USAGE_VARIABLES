@@ -139,10 +139,10 @@ Rubble aggregate-literals can be no more than a singular type like ''99', to fil
 [...] 
 #
 The literals inside can be any of string, int or float. So this allocates an array then sets the data inside,
-#rble
+?rble
 heapAlloc(@var1 Array(Bit64 3))
 set(@var1, [9 7 9])
-#
+?
 Also, sequences can be embedded, so here is an array of clutches being set by an aggregate,
 #rble
 heapAlloc(@var1 Array(Clutch(Bit32 Bit8) 3))

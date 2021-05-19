@@ -93,7 +93,7 @@ def protoSymbolVal():
     return InstanceTest("ProtoSymbol", ProtoSymbol)
 
 def argListVal():
-    return InstanceTest("ArgList (of strings)", ArgList)
+    return InstanceTest("List (of strings)", ArgList)
     
 def pathVal():
     return InstanceTest("Path (array of indeces and labels)", Path)

@@ -423,6 +423,8 @@ class Syntaxer(SyntaxerBase):
 
     def argList(self, argsB):
         # only accepts strings, for now
+        #? So that would be stringList
+        # Current only use is for register popping
         commit = self.isToken(LBRACKET)
         if (commit):
             self._next() 
@@ -430,6 +432,8 @@ class Syntaxer(SyntaxerBase):
             while (True):
                 if(self.isToken(STRING)):
                     argList.append(self.textOf())
+                    self._next()
+                elif(self.isToken(COMMA)):
                     self._next()
                 else:
                     break
@@ -564,8 +568,8 @@ class Syntaxer(SyntaxerBase):
             # ater booleans and funcs, so identifiers must be a symbol
             or self.symbol(argsB)
             
-            #? What's this arglist for
-            # A list of strings?
+            #? For register popping
+            # A list of strings? Rename?
             or self.argList(argsB)
             
             #or self.path(argsB)
