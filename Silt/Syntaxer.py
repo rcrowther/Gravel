@@ -11,6 +11,8 @@ from tpl_types import (
 from gio.SyntaxerBase import SyntaxerBase
 from library.encodings import Codepoints
 
+from collections import namedtuple
+Arg = namedtuple('Arg',['position','value'])
 
 NamesBooleanComparisons  = [
     'gt', 'gte', 'lt', 'lte', 'eq', 'neq',
@@ -160,7 +162,8 @@ class Syntaxer(SyntaxerBase):
                 # or perhaps a custom definition?
                 #arg = self.findIdentifier(pos, name)
                 arg = self.symbolUsrFind(pos, name)
-            argsB.append(arg)
+            argsB.append(Arg(self.toPosition(), arg))
+            #argsB.append(arg)
             self._next() 
         return commit
         
@@ -181,7 +184,8 @@ class Syntaxer(SyntaxerBase):
                 v = int(v)
             if (self.isToken(FLOAT_NUM)):
                 v = float(v)
-            argsB.append(v)
+            #argsB.append((v, self.toPosition()))
+            argsB.append(Arg(self.toPosition(), v))
             self._next()
         return commit
             
@@ -211,9 +215,10 @@ class Syntaxer(SyntaxerBase):
                 )
             self.skipTokenOrError('funcBooleanNot', RBRACKET)
             # make type, add to args
-            argsB.append(
-                FuncBoolean(name, notArgB)
-            )
+            #argsB.append(
+            #    FuncBoolean(name, notArgB)
+            #)
+            argsB.append(Arg(self.toPosition(),  FuncBoolean(name, notArgB)))
         return commit
                 
     def funcBooleanComparison(self, argsB):
@@ -246,9 +251,10 @@ class Syntaxer(SyntaxerBase):
                 )
             self.skipTokenOrError('funcBooleanComparison', RBRACKET)
             # make type, add to args
-            argsB.append(
-                FuncBoolean(name, cmpArgB)
-            )
+            #argsB.append(
+            #    FuncBoolean(name, cmpArgB)
+            #)
+            argsB.append(Arg(self.toPosition(),  FuncBoolean(name, cmpArgB)))
         return commit
 
     def funcBooleanCollation(self, argsB):
@@ -271,9 +277,10 @@ class Syntaxer(SyntaxerBase):
             self.skipTokenOrError('funcBooleanCollation', RBRACKET)
             
             # make type, add to args
-            argsB.append(
-                FuncBoolean(name, colArgB)
-            )
+            #argsB.append(
+            #    FuncBoolean(name, colArgB)
+            #)
+            argsB.append(Arg(self.toPosition(),  FuncBoolean(name, colArgB)))
         return commit
             
                 
@@ -308,6 +315,7 @@ class Syntaxer(SyntaxerBase):
             #argsB.append(
             #    FuncBoolean(name, funcArgsB)
             #)
+            argsB.append(Arg(self.toPosition(),  FuncBoolean(name, funcArgsB)))
         return commit
         
     ## Types
@@ -351,9 +359,10 @@ class Syntaxer(SyntaxerBase):
                 self.oneOrMore(self.typeArgContainer, tpeArgsB, "typeArgContainer")
                 self.skipTokenOrError('typeDeclaration', RBRACKET)                 
                 tpe = typeNameContainerToType[name](tpeArgsB)
-            argsB.append(
-                tpe
-            )
+            #argsB.append(
+            #    tpe
+            #)
+            argsB.append(Arg(self.toPosition(), tpe))
         return commit
 
                     
@@ -425,7 +434,8 @@ class Syntaxer(SyntaxerBase):
                 else:
                     break
             self.skipTokenOrError('argList', RBRACKET)
-            argsB.append(argList)
+            #argsB.append(argList)
+            argsB.append(Arg(self.toPosition(), argList))
         return commit                    
                             
     #! I'd need to tokenise for double brackets.
@@ -452,7 +462,8 @@ class Syntaxer(SyntaxerBase):
                 else:
                     break
             self.skipTokenOrError('path', RSQUARE)
-            argsB.append(path)
+            argsB.append(Arg(self.toPosition(), path))
+            #argsB.append(path)
         return commit
 
     def keyValue(self, b):
@@ -494,7 +505,8 @@ class Syntaxer(SyntaxerBase):
                     "A literal or aggregated literal"
                 )
             kv.value = valueB
-            b.append(kv)
+            #b.append(kv)
+            b.append(Arg(self.toPosition(), kv))
         return commit
 
     def repeatMark(self, b):
@@ -506,7 +518,8 @@ class Syntaxer(SyntaxerBase):
         # square brackets
         commit = (self.isToken(REPEAT))
         if (commit):
-            b.append('*')
+            #b.append('*')
+            b.append(Arg(self.toPosition(), '*'))
             self._next() 
         return commit
         
@@ -516,16 +529,9 @@ class Syntaxer(SyntaxerBase):
         self._next() 
         av = AggregateVals()
 
-        # if (self.repeatMark(av)):
-            # (
-                # self.constant(av)            
-                # or self.aggregate(av)
-                # or self.keyValue(av)
-            # )
-        # else:
-            # can call recursively, to nest
-            #? same-to-end mark
-            #? put commas in
+        #i keyValue is scanned as any other argument, though it can only 
+        # have one position. errors are currently caught in the compiler
+        # checks
         while (
             self.constant(av)            
             or self.aggregate(av)
@@ -533,7 +539,8 @@ class Syntaxer(SyntaxerBase):
             or self.repeatMark(av)
             ):
             pass
-        b.append(av)
+        #b.append(av)
+        b.append(Arg(self.toPosition(), av))
             
     def aggregate(self, argsB):
         commit = self.isToken(LSQUARE)
@@ -545,7 +552,7 @@ class Syntaxer(SyntaxerBase):
     def arg(self, argsB):
         r = False
         
-        #NB all args converted to datatypess
+        #i all args converted to data types
         if (
             self.constant(argsB)
             
@@ -557,7 +564,8 @@ class Syntaxer(SyntaxerBase):
             # ater booleans and funcs, so identifiers must be a symbol
             or self.symbol(argsB)
             
-            #? What's the arglist for
+            #? What's this arglist for
+            # A list of strings?
             or self.argList(argsB)
             
             #or self.path(argsB)
@@ -578,6 +586,10 @@ class Syntaxer(SyntaxerBase):
         return argsB
         
     def exprCB(self, pos, name, args):
+        '''
+        Called on sucessful parsing of an expression
+        '''
+        # placeholder code, usually overridden
         print('expr {}({})'.format(name, args))
         
     def expr(self):
@@ -587,7 +599,7 @@ class Syntaxer(SyntaxerBase):
             name = self.textOf()
             
             # stash the position at the start of the expression
-            pos = self.toPosition()
+            expNamePos = self.toPosition()
             #print(str(pos))
             self._next()
             self.skipTokenOrError('expr', LBRACKET)
@@ -599,11 +611,12 @@ class Syntaxer(SyntaxerBase):
             # following whitespace (or newline) that would throw 
             # StopIteration before callback on the parsed function. 
             # So we test the rbracket is there, then callback on the 
-            # function...
+            # function.
             #print('{}({})'.format(name, args))
             if (self.isToken(RBRACKET)):
-                self.exprCB(pos, posArgs, name, args)
-                # ..if EOF, then that is thown here
+                self.exprCB(expNamePos, posArgs, name, args)
+                
+                #i ..if EOF, then that is thown here
                 self._next()
             else:
                 self.expectedTokenError('expr', RBRACKET)

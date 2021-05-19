@@ -22,7 +22,7 @@ class ArgTest():
     def __call__(self, val):
         raise NotImplementedError()
         
-        
+#! typeString is displayString, or somesuch
 #? Need a specific type test?
 class ValOrVarTypeTest():
     def __init__(self, typeString, valType, varTpe):

@@ -502,6 +502,7 @@ class AutoStoreX64():
         '''
         Create a var on read-only segment memory,
         Untracked, present for a consistent interface.
+        No throw.
         ''' 
         var = Var(
             name,

@@ -330,8 +330,7 @@ funcMain()
     # general exit
     printFlush()
     frameEnd()
-    sysExit(0)
-    funcMainEnd() 
+    funcMainEnd(0) 
 
 
 #While(OR([LT('rax', 5), LT('b', 7), LT('c', 9)  ]))

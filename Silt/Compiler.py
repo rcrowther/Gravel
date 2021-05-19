@@ -108,51 +108,47 @@ class Compiler(Syntaxer):
             args = ins[3]
             self.exprCB(pos, posArgs, name, args)
         
-    def _stringTypeNamesMk(self, typeList):
+    def _stringTypeNamesMk(self, argTests):
         '''
-        print a list of typenames 
+        print a list of human-readable typenames 
         '''
         # Used on argument signatures to tidy error reports
         #return "[" + ", ".join([tpe.__name__ for tpe in typeList]) + "]"
-        return "[" + ", ".join([argTest.typeString for argTest in typeList]) + "]"
+        return "[" + ", ".join([argTest.typeString for argTest in argTests]) + "]"
         
-    def argsCheck(self, pos, name, args, argsTypes):
+        
+    def argsCheck(self, pos, name, args, argTests):
         '''
-        Check args for length and type.
+        Check args against signature.
+        The signature is a list of tests. This function first checks
+        that the length of the arg list matches that of the given 
+        signature. Then it steps each test and argument, applying the 
+        test.
         
-        argsTypes can be any Rubble type, also,
-        - OrotoSymbol
-        
-        argsTypes
-            a list of types
+        argTests
+            a list of callable functions to test an arg 
         '''
-        if (len(args) > len(argsTypes)):
-            msg = "Too many args. symbol:'{}', expected:{}, args:{}".format(
-                 name,                 
-                 self._stringTypeNamesMk(argsTypes),
-                 args
+        if (len(args) > len(argTests)):
+            msg = "Too many args. expected:{}".format(
+                 self._stringTypeNamesMk(argTests),
                  )
             self.errorWithPos(pos, msg)
-        if (len(args) < len(argsTypes)):
-            msg = "Not enough args. symbol:'{}', expected:{}, args:{}".format(
-                 name,
-                 self._stringTypeNamesMk(argsTypes),
-                 args,
+        if (len(args) < len(argTests)):
+            msg = "Not enough args. expected:{}".format(
+                 self._stringTypeNamesMk(argTests),
                  )
             self.errorWithPos(pos, msg)
         
         i = 0
-        for argTest, arg in zip(argsTypes, args):
-            if (not(argTest(arg))):
-                msg = "Arg type not match signature. arg:{}, expected:{}, got:{}".format(
-                    i,
+        for argTest, arg in zip(argTests, args):
+            if (not(argTest(arg.value))):
+                msg = "Arg type not match signature. expected:{}".format(
                     argTest.typeString,
-                    arg
                  )
-                self.errorWithPos(pos, msg)
+                self.errorWithPos(arg.position, msg)
             i += 1
             
-    def eitherError(self, posArgs, either):
+    def argsError(self, posArgs, either):
         if (either.status == Option.ERROR):
             self.errorWithPos(posArgs, either.msg)
         if (either.status == Option.WARNING):
@@ -394,7 +390,8 @@ class Compiler(Syntaxer):
         # list comprehension. 
         print('Compiler expr {}({!s})'.format(
             name, 
-            [str(a) for a in args]
+            #[str(a) for a in args]
+            [str(a.value) for a in args]
         ))
         if (self.instructionsStoreTrigger):
             #! need something more general than this hardcode
@@ -428,6 +425,7 @@ class Compiler(Syntaxer):
                 self.errorWithPos(pos, msg)
                 
             # Test args for type and/or count
+            #! should use at all if not registered? i.e. not need this if? 
             if name in self.funcNameToArgsType:
                 self.argsCheck(posArgs, name, args, self.funcNameToArgsType[name])
                        
@@ -435,10 +433,10 @@ class Compiler(Syntaxer):
             msgOption = func.data(self.b, args)
             
             # If an message came from the API, its an integrity
-            # error from the args (not a format issue)
+            # error from the args (not a function issue)
             # Outright throws are throws. Throws to be caught are in custom 
             # exceptions of this code.
-            self.eitherError(posArgs, msgOption)
+            self.argsError(posArgs, msgOption)
 
                 
     def result(self):

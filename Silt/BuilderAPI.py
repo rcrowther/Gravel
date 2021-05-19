@@ -94,7 +94,7 @@ class BuilderAPI():
         'func': [protoSymbolVal()],
         'funcEnd': [],
         'funcMain': [],
-        'funcMainEnd': [],
+        'funcMainEnd': [intVal()],
 
         ## Register utilities
         'registersPush': [argListVal()],
@@ -174,7 +174,7 @@ class BuilderAPI():
     # AllPlatform utitlites
     def byteSize(self, bitsize):
         return bitsize >> 3
-
+        
 
     #!!! Python specific code turns this class into an imitation of a
     # map of func pointers. Probably what is needed is a map of func 
@@ -227,6 +227,7 @@ class BuilderAPIX64(BuilderAPI):
         '''
         return (math.ceil(byteSize/2) << 1)
         
+
     ## Arg handlers
     def varValueSnippet(self, var):
         '''
@@ -290,30 +291,41 @@ class BuilderAPIX64(BuilderAPI):
                 else:
                     self.autoStore.toRegAny(b, litOrVarDst)
 
-
+    #? Humm. Crossplatform build func
+    def _extern(self, b, label):
+        '''
+        Append an extern.
+        '''
+        b.externsAdd("extern " + label)
+        
     ## basics
     def comment(self, b, args):
-        b._code.append("; " + args[0])
+        b._code.append("; " + args[0].value)
         return MessageOptionNone
+
+    def _sysExit(self, b, exitCode):    
+        b._code.append("mov rax, 60")
+        b._code.append("mov rdi, " + exitCode)
+        b._code.append("syscall")
         
     def sysExit(self, b, args):    
         b._code.append("mov rax, 60")
-        b._code.append("mov rdi, " + str(args[0]))
-        b._code.append("syscall")
+        exitCode = str(args[0].value)
+        self._sysExit(b, exitCode)
         return MessageOptionNone
 
     def extern(self, b, args):
         '''
         Append an extern.
         '''
-        b.externsAdd("extern " + args[0])
+        b.externsAdd("extern " + args[0].value)
         return MessageOptionNone
         
     def raw(self, b, args):
         '''
         Append a line of code.
         '''
-        b._code.append(args[0])
+        b._code.append(args[0].value)
         return MessageOptionNone
 
     ## Code structure 
@@ -338,16 +350,19 @@ class BuilderAPIX64(BuilderAPI):
         b._code.append("pop {}".format(self.arch['stackBasePointer']))
         return MessageOptionNone
            
+    def _func(self, b, protoSymbolLabel):
+        b._code.append('{}:'.format(protoSymbolLabel))
+        b._code.append('; beginFunc')
+        self.compiler.scopeStackPush()
+                
     #! symbol needs registering in globalenv
     def func(self, b, args):
         '''
         Start a function.
         '''
-        protoSymbolLabel = args[0].toString()
+        protoSymbolLabel = args[0].value.toString()
         #print(protoSymbolLabel)
-        b._code.append('{}:'.format(protoSymbolLabel))
-        b._code.append('; beginFunc')
-        self.compiler.scopeStackPush()
+        self._func(b, protoSymbolLabel)
         return MessageOptionNone
 
         
@@ -358,7 +373,7 @@ class BuilderAPIX64(BuilderAPI):
     # If so, offer the frame option at begin, also?
     def funcEnd(self, b, args):
         '''
-        End a function with return.
+        End a function with ''ret' operand.
         '''
         self.autoStore.deleteAll([])
         self.compiler.scopeStackPop()
@@ -367,13 +382,17 @@ class BuilderAPIX64(BuilderAPI):
         return MessageOptionNone
 
     def funcMain(self, b, args):
-        self.func(b, [ProtoSymbol('@main')])
-        self.compiler.scopeStackPush()
+        self._func(b, 'main')
         return MessageOptionNone
         
     def funcMainEnd(self, b, args):
-        #self.compiler.scopePrint()
+        '''
+        Writes sysExit
+            exitCode
+            [intVal()]
+        '''
         self.compiler.scopeStackPop()
+        self._sysExit(b, str(args[0].value))
         b._code.append('; endFunc')
         return MessageOptionNone
 
@@ -385,7 +404,7 @@ class BuilderAPIX64(BuilderAPI):
         '''
             [argList]
         '''
-        registerList = args[0]
+        registerList = args[0].value
         if (len(registerList) & 1):
             self.compiler.warning("Uneven n number of pushes will unbalance the stack?")
         for r in registerList:
@@ -437,9 +456,9 @@ class BuilderAPIX64(BuilderAPI):
         Define a number to a label
              [protoSymbolVal(), intVal(), anyType()]
         '''
-        protoSymbolLabel = args[0].toString()
-        data = args[1]
-        tpe = args[2]
+        protoSymbolLabel = args[0].value.toString()
+        data = args[1].value
+        tpe = args[2].value
 
         var = self.autoStore.varROCreate(
             protoSymbolLabel, 
@@ -461,8 +480,8 @@ class BuilderAPIX64(BuilderAPI):
         Define a byte-width string to a label
             [protoSymbolVal(), strVal()]
         '''
-        protoSymbolLabel = args[0].toString()
-        string = args[1]
+        protoSymbolLabel = args[0].value.toString()
+        string = args[1].value
 
         var = self.autoStore.varROCreate(
             protoSymbolLabel, 
@@ -470,7 +489,7 @@ class BuilderAPIX64(BuilderAPI):
             1
         )        
         # Trailing zero, though I believe NASM pads to align anyway
-        rodata = protoSymbolLabel + ': db "' + args[1] + '", 0'
+        rodata = protoSymbolLabel + ': db "' + string + '", 0'
         b.rodataAdd(rodata)       
         self.compiler.symbolSetGlobal(var) 
         return MessageOptionNone
@@ -492,14 +511,14 @@ class BuilderAPIX64(BuilderAPI):
         # Have a look at how Glib implements its functions, which are 
         # pretty much what we would like 
         # https://developer.gnome.org/glib/stable/glib-Unicode-Manipulation.html
-        protoSymbolLabel = args[0].toString()
-        string = args[1]
+        protoSymbolLabel = args[0].value.toString()
+        string = args[1].value
         var = self.autoStore.varROCreate(
             protoSymbolLabel, 
             Type.StrUTF8,
             1
         )
-        rodata = protoSymbolLabel + ": db `" + args[1] + "`, 0"
+        rodata = protoSymbolLabel + ": db `" + string + "`, 0"
         b.rodataAdd(rodata)
         self.compiler.symbolSetGlobal(var) 
         return MessageOptionNone
@@ -519,9 +538,9 @@ class BuilderAPIX64(BuilderAPI):
             var number type
             [protoSymbolVal(), intOrVarNumeric(), numericType()]
         '''
-        protoSymbolLabel = args[0].toString()
-        value = args[1]
-        tpe = args[2]
+        protoSymbolLabel = args[0].value.toString()
+        value = args[1].value
+        tpe = args[2].value
         var = self.autoStore.varRegMaybeCreate(b, 
             protoSymbolLabel, 
             tpe, 
@@ -544,9 +563,9 @@ class BuilderAPIX64(BuilderAPI):
             protoSymbol, registerName, intOrVarNumeric, type
             [protoSymbolVal(), strVal(), intOrVarNumeric(), anyType()]
          '''
-        protoSymbolLabel = args[0].toString()
-        register = args[1]
-        varOrConst = args[2]
+        protoSymbolLabel = args[0].value.toString()
+        register = args[1].value
+        varOrConst = args[2].value
         tpe = args[3]
 
         #!NB llocate the var first, to account for data
@@ -573,9 +592,9 @@ class BuilderAPIX64(BuilderAPI):
             varName type
             [protoSymbolVal(), anyType()]
         '''
-        self.extern(b, ['malloc'])
-        protoSymbolLabel = args[0].toString()
-        tpe = args[1]
+        self._extern(b, 'malloc')
+        protoSymbolLabel = args[0].value.toString()
+        tpe = args[1].value
 
         # create a regVar for the pointer
         var = self.autoStore.varRegAddrCreate(b, 
@@ -743,8 +762,8 @@ class BuilderAPIX64(BuilderAPI):
             varName literalAggregate
             [anyVar(), aggregateAny()]
         '''
-        var = args[0]
-        literalAggregate = args[1] 
+        var = args[0].value
+        literalAggregate = args[1].value 
         mo = MessageOptionNone
         
         # By definition, RO is not possible
@@ -840,9 +859,9 @@ class BuilderAPIX64(BuilderAPI):
             varName string
             [protoSymbolVal(), strVal()]
         '''
-        self.extern(b, ['malloc'])
-        protoSymbolLabel = args[0].toString()
-        string = args[1]
+        self._extern(b, 'malloc')
+        protoSymbolLabel = args[0].value.toString()
+        string = args[1].value
         
         # add string terminator now
         string += '\0'
@@ -896,8 +915,8 @@ class BuilderAPIX64(BuilderAPI):
         # Alloc space for a type on the heap
             # [protoSymbolVal(), strVal()]
         # '''
-        # protoSymbolLabel = args[0].toString()
-        # string = args[1]
+        # protoSymbolLabel = args[0].value.toString()
+        # string = args[1].value
         
         # self.extern(b, ['utypes'])
 
@@ -930,9 +949,9 @@ class BuilderAPIX64(BuilderAPI):
             [protoSymbolVal(), intVal()]
         '''
         #? Should that be number of slots, not raw bytes?
-        self.extern(b, ['malloc'])
-        protoSymbolLabel = args[0].toString()
-        size = args[1]
+        self._extern(b, 'malloc')
+        protoSymbolLabel = args[0].value.toString()
+        size = args[1].value
         tpe = Type.Array([Type.Bit8, size])
 
         # create a regVar for the pointer
@@ -976,7 +995,7 @@ class BuilderAPIX64(BuilderAPI):
             [slotCount]
             [intVal()]
         '''
-        slotCount = args[0]
+        slotCount = args[0].value
         b._code.append("lea {}, [rbp - {}]".format(
             self.arch['stackPointer'],
             self.arch['bytesize'] * slotCount 
@@ -1036,8 +1055,8 @@ class BuilderAPIX64(BuilderAPI):
             varName type
             [protoSymbol, anyType]
         '''
-        protoSymbolLabel = args[0].toString()
-        tpe = args[1]
+        protoSymbolLabel = args[0].value.toString()
+        tpe = args[1].value
 
         # create a regVar for the pointer
         var = self.autoStore.varRegAnyAddrCreate(b, 
@@ -1075,8 +1094,8 @@ class BuilderAPIX64(BuilderAPI):
             varName literalAggregate
             [anyVar(), aggregateAny()]
         '''
-        var = args[0]
-        literalAggregate = args[1] 
+        var = args[0].value
+        literalAggregate = args[1].value 
         mo = MessageOptionNone
         
         # By definition, RO is not possible
@@ -1115,9 +1134,9 @@ class BuilderAPIX64(BuilderAPI):
         # Assumes space has been allocated on the stack.
             # [protoSymbolVal(), intVal(), anyType()]
         # '''
-        # protoSymbolLabel = args[0].toString()
-        # val = args[1]
-        # tpe = args[2]
+        # protoSymbolLabel = args[0].value.toString()
+        # val = args[1].value
+        # tpe = args[2].value
 
         # var = self.autoStore.varStackCreate(
             # protoSymbolLabel, 
@@ -1143,8 +1162,8 @@ class BuilderAPIX64(BuilderAPI):
             varName string
             [protoSymbolVal(), strVal()]
         '''
-        protoSymbolLabel = args[0].toString()
-        string = args[1]
+        protoSymbolLabel = args[0].value.toString()
+        string = args[1].value
 
         # add string terminator now
         string += '\0'
@@ -1209,8 +1228,8 @@ class BuilderAPIX64(BuilderAPI):
             protoSymbol, size
             [protoSymbolVal(), intVal()]
         '''
-        protoSymbolLabel = args[0].toString()
-        size = args[1]
+        protoSymbolLabel = args[0].value.toString()
+        size = args[1].value
         tpe = Type.Array([Type.Bit8, size])
         
         # create a regVar for the pointer
@@ -1247,8 +1266,8 @@ class BuilderAPIX64(BuilderAPI):
             [Var, valOrVarInt],
             [anyVar(), intOrVarNumeric()]
         '''
-        var = args[0]
-        valOrVarInt = args[1]
+        var = args[0].value
+        valOrVarInt = args[1].value
         mo = MessageOptionNone
         
         # By definition, RO is not possible
@@ -1303,9 +1322,9 @@ class BuilderAPIX64(BuilderAPI):
         Set a path through a type to a value
             [ Var path val],
         '''
-        var = args[0]
-        path = args[1]
-        val = args[2]
+        var = args[0].value
+        path = args[1].value
+        val = args[2].value
         mo = MessageOptionNone
         if (len(path) > 2):
             mo = MessageOption.error('Path can only access max 2 types deep. Needs load?')
@@ -1332,8 +1351,8 @@ class BuilderAPIX64(BuilderAPI):
             var value
             [anyVar(), intVal()]
         '''
-        var = args[0]
-        priority = args[1]
+        var = args[0].value
+        priority = args[1].value
         var.priority = priority
         return MessageOptionNone        
         
@@ -1345,7 +1364,7 @@ class BuilderAPIX64(BuilderAPI):
             var
             [protoSymbolVal()],
         '''
-        var = args[0]
+        var = args[0].value
         self.autoStore.delete(
             var,
         )
@@ -1361,7 +1380,7 @@ class BuilderAPIX64(BuilderAPI):
         [numericVar()]
         '''
         # Yes works with relative addresses
-        var = args[0]
+        var = args[0].value
         b._code.append("dec {} {}".format(
             TypesToASMName[var.tpe],
             self.varValueSnippet(var)
@@ -1372,7 +1391,7 @@ class BuilderAPIX64(BuilderAPI):
         '''
         [anyVar()]
         '''
-        var = args[0]
+        var = args[0].value
         b._code.append("inc {} {}".format(
             TypesToASMName[var.tpe],
             self.varValueSnippet(var)
@@ -1388,8 +1407,8 @@ class BuilderAPIX64(BuilderAPI):
         '''
         [regVar(), intOrVarNumeric()]
         '''
-        varDst = args[0]
-        litOrVarSrc = args[1]
+        varDst = args[0].value
+        litOrVarSrc = args[1].value
 
         # if two vars, get one onto register
         self.oneRegEnsure(b, varDst, litOrVarSrc)
@@ -1404,8 +1423,8 @@ class BuilderAPIX64(BuilderAPI):
         '''
         [regVar(), intOrVarNumeric()]
         '''
-        varDst = args[0]
-        litOrVarSrc = args[1]
+        varDst = args[0].value
+        litOrVarSrc = args[1].value
 
         # if two vars, get one onto register
         self.oneRegEnsure(b, varDst, litOrVarSrc)
@@ -1422,8 +1441,8 @@ class BuilderAPIX64(BuilderAPI):
         '''
         # imul
         # https://www.felixcloutier.com/x86/imul
-        varDst = args[0]
-        litOrVarSrc = args[1]
+        varDst = args[0].value
+        litOrVarSrc = args[1].value
 
         # if two vars, get one onto register
         self.oneRegEnsure(b, varDst, litOrVarSrc)
@@ -1459,8 +1478,8 @@ class BuilderAPIX64(BuilderAPI):
         '''
         [regVar(), intVal()]
         '''
-        varDst = args[0]
-        litOrVarSrc = args[1]
+        varDst = args[0].value
+        litOrVarSrc = args[1].value
         
         # Keep numerics down
         if (
@@ -1485,8 +1504,8 @@ class BuilderAPIX64(BuilderAPI):
         '''
         [regVar(), intVal()]
         '''
-        varDst = args[0]
-        litOrVarSrc = args[1]
+        varDst = args[0].value
+        litOrVarSrc = args[1].value
         
          # Keep numerics down
         if (
@@ -1527,9 +1546,9 @@ class BuilderAPIX64(BuilderAPI):
         #NB Range can't be tested, as it may be vars.
         # but both range numbers can be off-register, as the tests are 
         # seperate.
-        var = args[0]
-        froom = args[1]
-        to = args[2]
+        var = args[0].value
+        froom = args[1].value
+        to = args[2].value
         falseLabel = self.labelGenerate('ifRangeFalse')
         accessSnippet = self.litOrVarValueSnippet(var)
         fromSnippet = self.litOrVarValueSnippet(froom)
@@ -1677,7 +1696,7 @@ class BuilderAPIX64(BuilderAPI):
             [booleanFuncVal()]
         '''
         #NB for now, has a scope too. Controversial
-        boolLogic = args[0]
+        boolLogic = args[0].value
         
         # Now need some boolean logic to get us there...
         falseLabel = self.labelGenerate('ifFalse')
@@ -1742,8 +1761,8 @@ class BuilderAPIX64(BuilderAPI):
         '''
         #! insist targetVar is a varReg
         # ZF is what we want Flag -> reg
-        targetVar = args[0]
-        booleanFunc = args[1]
+        targetVar = args[0].value
+        booleanFunc = args[1].value
 
         # zero the targetVar
         # b._code.append('xor {}, {}'.format(
@@ -1788,7 +1807,7 @@ class BuilderAPIX64(BuilderAPI):
         '''
             [regVar()]
         '''
-        varCondition = args[0]
+        varCondition = args[0].value
         
         #! fence the closuredata       
         self.compiler.closureDataPush(
@@ -1802,7 +1821,7 @@ class BuilderAPIX64(BuilderAPI):
         '''
             [intVal()]
         '''
-        whenIndex = args[0]
+        whenIndex = args[0].value
         self.compiler.closureDataPush(
             whenIndex
         )   
@@ -1943,11 +1962,11 @@ class BuilderAPIX64(BuilderAPI):
         # way if things are that awkward?)
         #! double rangers... Got a problem there with fixed vars?
         #! needs to handle variables etc.
-        reg = args[0]
-        froom = args[1]
+        reg = args[0].value
+        froom = args[1].value
         
         # this can now be a numeric variable, so needs resolving
-        to = args[2]
+        to = args[2].value
         if (froom == to):
             self.compiler.warning("'from' is equal to 'to'. Loop will not be executed.")
         # assessment
@@ -1992,7 +2011,7 @@ class BuilderAPIX64(BuilderAPI):
             [booleanFuncVal()]
         '''
         #! undone
-        boolLogic = args[0]
+        boolLogic = args[0].value
         trueLabel = self.labelGenerate('whileTrue')
         entryLabel = self.labelGenerate('whileEntry')
         b._code.append(trueLabel + ':')        
@@ -2011,13 +2030,13 @@ class BuilderAPIX64(BuilderAPI):
         '''
             [ProtoSymbol register containerOffsetVar]
         '''
-        protoSymbolLabel = args[0].toString()
+        protoSymbolLabel = args[0].value.toString()
 
         # Choice of genvar register...
-        varGenRegister =  args[1]
+        varGenRegister =  args[1].value
 
         # The original var
-        varData = args[2]
+        varData = args[2].value
         if(varGenRegister == varData.loc.lid):
             self.compiler.error("genVar is the same register as dataVar. register:'{}'".format(varGenRegister))
 
@@ -2142,13 +2161,13 @@ class BuilderAPIX64(BuilderAPI):
         # So the DataVar is allowed to be anywhere. 
         # The counter and the varGen in seperate registers. They could 
         # be push/pulled, but that's tweaky.
-        protoSymbolLabel = args[0].toString()
+        protoSymbolLabel = args[0].value.toString()
 
         # Choice of genvar register...
-        varGenRegister =  args[1]
+        varGenRegister =  args[1].value
                 
         # The original var
-        varData = args[2]
+        varData = args[2].value
         if(varGenRegister == 'rcx'):
             self.compiler.warning("Defence required, forEach uses 'rcx'")
         if(varGenRegister == varData.loc.lid):
@@ -2245,7 +2264,7 @@ class BuilderAPIX64(BuilderAPI):
         '''
         # We could print out using printf semantics....
         # No, print singly. figue out the slowness later.
-        var = args[0]
+        var = args[0].value
         if isinstance(var, str):
             # It's a constant/atom/immediate/idFunc. Currently, we do 
             # nothing with the type, calling the special function 
