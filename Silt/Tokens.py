@@ -3,11 +3,11 @@ import sys
 tokenBase = {
     2 : ('identifier' , 'IDENTIFIER' ),
 
-    10 : ('intNum' , 'INT_NUM' ),
-    11 : ('floatNum' , 'FLOAT_NUM' ),
-    12 : ('multilinestring' , 'MULTILINE_STRING' ),
+    10 : ('int number' , 'INT_NUM' ),
+    11 : ('float number' , 'FLOAT_NUM' ),
+    12 : ('multiline string' , 'MULTILINE_STRING' ),
     13 : ('string' , 'STRING' ),
-    14 : ('multilineComment', 'MULTILINE_COMMENT'),
+    14 : ('multiline comment', 'MULTILINE_COMMENT'),
     15 : ('comment' , 'COMMENT' ),
     
     
@@ -23,9 +23,13 @@ tokenBase = {
     49 : ('rsquare' , 'RSQUARE' ),
     # 50 : ('solidus' , 'SOLIDUS' ),
     51 : ('linefeed' , 'LINEFEED' ),
-    
-    60 : ('keyvalue mark' , 'KEY_VALUE' ),
-    61 : ('repeat' , 'REPEAT' ),
+
+    60 : ('left path' , 'LPATH' ),
+    61 : ('right path' , 'RPATH' ),    
+    62 : ('left literal collection' , 'LCOLL' ),
+    63 : ('right literal scollection' , 'RCOLL' ),
+    64 : ('keyvalue mark' , 'KEY_VALUE' ),
+    65 : ('repeat' , 'REPEAT' ),
 }
 
 # Set the codes as attributes on the module

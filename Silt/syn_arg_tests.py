@@ -26,7 +26,7 @@ class ArgTest():
 #? Need a specific type test?
 class ValOrVarTypeTest():
     def __init__(self, typeString, valType, varTpe):
-        self.typeString = typeString
+        self.description = description
         self.valType = valType
         self.varTpe = varTpe
         
@@ -37,7 +37,7 @@ class ValOrVarTypeTest():
         )
         
     def __str__(self):
-        return "ValOrVarTypeTest({})".format(self.typeString)
+        return f"ValOrVarTypeTest({self.description})"
 
 
 
@@ -46,8 +46,8 @@ class ValOrVarTypeTypeTest():
     Test for value or general var type.
     Such as StringType, or NumericType.
     '''
-    def __init__(self, typeString, valType, varTpe):
-        self.typeString = typeString
+    def __init__(self, description, valType, varTpe):
+        self.description = description
         self.valType = valType
         self.varTpe = varTpe
         
@@ -73,15 +73,15 @@ def strOrVarAny():
                 
                 
 class InstanceTest():
-    def __init__(self, typeString, valType):
-        self.typeString = typeString
+    def __init__(self, description, valType):
+        self.description = description
         self.valType = valType
         
     def __call__(self, val):
         return isinstance(val, self.valType)
 
     def __str__(self):
-        return "InstanceTest({})".format(self.typeString)
+        return "InstanceTest({})".format(self.description)
         
 def intVal():
     return InstanceTest("Integer", int)
@@ -102,33 +102,41 @@ def booleanFuncVal():
     return InstanceTest("(tree of) Boolean logic", FuncBoolean) 
 
 class AggregateTest():
-    def __init__(self, typeString):
-        self.typeString = typeString
+    def __init__(self, description):
+        self.description = description
         
     def isLiteralVal(self, val):
-        if (isinstance(val, AggregateVals)):
+        #print('isLiteralVal')
+        #print(str(val))
+        v = val
+        if (isinstance(v, AggregateVals)):
             r = True
-            for e in val:
+            for e in v:
                 r = (r and self.isLiteralVal(e))
             return r
-        elif (isinstance(val, KeyValue)):
-            return self.isLiteralVal(val.value)
+        elif (isinstance(v, KeyValue)):
+            return self.isLiteralVal(v)
         else:
-            return (isinstance(val, int) or
-                    isinstance(val, float) or
-                    isinstance(val, str)
+            return (isinstance(v, int) or
+                    isinstance(v, float) or
+                    isinstance(v, str)
                     )
                 
     def __call__(self, val):
-        return self.isLiteralVal(val)        
-        # return (isinstance(val, AggregateVals) or
-                # isinstance(val, int) or
-                # isinstance(val, float) or
-                # isinstance(val, str)
-                # )
+        # Problem is, outer has been stripped of Arg wrap
+        # so this must start repeating itslef (to avaoid an unwrap in
+        # isLiteralVal)
+
+        #return self.isLiteralVal(val)
+        return (
+            isinstance(val, AggregateVals) or
+            isinstance(val, int) or
+            isinstance(val, float) or
+            isinstance(val, str)
+        )
 
     def __str__(self):
-        return "AggregateTest({})".format(self.typeString)
+        return "AggregateTest({})".format(self.description)
                 
 #! should include standalone value
 def aggregateAny():
@@ -157,8 +165,8 @@ class VarTypeTypeTest():
     Test for general var type.
     Such as StringType, or NumericType.
     '''
-    def __init__(self, typeString, varTypeType):
-        self.typeString = typeString
+    def __init__(self, description, varTypeType):
+        self.description = description
         self.varTypeType = varTypeType
         
     def __call__(self, val):
@@ -168,14 +176,14 @@ class VarTypeTypeTest():
         )
 
     def __str__(self):
-        return "VarTypeTypeTest({})".format(self.typeString)
+        return "VarTypeTypeTest({})".format(self.description)
                 
 
 def numericVar():
     return VarTypeTypeTest("Numeric variable", TypeNumeric)
 
 def stringVar():
-    return VarTypeTypeTest("String variable", TypeString)
+    return VarTypeTypeTest("String variable", description)
 
 def containerOffsetVar():
     return VarTypeTypeTest("ContainerOffset variable", TypeContainerOffset)
@@ -183,8 +191,8 @@ def containerOffsetVar():
 
 
 class VarLocTest():
-    def __init__(self, typeString, locType):
-        self.typeString = typeString
+    def __init__(self, description, locType):
+        self.description = description
         self.locType = locType
         
     def __call__(self, val):
@@ -194,7 +202,7 @@ class VarLocTest():
         )
 
     def __str__(self):
-        return "VarLocTest({})".format(self.typeString)    
+        return "VarLocTest({})".format(self.description)    
 
 def regVar():
     return VarLocTest("Register variable", RegisterX64)

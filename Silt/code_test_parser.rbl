@@ -36,13 +36,13 @@ funcMain()
     #registersVolatilePush()
     #registersPop()
     # prints warning
-    registersPush(('rbx', 'r99'))
-    registersPop()
+    #registersPush(('rbx', 'r99'))
+    #registersPop()
     # throws error
     #registersPush(('rbx'))
     #registersPop()
 
-#- Alloc/define
+#- Alloc/set//define
 #-- RO Global
 #-- ROStr
     #println(ro1)
@@ -70,13 +70,14 @@ funcMain()
 
 #-- heapSet1
     #heapAlloc(@var1 Bit64)
-    #heapSet(var1 333)
+    #heapSet(var1 [333 55])
     #println(var1)
 
 #-- heapSet2
-    #heapAlloc(@var1 Array(Clutch(Bit8 Bit64) 3))
-    #heapSet(var1 [* [33 77]])
-    #println(var1)
+    heapAlloc(@var1 Array(Clutch(Bit8 Bit64) 3))
+    #heapSet(var1 [33 77 55 ])
+    heapSet(var1 [[* [[33 77]] ]])
+    println(var1)
 
 #-- heapSet3
     #heapAlloc(@var1 Bit64)

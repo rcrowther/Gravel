@@ -114,7 +114,7 @@ class Compiler(Syntaxer):
         '''
         # Used on argument signatures to tidy error reports
         #return "[" + ", ".join([tpe.__name__ for tpe in typeList]) + "]"
-        return "[" + ", ".join([argTest.typeString for argTest in argTests]) + "]"
+        return "[" + ", ".join([argTest.description for argTest in argTests]) + "]"
         
         
     def argsCheck(self, pos, name, args, argTests):
@@ -142,8 +142,12 @@ class Compiler(Syntaxer):
         i = 0
         for argTest, arg in zip(argTests, args):
             if (not(argTest(arg.value))):
+            #if (not(argTest(arg))):
+                print('failtest::')
+                print(str(argTest))
+                print(str(type(arg.value)))
                 msg = "Arg type not match signature. expected:{}".format(
-                    argTest.typeString,
+                    argTest.description,
                  )
                 self.errorWithPos(arg.position, msg)
             i += 1
@@ -298,7 +302,7 @@ class Compiler(Syntaxer):
         for e in self.scopeStack[-1].toListAll():
             print(f"    {e.name}:{e.tpe}")
         self.scopeGlobalPrint()
-                    
+
     def scopeStdPrint(self):
         #! oh so yes! Sadly, the same bad defaults noted in exprCB()
         #print(str(self.scopeStack[-1]))

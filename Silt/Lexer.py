@@ -16,8 +16,8 @@ punctuationCodepointToToken = {
     COLON : Tokens.COLON,
     LEFT_BRACKET : Tokens.LBRACKET,
     RIGHT_BRACKET : Tokens.RBRACKET,
-    LEFT_SQR : Tokens.LSQUARE,
-    RIGHT_SQR : Tokens.RSQUARE,
+    #LEFT_SQR : Tokens.LSQUARE,
+    #RIGHT_SQR : Tokens.RSQUARE,
     }
 
 punctuationCodepoints = punctuationCodepointToToken.keys()
@@ -86,13 +86,13 @@ class Lexer(LexerBase):
                     self._next()
                     if(not self.isNumeric()):
                         break
-            if (not(
-                (self.isWhitespaceOrLinefeed()) or
-                (self.isPunctuation())
-             )): 
-                msg = 'Token scanned as a number not ends with whitespace or punctuation'
-                #self.error(Message.withPos(msg, self.src, self.start_pos))
-                self.error(msg)
+            # if (not(
+                # (self.isWhitespaceOrLinefeed()) or
+                # (self.isPunctuation())
+             # )): 
+                # msg = 'Token scanned as a number not ends with whitespace or punctuation'
+                # #self.error(Message.withPos(msg, self.src, self.start_pos))
+                # self.error(msg)
             return True
         else:
             return False
@@ -128,7 +128,28 @@ class Lexer(LexerBase):
             return True
         return False
 
-    def scanKV(self):
+    def scanLiteralCollectionMarks(self):
+        '''
+        Match literal collection marks.
+        [\]]{1,2} | [\]]{1,2}
+        ''' 
+        if (self.cp == LEFT_SQR):
+            self.tok = Tokens.LPATH              
+            self._next()
+            if (self.cp == LEFT_SQR):
+                self.tok = Tokens.LCOLL             
+                self._next()
+            return True
+        if (self.cp == RIGHT_SQR):
+            self.tok = Tokens.RPATH             
+            self._next()
+            if (self.cp == RIGHT_SQR):
+                self.tok = Tokens.RCOLL             
+                self._next()
+            return True
+        return False
+
+    def scanKVMark(self):
         '''
         '~' ~ '>'
         '''
@@ -143,7 +164,7 @@ class Lexer(LexerBase):
             return True
         return False
         
-    def scanRepeat(self):
+    def scanRepeatMark(self):
         '''
         '*'
         '''
@@ -202,9 +223,11 @@ class Lexer(LexerBase):
             pass
         elif (self.scanIdentifier()):
             pass
-        elif (self.scanKV()):
+        elif (self.scanLiteralCollectionMarks()):
             pass
-        elif (self.scanRepeat()):
+        elif (self.scanKVMark()):
+            pass
+        elif (self.scanRepeatMark()):
             pass
         else:
             r = False

@@ -399,7 +399,6 @@ class BuilderAPIX64(BuilderAPI):
 
 
     ## Register utilities
-    # #! needs datapush
     def _registersPush(self, b, registerList):
         for r in registerList:
             b._code.append('push ' + r)
@@ -450,7 +449,7 @@ class BuilderAPIX64(BuilderAPI):
 
 
 
-    ## Allocs and defines
+    ## Alloc, set and define
     #? several possibilities here
     # def/alloc
     #- numbers
@@ -478,7 +477,6 @@ class BuilderAPIX64(BuilderAPI):
         protoSymbolLabel = args[0].value.toString()
         data = args[1].value
         tpe = args[2].value
-
         var = self.autoStore.varROCreate(
             protoSymbolLabel, 
             tpe, 
@@ -501,12 +499,12 @@ class BuilderAPIX64(BuilderAPI):
         '''
         protoSymbolLabel = args[0].value.toString()
         string = args[1].value
-
         var = self.autoStore.varROCreate(
             protoSymbolLabel, 
             Type.StrASCII,
             1
-        )        
+        )    
+            
         # Trailing zero, though I believe NASM pads to align anyway
         rodata = protoSymbolLabel + ': db "' + string + '", 0'
         b.rodataAdd(rodata)       
@@ -542,10 +540,10 @@ class BuilderAPIX64(BuilderAPI):
         self.compiler.symbolSetGlobal(var) 
         return MessageOptionNone
 
+
     ### register
     # For sure a number
 
-            
     #! size test
     #! shouldn't this transfer the type, if destination is a var
     #! a general define is possible for heap, bit registers
@@ -586,9 +584,6 @@ class BuilderAPIX64(BuilderAPI):
         register = args[1].value
         varOrConst = args[2].value
         tpe = args[3]
-
-        #!NB llocate the var first, to account for data
-        # shuffles
         var = self.autoStore.varRegCreate(b, 
             protoSymbolLabel, 
             register, 
@@ -637,23 +632,95 @@ class BuilderAPIX64(BuilderAPI):
     #! worst recursion ever
     #! fixes
     #- need to limit ASMWord
-    def _literalAggregateTestRec(self, mo, tpe, literalAggregate):
+    # def _literalAggregateTestRec(self, mo, tpe, literalAggregate):
+        # #print("_literalAggregateTestRec")
+        # #print(str(literalAggregate))
+        # #print(str(mo))
+        # #print(str(tpe))
+        # #print(str(type(literalAggregate)))
+        # # print(str(tpe))        
+        # if (isinstance(tpe, Type.TypeInt)):
+            # if (not(isinstance(literalAggregate, int))):
+                # mo[0] = MessageOption.error(f'Type expects int. Found:{literalAggregate}')
+                # #self.compiler.errorWithPos(
+                # #    f'Type expects int. Found:{literalAggregate}'
+                # #)
+        # elif (isinstance(tpe, Type.TypeFloat)):
+            # if (not(isinstance(literalAggregate, float))):
+                # mo[0] = MessageOption.error(f'Type expects float. Found:{literalAggregate}')
+        # elif (isinstance(tpe, Type.TypeString)):
+            # if (not(isinstance(literalAggregate, str))):
+                # mo[0] = MessageOption.error(f'Type expects string. Found:{literalAggregate}')
+
+        # #! labeled not an existing attribute or subtype
+        # # elif (isinstance(tpe, Type.Labeled)):
+            # # if (not(isinstance(literalAggregate, KeyValue))):
+                # # return MessageOption.error(f'Type expects key ~> value. Found:{literalAggregate}')
+            
+            # # #! error on key not available
+            # # elemTpe = tpe.offsetTypePair[1]
+            # # mo = self._literalAggregateTestRec(elemTpe, literalAggregate.value)
+        # elif (isinstance(tpe, Type.TypeContainerOffset)):
+            # if (not(isinstance(literalAggregate, AggregateVals))):
+                # mo[0] = MessageOption.error(f'Type expects array of vals. Found:{literalAggregate}')
+            # elif (literalAggregate[0] == '*'):
+                # if (not(isinstance(tpe, Type.Array))):
+                    # mo[0] = MessageOption.error(f'Repeat mark must referr to Array. Found:{tpe}')
+                # else:
+                    # #i syntaxer doesn't catch too few arguments
+                    # if (len(literalAggregate) != 2):
+                        # mo[0] = MessageOption.error(f'Repeat mark must be followed by one arg.')
+                    # else:
+                        # self._literalAggregateTestRec(
+                            # mo,
+                            # tpe.elementType,
+                            # literalAggregate[1]
+                        # )
+            # elif (tpe.size != len(literalAggregate)):
+                # mo[0] = MessageOption.error(f'LiteralAggregate size not match Type size. typeSize:{tpe.size}')
+            # else:
+                # i = 0
+                # for offset, elemTpe in tpe.offsetIt():
+                    # self._literalAggregateTestRec(
+                        # mo,
+                        # elemTpe, 
+                        # literalAggregate[i]
+                    # )
+                    
+                    # # if error in an element, abandon testing
+                    # if (mo[0].notOk()):            
+                        # break
+                    # i += 1
+        # else:
+            # #i should never get here. It's a catch
+            # mo[0] = MessageOption.warning(f"Type not recognised.  Found:{literalAggregate}, tpe:{tpe}")
+
+    def _literalAggregateTestRec(self, tpe, literalAggregate):
         #print("_literalAggregateTestRec")
         #print(str(literalAggregate))
         #print(str(mo))
         #print(str(tpe))
         #print(str(type(literalAggregate)))
-        # print(str(tpe))        
+        # print(str(tpe))  
+              
         if (isinstance(tpe, Type.TypeInt)):
             if (not(isinstance(literalAggregate, int))):
-                mo[0] = MessageOption.error(f'Type expects int. Found:{literalAggregate}')
+                self.compiler.errorWithPos(
+                    literalAggregate.position,
+                    f'Type expects int. Found:{literalAggregate}'
+                )
         elif (isinstance(tpe, Type.TypeFloat)):
             if (not(isinstance(literalAggregate, float))):
-                mo[0] = MessageOption.error(f'Type expects float. Found:{literalAggregate}')
+                self.compiler.errorWithPos(
+                    literalAggregate.position,
+                    f'Type expects float. Found:{literalAggregate}'
+                )
         elif (isinstance(tpe, Type.TypeString)):
             if (not(isinstance(literalAggregate, str))):
-                mo[0] = MessageOption.error(f'Type expects string. Found:{literalAggregate}')
-
+                self.compiler.errorWithPos(
+                    literalAggregate.position,
+                    f'Type expects string. Found:{literalAggregate}'
+                )
         #! labeled not an existing attribute or subtype
         # elif (isinstance(tpe, Type.Labeled)):
             # if (not(isinstance(literalAggregate, KeyValue))):
@@ -664,42 +731,52 @@ class BuilderAPIX64(BuilderAPI):
             # mo = self._literalAggregateTestRec(elemTpe, literalAggregate.value)
         elif (isinstance(tpe, Type.TypeContainerOffset)):
             if (not(isinstance(literalAggregate, AggregateVals))):
-                mo[0] = MessageOption.error(f'Type expects array of vals. Found:{literalAggregate}')
+                self.compiler.errorWithPos(
+                    literalAggregate.position,
+                    f'Type expects array of vals. Found:{literalAggregate}'
+                )
             elif (literalAggregate[0] == '*'):
                 if (not(isinstance(tpe, Type.Array))):
-                    mo[0] = MessageOption.error(f'Repeat mark must referr to Array. Found:{tpe}')
+                    self.compiler.errorWithPos(
+                        literalAggregate[9].position,
+                        f'Repeat mark must referr to Array. Found:{tpe}'
+                    )
                 else:
                     #i syntaxer doesn't catch too few arguments
                     if (len(literalAggregate) != 2):
-                        mo[0] = MessageOption.error(f'Repeat mark must be followed by one arg.')
+                        self.compiler.errorWithPos(
+                            literalAggregate.position,
+                            'Repeat mark must be followed by one arg.'
+                        )
                     else:
                         self._literalAggregateTestRec(
-                            mo,
                             tpe.elementType,
                             literalAggregate[1]
                         )
             elif (tpe.size != len(literalAggregate)):
-                mo[0] = MessageOption.error(f'LiteralAggregate size not match Type size. typeSize:{tpe.size}')
+                self.compiler.errorWithPos(
+                    literalAggregate.position,
+                    f'LiteralAggregate size not match Type size. typeSize:{tpe.size}'
+                )
             else:
                 i = 0
                 for offset, elemTpe in tpe.offsetIt():
-                    self._literalAggregateTestRec(
-                        mo,
+                    r = self._literalAggregateTestRec(
                         elemTpe, 
                         literalAggregate[i]
                     )
-                    
-                    # if error in an element, abandon testing
-                    if (mo[0].notOk()):            
-                        break
                     i += 1
         else:
             #i should never get here. It's a catch
-            mo[0] = MessageOption.warning(f"Type not recognised.  Found:{literalAggregate}, tpe:{tpe}")
+            self.compiler.errorWithPos(
+                literalAggregate.position,
+                f"Type not recognised.  Found:{literalAggregate}, tpe:{tpe}"
+            )
+            
 
     def _literalAggregateTest(self, tpe, literalAggregate):
         '''
-        Test a lliteral agreegate against a type.
+        Test a literal agreegate against a type.
         This will report an error if the the size or structure of the 
         aggregate does not match the given type.
         It also reports if the types of the elements in the aggregate
@@ -711,9 +788,9 @@ class BuilderAPIX64(BuilderAPI):
         '''
         #i This list is just to make the messageOption a reference. So 
         # it can be updated in place. Not Pynthonic...
-        mo = [MessageOptionNone]
-        self._literalAggregateTestRec(mo, tpe, literalAggregate)
-        return mo[0]
+        # isLiteralVal)
+        self._literalAggregateTestRec(tpe, literalAggregate)
+        return MessageOptionNone
         
     # import BuilderAPI
     # import tpl_types as Type

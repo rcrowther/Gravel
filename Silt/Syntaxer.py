@@ -166,7 +166,8 @@ class Syntaxer(SyntaxerBase):
             #argsB.append(arg)
             self._next() 
         return commit
-        
+
+
     def constant(self, argsB):
         commit = (
             self.isToken(INT_NUM) or 
@@ -189,8 +190,36 @@ class Syntaxer(SyntaxerBase):
             self._next()
         return commit
             
-    
+    def intNum(self, argsB):
+        commit = self.isToken(INT_NUM)
+        if (commit):
+            # We can work without errors. We know they parse 
+            # as numbers from the tokeniser
+            v = self.textOf()
+            argsB.append(Arg(self.toPosition(), int(v)))
+            self._next()
+        return commit    
 
+    def label(self, argsB):
+        '''
+        An identifier that is not a protosymbol.
+        It is cast as a string.
+        '''
+        commit = (self.isToken(IDENTIFIER))
+        if (commit):
+            name = self.textOf()
+            pos = self.toPosition()
+            # cast as a symbol or a Protosymbol.
+            # if (ord(name[0]) == Codepoints.AT):
+                # msg = '"@" codepoint used  when label expected.' 
+                # self.errorWithPos(pos, msg)
+            # else:
+                # We don't cast a label as anything more special than a 
+                # string
+            argsB.append(Arg(pos, name))
+            self._next() 
+        return commit
+                
     ## boolean func parsing
     #! no commas
     def funcBooleanNot(self, argsB):
@@ -328,11 +357,15 @@ class Syntaxer(SyntaxerBase):
         # Array [containedType, size]
         # So we're not being clever or OCD. If its a arg type thats
         # acceptable, it's in. But order or signature ignored.
-        # For now.
+        #i the key point... can be recursive
         commit = (
                 self.constant(argsB)
                 or self.typeDeclaration(argsB)
         )
+        if (commit):
+            
+            # skip trailing commas
+            self.skipToken(COMMA)
         return commit
             
             
@@ -343,6 +376,7 @@ class Syntaxer(SyntaxerBase):
             (name in typeNames)
         )
         if (commit):
+            pos = self.toPosition()
             #self._next() 
             #self.skipTokenOrError('funcBoolean', LBRACKET)
             tpe = None
@@ -355,14 +389,20 @@ class Syntaxer(SyntaxerBase):
                 self._next() 
                 self.skipTokenOrError('typeDeclaration', LBRACKET)
                 tpeArgsB = []
-                #? With this, can't skp commas
                 self.oneOrMore(self.typeArgContainer, tpeArgsB, "typeArgContainer")
-                self.skipTokenOrError('typeDeclaration', RBRACKET)                 
-                tpe = typeNameContainerToType[name](tpeArgsB)
-            #argsB.append(
-            #    tpe
-            #)
-            argsB.append(Arg(self.toPosition(), tpe))
+                self.skipTokenOrError('typeDeclaration', RBRACKET)  
+                               
+                # Convert to a value list, throwing errors as fit
+                #i The result here should be a set of clean arguments not wrapped
+                # in Arg with positions.
+                #! what we really need is aa signature for each container constructor
+                # for now, we just unwrap thewm, to construct the container.
+                typeConstructionArgs = []
+                for ctypeConstructionArg in tpeArgsB:
+                    typeConstructionArgs.append(ctypeConstructionArg.value)
+                tpe = typeNameContainerToType[name](typeConstructionArgs)
+                #print(str(tpe))
+            argsB.append(Arg(pos, tpe))
         return commit
 
                     
@@ -451,23 +491,19 @@ class Syntaxer(SyntaxerBase):
     # (10, December, 1815)
     # (Day => 29, Month => February, Year => 2020)
     def path(self, argsB):
-        commit = self.isToken(LSQUARE)
-        if (commit):
-            # over the opening bracket
+        commit = self.isToken(LPATH)
+        if (commit):            
             self._next() 
             path = Path()
-            while (True):
-                if(self.isToken(STRING)):
-                    path.append(self.textOf())
-                    self._next() 
-                elif(self.isToken(INT_NUM)):
-                    path.append(int(self.textOf()))
-                    self._next() 
-                else:
-                    break
-            self.skipTokenOrError('path', RSQUARE)
+            while (
+                self.label(argsB) or
+                self.intNum(argsB)
+                ):
+
+                # skip trailing commas
+                self.skipToken(COMMA)
+            self.skipTokenOrError('path', RPATH)
             argsB.append(Arg(self.toPosition(), path))
-            #argsB.append(path)
         return commit
 
     def keyValue(self, b):
@@ -477,29 +513,30 @@ class Syntaxer(SyntaxerBase):
         # Similar to, but not a symbol, because it isn't a symbol, 
         # its a label. And so far, can only occur here, inside 
         # square brackets
+        #? ...or check it's a label
         commit = (self.isToken(IDENTIFIER))
         if (commit):
             label = self.textOf()
+            pos = self.toPosition()
             kv = KeyValue()
             
-            #! label defense against protosymbols etc.
+            #! label defence against protosymbols etc.
             kv.key = label
             self._next() 
 
             # skip the separator
             self.skipTokenOrError('aggregateKeyValue', KEY_VALUE)
 
-            # get the value, which can itself be any aggregate
-            valueB = AggregateVals()
-            
-            # What this means is a label must always have a aggregate
+            # get the value, which can itself be any aggregate            
+            #i What this means is a label must always have a aggregate
             # as value, cannot have another label. 
-            # [fortune -> [nonsense -> 33]]
+            # [[fortune -> [[nonsense -> 33]] ]]
             # not
-            # [fortune -> nonsense -> 33]
+            # [[fortune -> nonsense -> 33]]
             # Is that right? ...I think so. If we do this, we can't 
             # parse for aggregateArgs, as that allows a freestanding
             # KeyValue
+            valueB = AggregateVals()
             if(not(
                 self.constant(valueB) or
                 self.aggregate(valueB)
@@ -510,7 +547,7 @@ class Syntaxer(SyntaxerBase):
                 )
             kv.value = valueB
             #b.append(kv)
-            b.append(Arg(self.toPosition(), kv))
+            b.append(Arg(pos, kv))
         return commit
 
     def repeatMark(self, b):
@@ -522,35 +559,53 @@ class Syntaxer(SyntaxerBase):
         # square brackets
         commit = (self.isToken(REPEAT))
         if (commit):
-            #b.append('*')
             b.append(Arg(self.toPosition(), '*'))
             self._next() 
         return commit
         
-    def aggregateArgs(self, b):
-        # Assume commitment to aggregate rule, but no move from 
-        # opening bracket
-        self._next() 
-        av = AggregateVals()
+    # def aggregateArgs(self, b):
+        # # Assume commitment to aggregate rule, but no move from 
+        # # opening bracket
+        # self._next() 
+        # av = AggregateVals()
 
-        #i keyValue is scanned as any other argument, though it can only 
-        # have one position. errors are currently caught in the compiler
-        # checks
-        while (
-            self.constant(av)            
-            or self.aggregate(av)
-            or self.keyValue(av)
-            or self.repeatMark(av)
-            ):
-            pass
-        #b.append(av)
-        b.append(Arg(self.toPosition(), av))
+        # #i keyValue is scanned as any other argument, though it can only 
+        # # have one position. errors are currently caught in the compiler
+        # # checks
+        # while (
+            # self.constant(av)            
+            # or self.aggregate(av)
+            # or self.keyValue(av)
+            # or self.repeatMark(av)
+            # ):
+            # pass
+        # #b.append(av)
+        # b.append(Arg(self.toPosition(), av))
             
     def aggregate(self, argsB):
-        commit = self.isToken(LSQUARE)
+        #i aggreagtes are parsed with their position, because they will 
+        # be tested against types. This can only happen at compile time,
+        # when symbol maps are built. So they carry their position.
+        commit = self.isToken(LCOLL)
         if (commit):
-            self.aggregateArgs(argsB)
-            self.skipTokenOrError('aggregate', RSQUARE)
+            pos = self.toPosition()
+            self._next() 
+            av = AggregateVals()
+
+            #i keyValue is scanned as any other argument, though it can only 
+            # have one position. errors are currently caught in the compiler
+            # checks
+            while (
+                self.constant(av)         
+                or self.aggregate(av)
+                or self.keyValue(av)
+                or self.repeatMark(av)
+                ):
+
+                # skip trailing commas
+                self.skipToken(COMMA)
+            self.skipTokenOrError('aggregate', RCOLL)
+            argsB.append(Arg(pos, av))
         return commit
         
     def arg(self, argsB):
@@ -571,9 +626,7 @@ class Syntaxer(SyntaxerBase):
             #? For register popping
             # A list of strings? Rename?
             or self.argList(argsB)
-            
-            #or self.path(argsB)
-            # or aggregategated values
+            or self.path(argsB)
             or self.aggregate(argsB)
         ):
             r = True
