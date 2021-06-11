@@ -103,10 +103,10 @@ class Compiler(Syntaxer):
         for ins in instructions:
             # Aye, unPythonic
             pos = ins[0]
-            posArgs = ins[1]
-            name = ins[2]
-            args = ins[3]
-            self.exprCB(pos, posArgs, name, args)
+            #posArgs = ins[1]
+            name = ins[1]
+            args = ins[2]
+            self.exprCB(pos, name, args)
         
     def _stringTypeNamesMk(self, argTests):
         '''
@@ -117,7 +117,7 @@ class Compiler(Syntaxer):
         return "[" + ", ".join([argTest.description for argTest in argTests]) + "]"
         
         
-    def argsCheck(self, pos, name, args, argTests):
+    def argsCheck(self, parsedArgs, argTests):
         '''
         Check args against signature.
         The signature is a list of tests. This function first checks
@@ -128,24 +128,25 @@ class Compiler(Syntaxer):
         argTests
             a list of callable functions to test an arg 
         '''
+        args = parsedArgs.value
+        argsPos = parsedArgs.position
         if (len(args) > len(argTests)):
             msg = "Too many args. expected:{}".format(
                  self._stringTypeNamesMk(argTests),
                  )
-            self.errorWithPos(pos, msg)
+            self.errorWithPos(argsPos, msg)
         if (len(args) < len(argTests)):
             msg = "Not enough args. expected:{}".format(
                  self._stringTypeNamesMk(argTests),
                  )
-            self.errorWithPos(pos, msg)
+            self.errorWithPos(argsPos, msg)
         
         i = 0
         for argTest, arg in zip(argTests, args):
-            if (not(argTest(arg.value))):
+            if (not(argTest(arg))):
             #if (not(argTest(arg))):
-                print('failtest::')
-                print(str(argTest))
-                print(str(type(arg.value)))
+                #? good for debugging, but no general purpose
+                print(f'...failing args check. test:{argTest}. arg:{arg}')
                 msg = "Arg type not match signature. expected:{}".format(
                     argTest.description,
                  )
@@ -357,7 +358,7 @@ class Compiler(Syntaxer):
         self.errorWithPos(pos, msg)
                     
     def symbolUsrFind(self, pos, symName):
-        #? Used in two places, and I'm thinking it souldn't be?
+        #? Used in two places, and I'm thinking it shouldn't be?
         # - To find builtin funcnames in the dispatcher below
         # - in the syntaxer, to type arguments
         # scopeStd overrides all
@@ -387,7 +388,7 @@ class Compiler(Syntaxer):
     def commentCB(self, text):
         print('Compiler comment with "' + text)
 
-    def exprCB(self, pos, posArgs, name, args):
+    def exprCB(self, pos, name, args):
         #! such a useful print---enhance and be part of a debug?
         # printing a list always REPRs, think this is due a change in 
         # 3.7 I prefer the string marks to a gross repr. So the 
@@ -395,7 +396,7 @@ class Compiler(Syntaxer):
         print('Compiler expr {}({!s})'.format(
             name, 
             #[str(a) for a in args]
-            [str(a.value) for a in args]
+            [str(a) for a in args.value]
         ))
         if (self.instructionsStoreTrigger):
             #! need something more general than this hardcode
@@ -409,9 +410,9 @@ class Compiler(Syntaxer):
                 self.instructionsStoreTrigger = False
                 
                 # play the end instruction
-                self.exprCB(pos, posArgs, name, args)
+                self.exprCB(pos, name, args)
             else:
-                self.instructionStack[-1].append((pos, posArgs, name, args,))
+                self.instructionStack[-1].append((pos, name, args,))
         else:
             #x
             #func = self.findIdentifier(pos, name)
@@ -429,18 +430,24 @@ class Compiler(Syntaxer):
                 self.errorWithPos(pos, msg)
                 
             # Test args for type and/or count
+            #i these tests acceept the The(position) wrap
             #! should use at all if not registered? i.e. not need this if? 
             if name in self.funcNameToArgsType:
-                self.argsCheck(posArgs, name, args, self.funcNameToArgsType[name])
+                self.argsCheck(args, self.funcNameToArgsType[name])
                        
-            # Wow--now can do a simple call 
-            msgOption = func.data(self.b, args)
+            # Wafow--now can do a simple call
+            #i  AFASIK, no need here to send the full arg position. No
+            # call will use it. So strip, because it removes a lot of
+            # repetitive code
+            msgOption = func.data(self.b, args.value)
             
             # If an message came from the API, its an integrity
             # error from the args (not a function issue)
             # Outright throws are throws. Throws to be caught are in custom 
             # exceptions of this code.
-            self.argsError(posArgs, msgOption)
+            #! why extract the arg?
+            #? do need this at all
+            self.argsError(args.position, msgOption)
 
                 
     def result(self):

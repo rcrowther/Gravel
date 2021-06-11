@@ -1,5 +1,5 @@
 import architecture
-from syn_arg_tests import *
+from ci_arg_tests import *
 import math
 
 
@@ -102,7 +102,7 @@ class BuilderAPI():
         'registersPop': [],
 
         ## var action
-        'set': [anyVar(), intOrVarNumeric()],
+        'set': [anyVar(), valOrVarInt()],
         'setPath': [anyVar(), Path, intVal()],
         'setPriority': [anyVar(), intVal()], 
         'delete': [anyVar()],
@@ -115,11 +115,11 @@ class BuilderAPI():
         #! and it's freer than these parameters define. Memory locations
         # are ok for destination too.
         # but not teo memory locs together
-        'add' : [intOrVarNumeric(), intOrVarNumeric()],
-        'sub' : [intOrVarNumeric(), intOrVarNumeric()],
-        'mul' : [intOrVarNumeric(), intOrVarNumeric()],
-        #'divi' : [intOrVarNumeric(), intOrVarNumeric()],
-        #'div' : [intOrVarNumeric(), intOrVarNumeric()],
+        'add' : [valOrVarInt(), valOrVarInt()],
+        'sub' : [valOrVarInt(), valOrVarInt()],
+        'mul' : [valOrVarInt(), valOrVarInt()],
+        #'divi' : [valOrVarInt(), valOrVarInt()],
+        #'div' : [valOrVarInt(), valOrVarInt()],
         'shl' : [numericVar(), intVal()],
         'shr' : [numericVar(), intVal()],
         
@@ -127,8 +127,8 @@ class BuilderAPI():
         'RODefine': [protoSymbolVal(), intVal(), anyType()],
         'ROStringDefine': [protoSymbolVal(), strVal()],
         'ROStringUTF8Define': [protoSymbolVal(), strVal()],
-        'regDefine': [protoSymbolVal(), intOrVarNumeric(), numericType()],
-        'regNamedDefine': [protoSymbolVal(), strVal(), intOrVarNumeric(), anyType()],
+        'regDefine': [protoSymbolVal(), valOrVarInt(), numericType()],
+        'regNamedDefine': [protoSymbolVal(), strVal(), valOrVarInt(), anyType()],
         'heapAlloc': [protoSymbolVal(), anyType()],
         'heapSet': [anyVar(), aggregateAny()],
         'heapStringDefine': [protoSymbolVal(), strVal()],     
@@ -142,7 +142,7 @@ class BuilderAPI():
         #'stackDefine': [protoSymbolVal(), intVal(), anyType()],
 
         ## Conditional
-        'ifRangeStart': [intOrVarNumeric(), intOrVarNumeric(), intOrVarNumeric()],
+        'ifRangeStart': [valOrVarInt(), valOrVarInt(), valOrVarInt()],
         'ifRangeEnd':[],
         'ifStart': [booleanFuncVal()],
         'ifEnd': [],
@@ -154,7 +154,7 @@ class BuilderAPI():
         'switchEnd': [],
                     
         ## loops
-        'forRange': [strVal(), intVal(), intOrVarNumeric()],
+        'forRange': [strVal(), intVal(), valOrVarInt()],
         'forRangeEnd': [],
         'whileStart': [booleanFuncVal()],
         'whileEnd': [],
@@ -234,7 +234,7 @@ class BuilderAPIX64(BuilderAPI):
         Return accesss snippet for a variable value.
         Can't handle offsets or registers, but s useful func.
         usual args: strVal intVal, regVar 
-        intOrVarNumeric strOrVarStr strOrVarAny
+        valOrVarInt valOrVarStr strOrVarAny
         stringVar etc.
         '''
         # var set of new or existing var
@@ -250,7 +250,7 @@ class BuilderAPIX64(BuilderAPI):
         '''
         Return access snippet for a literal/variable value.
         Can't handle offsets or registers, but s useful func.
-        Usually args: anyVar intOrVarNumeric
+        Usually args: anyVar valOrVarInt
         '''
         if (not(isinstance(varOrConstant, Var))):
             # its a constant
@@ -360,7 +360,7 @@ class BuilderAPIX64(BuilderAPI):
         '''
         Start a function.
         '''
-        protoSymbolLabel = args[0].value.toString()
+        protoSymbolLabel = args[0].value
         #print(protoSymbolLabel)
         self._func(b, protoSymbolLabel)
         return MessageOptionNone
@@ -400,8 +400,8 @@ class BuilderAPIX64(BuilderAPI):
 
     ## Register utilities
     def _registersPush(self, b, registerList):
-        for r in registerList:
-            b._code.append('push ' + r)
+        for theReg in registerList:
+            b._code.append('push ' + theReg.value)
         self.compiler.closureDataPush(registerList)
         
     #! arg error pointer in wrong position
@@ -421,19 +421,13 @@ class BuilderAPIX64(BuilderAPI):
             )
             
         # test registers exist
-        for regStr in registerList:
-            if (not(regStr in self.arch['generalPurposeRegisters'])):
+        for theReg in registerList:
+            if (not(theReg.value in self.arch['generalPurposeRegisters'])):
                 self.compiler.errorWithPos(
-                    args[0].position,
-                    f"Register not recognised. register:'{regStr}'"
+                    theReg.position,
+                    f"Register not recognised. register:'{theReg.value}'"
                 )
         self._registersPush(b, registerList)
-        return MessageOptionNone
-
-    def registersPop(self, b, args):
-        registerList = self.compiler.closureDataPop()
-        for r in reversed(registerList):
-            b._code.append('pop ' + r)
         return MessageOptionNone
 
     def registersVolatilePush(self, b, args):
@@ -441,12 +435,23 @@ class BuilderAPIX64(BuilderAPI):
         Protect the volatile registers 
         i.e. those used for parameter passing.
         '''
+        #i construct a list from the arch. Will always be correct, give 
+        # default positions
+        genArg = [
+            TheString(0, reg) for reg in (self.arch['cParameterRegisters'])
+            ]
         self._registersPush(
             b,
-            ArgList(self.arch['cParameterRegisters'].copy()),
+            genArg,
         )
         return MessageOptionNone
 
+
+    def registersPop(self, b, args):
+        registerList = self.compiler.closureDataPop()
+        for theReg in reversed(registerList):
+            b._code.append('pop ' + theReg.value)
+        return MessageOptionNone
 
 
     ## Alloc, set and define
@@ -474,7 +479,7 @@ class BuilderAPIX64(BuilderAPI):
         Define a number to a label
              [protoSymbolVal(), intVal(), anyType()]
         '''
-        protoSymbolLabel = args[0].value.toString()
+        protoSymbolLabel = args[0].value
         data = args[1].value
         tpe = args[2].value
         var = self.autoStore.varROCreate(
@@ -491,13 +496,14 @@ class BuilderAPIX64(BuilderAPI):
         b.rodataAdd(rodata)
         self.compiler.symbolSetGlobal(var) 
         return MessageOptionNone
-
+        
     def ROStringDefine(self, b, args):
         '''
         Define a byte-width string to a label
             [protoSymbolVal(), strVal()]
         '''
-        protoSymbolLabel = args[0].value.toString()
+        #protoSymbolLabel = args[0].value.toString()
+        protoSymbolLabel = args[0].value
         string = args[1].value
         var = self.autoStore.varROCreate(
             protoSymbolLabel, 
@@ -528,7 +534,7 @@ class BuilderAPIX64(BuilderAPI):
         # Have a look at how Glib implements its functions, which are 
         # pretty much what we would like 
         # https://developer.gnome.org/glib/stable/glib-Unicode-Manipulation.html
-        protoSymbolLabel = args[0].value.toString()
+        protoSymbolLabel = args[0].value
         string = args[1].value
         var = self.autoStore.varROCreate(
             protoSymbolLabel, 
@@ -553,9 +559,9 @@ class BuilderAPIX64(BuilderAPI):
         The value will usually go to a register but, if registers are 
         full, it will go to stack.
             var number type
-            [protoSymbolVal(), intOrVarNumeric(), numericType()]
+            [protoSymbolVal(), valOrVarInt(), numericType()]
         '''
-        protoSymbolLabel = args[0].value.toString()
+        protoSymbolLabel = args[0].value
         value = args[1].value
         tpe = args[2].value
         var = self.autoStore.varRegMaybeCreate(b, 
@@ -577,13 +583,13 @@ class BuilderAPIX64(BuilderAPI):
         Define a value in a named register
         A speciality for debugging and tests, not intended for common 
         use.
-            protoSymbol, registerName, intOrVarNumeric, type
-            [protoSymbolVal(), strVal(), intOrVarNumeric(), anyType()]
+            protoSymbol, registerName, valOrVarInt, type
+            [protoSymbolVal(), strVal(), valOrVarInt(), anyType()]
          '''
-        protoSymbolLabel = args[0].value.toString()
+        protoSymbolLabel = args[0].value
         register = args[1].value
         varOrConst = args[2].value
-        tpe = args[3]
+        tpe = args[3].value
         var = self.autoStore.varRegCreate(b, 
             protoSymbolLabel, 
             register, 
@@ -607,7 +613,7 @@ class BuilderAPIX64(BuilderAPI):
             [protoSymbolVal(), anyType()]
         '''
         self._extern(b, 'malloc')
-        protoSymbolLabel = args[0].value.toString()
+        protoSymbolLabel = args[0].value
         tpe = args[1].value
 
         # create a regVar for the pointer
@@ -696,27 +702,28 @@ class BuilderAPIX64(BuilderAPI):
             # mo[0] = MessageOption.warning(f"Type not recognised.  Found:{literalAggregate}, tpe:{tpe}")
 
     def _literalAggregateTestRec(self, tpe, literalAggregate):
-        #print("_literalAggregateTestRec")
+        #[TheInt(Position(83, 19), 333), TheInt(Position(83, 23), 55)]
+        #print("...._literalAggregateTestRec")
         #print(str(literalAggregate))
         #print(str(mo))
         #print(str(tpe))
         #print(str(type(literalAggregate)))
         # print(str(tpe))  
-              
+        
         if (isinstance(tpe, Type.TypeInt)):
-            if (not(isinstance(literalAggregate, int))):
+            if (not(isinstance(literalAggregate, TheInt))):
                 self.compiler.errorWithPos(
                     literalAggregate.position,
                     f'Type expects int. Found:{literalAggregate}'
                 )
         elif (isinstance(tpe, Type.TypeFloat)):
-            if (not(isinstance(literalAggregate, float))):
+            if (not(isinstance(literalAggregate, TheFloat))):
                 self.compiler.errorWithPos(
                     literalAggregate.position,
                     f'Type expects float. Found:{literalAggregate}'
                 )
         elif (isinstance(tpe, Type.TypeString)):
-            if (not(isinstance(literalAggregate, str))):
+            if (not(isinstance(literalAggregate, TheString))):
                 self.compiler.errorWithPos(
                     literalAggregate.position,
                     f'Type expects string. Found:{literalAggregate}'
@@ -730,30 +737,29 @@ class BuilderAPIX64(BuilderAPI):
             # elemTpe = tpe.offsetTypePair[1]
             # mo = self._literalAggregateTestRec(elemTpe, literalAggregate.value)
         elif (isinstance(tpe, Type.TypeContainerOffset)):
-            if (not(isinstance(literalAggregate, AggregateVals))):
+            if (not(isinstance(literalAggregate, TheAggregateVals))):
                 self.compiler.errorWithPos(
                     literalAggregate.position,
                     f'Type expects array of vals. Found:{literalAggregate}'
                 )
-            elif (literalAggregate[0] == '*'):
+            elif (isinstance(literalAggregate.value[0], TheRepeatMark)):
                 if (not(isinstance(tpe, Type.Array))):
                     self.compiler.errorWithPos(
-                        literalAggregate[9].position,
-                        f'Repeat mark must referr to Array. Found:{tpe}'
+                        literalAggregate,value[0].position,
+                        f'Repeat mark must refer to Array. Found:{tpe}'
                     )
-                else:
-                    #i syntaxer doesn't catch too few arguments
-                    if (len(literalAggregate) != 2):
-                        self.compiler.errorWithPos(
-                            literalAggregate.position,
-                            'Repeat mark must be followed by one arg.'
-                        )
-                    else:
-                        self._literalAggregateTestRec(
-                            tpe.elementType,
-                            literalAggregate[1]
-                        )
-            elif (tpe.size != len(literalAggregate)):
+                #i syntaxer ensures one following argument
+                # elif (len(literalAggregate.value) != 2):
+                    # self.compiler.errorWithPos(
+                        # literalAggregate.position,
+                        # 'Repeat mark must be followed by one arg.'
+                    # )
+                #else:
+                self._literalAggregateTestRec(
+                    tpe.elementType,
+                    literalAggregate.value[1]
+                )
+            elif (tpe.size != len(literalAggregate.value)):
                 self.compiler.errorWithPos(
                     literalAggregate.position,
                     f'LiteralAggregate size not match Type size. typeSize:{tpe.size}'
@@ -763,7 +769,7 @@ class BuilderAPIX64(BuilderAPI):
                 for offset, elemTpe in tpe.offsetIt():
                     r = self._literalAggregateTestRec(
                         elemTpe, 
-                        literalAggregate[i]
+                        literalAggregate.value[i]
                     )
                     i += 1
         else:
@@ -805,6 +811,9 @@ class BuilderAPIX64(BuilderAPI):
     # api._literalAggregateSet(b, dataRoot, tpe, literalAggregate)
     # b._code
     def _literalAggregateSetRec(self, b, dataRoot, offset, tpe, literalAggregate):
+        print("...._literalAggregateSetRec")
+        print(str(literalAggregate))
+        print(str(tpe))
         if (isinstance(tpe, Type.TypeNumeric) or isinstance(tpe, Type.TypeString)):
             # aggregate is singular literal
             b._code.append("mov {} [{}+{}], {}".format(
@@ -812,10 +821,10 @@ class BuilderAPIX64(BuilderAPI):
                 'dword',
                 dataRoot, 
                 offset,
-                literalAggregate
+                literalAggregate.value
             ))
         elif (isinstance(tpe, Type.TypeContainerOffset)):
-            if (literalAggregate[0] == '*'):
+            if (isinstance(literalAggregate.value[0], TheRepeatMark)):
                 #? undry
                 i = 0
                 for elemOff, elemTpe in tpe.offsetIt():
@@ -824,7 +833,7 @@ class BuilderAPIX64(BuilderAPI):
                         dataRoot,
                         offset + elemOff,
                         elemTpe, 
-                        literalAggregate[1]
+                        literalAggregate.value[1]
                     )
                     i += 1                  
             else:
@@ -837,10 +846,15 @@ class BuilderAPIX64(BuilderAPI):
                         dataRoot,
                         offset + elemOff,
                         elemTpe, 
-                        literalAggregate[i]
+                        literalAggregate.value[i]
                     )
                     i += 1       
-
+        else:
+            #i should never get here. It's a catch
+            self.compiler.errorWithPos(
+                literalAggregate.position,
+                f"Type not recognised.  Found:{literalAggregate}, tpe:{tpe}"
+            )
     def _literalAggregateSet(self, b, dataRoot, tpe, literalAggregate):
         self._literalAggregateSetRec(b, dataRoot, 0, tpe, literalAggregate)
 
@@ -859,12 +873,12 @@ class BuilderAPIX64(BuilderAPI):
             [anyVar(), aggregateAny()]
         '''
         var = args[0].value
-        literalAggregate = args[1].value 
+        literalAggregate = args[1]
         mo = MessageOptionNone
         
         # By definition, RO is not possible
         if (var.loc.isReadOnly):
-            mo = MessageOption.error('Cant set a RO variable!')
+            mo = MessageOption.error('Can not set a RO variable!')
 
         # test the aggregate value against the type
         mo = self._literalAggregateTest(
@@ -956,7 +970,7 @@ class BuilderAPIX64(BuilderAPI):
             [protoSymbolVal(), strVal()]
         '''
         self._extern(b, 'malloc')
-        protoSymbolLabel = args[0].value.toString()
+        protoSymbolLabel = args[0].value
         string = args[1].value
         
         # add string terminator now
@@ -1046,7 +1060,7 @@ class BuilderAPIX64(BuilderAPI):
         '''
         #? Should that be number of slots, not raw bytes?
         self._extern(b, 'malloc')
-        protoSymbolLabel = args[0].value.toString()
+        protoSymbolLabel = args[0].value
         size = args[1].value
         tpe = Type.Array([Type.Bit8, size])
 
@@ -1151,7 +1165,7 @@ class BuilderAPIX64(BuilderAPI):
             varName type
             [protoSymbol, anyType]
         '''
-        protoSymbolLabel = args[0].value.toString()
+        protoSymbolLabel = args[0].value
         tpe = args[1].value
 
         # create a regVar for the pointer
@@ -1258,7 +1272,7 @@ class BuilderAPIX64(BuilderAPI):
             varName string
             [protoSymbolVal(), strVal()]
         '''
-        protoSymbolLabel = args[0].value.toString()
+        protoSymbolLabel = args[0].value
         string = args[1].value
 
         # add string terminator now
@@ -1324,7 +1338,7 @@ class BuilderAPIX64(BuilderAPI):
             protoSymbol, size
             [protoSymbolVal(), intVal()]
         '''
-        protoSymbolLabel = args[0].value.toString()
+        protoSymbolLabel = args[0].value
         size = args[1].value
         tpe = Type.Array([Type.Bit8, size])
         
@@ -1360,7 +1374,7 @@ class BuilderAPIX64(BuilderAPI):
         '''
         Set a var to a value
             [Var, valOrVarInt],
-            [anyVar(), intOrVarNumeric()]
+            [anyVar(), valOrVarInt()]
         '''
         var = args[0].value
         valOrVarInt = args[1].value
@@ -1501,7 +1515,7 @@ class BuilderAPIX64(BuilderAPI):
     #! can be anyyVar
     def add(self, b, args):
         '''
-        [regVar(), intOrVarNumeric()]
+        [regVar(), valOrVarInt()]
         '''
         varDst = args[0].value
         litOrVarSrc = args[1].value
@@ -1517,7 +1531,7 @@ class BuilderAPIX64(BuilderAPI):
         
     def sub(self, b, args):
         '''
-        [regVar(), intOrVarNumeric()]
+        [regVar(), valOrVarInt()]
         '''
         varDst = args[0].value
         litOrVarSrc = args[1].value
@@ -1533,7 +1547,7 @@ class BuilderAPIX64(BuilderAPI):
         
     def mul(self, b, args):
         '''
-        [regVar(), intOrVarNumeric()]
+        [regVar(), valOrVarInt()]
         '''
         # imul
         # https://www.felixcloutier.com/x86/imul
@@ -1552,7 +1566,7 @@ class BuilderAPIX64(BuilderAPI):
     
     #def div(self, b, args):
         '''
-        [regVar(), intOrVarNumeric()]
+        [regVar(), valOrVarInt()]
         '''
         # idiv, real problem, will not work from full-width, and 
         # restricted in registers, too!
@@ -1566,7 +1580,7 @@ class BuilderAPIX64(BuilderAPI):
                 
     #def div(self, b, args):
         '''
-        [regVar(), intOrVarNumeric()]
+        [regVar(), valOrVarInt()]
         '''
 
     #! can accept anyVar, intLitOrVar arg
@@ -1637,7 +1651,7 @@ class BuilderAPIX64(BuilderAPI):
             the number to start on
         until
             advances until before this number
-            [intOrVarNumeric(), intOrVarNumeric(), intOrVarNumeric()],
+            [valOrVarInt(), valOrVarInt(), valOrVarInt()],
         '''
         #NB Range can't be tested, as it may be vars.
         # but both range numbers can be off-register, as the tests are 
@@ -1689,7 +1703,7 @@ class BuilderAPIX64(BuilderAPI):
     def _logicBuilder(
         self, 
         b, 
-        logicTree, 
+        logicTreeThe, 
         invertToFalse, 
         compareNot,
         trueLabel, 
@@ -1712,6 +1726,9 @@ class BuilderAPIX64(BuilderAPI):
         '''
         #! not hadling XOR
         #? Tail recurse?
+        #? annoying. The ttree is wrapped in positions, so must be 
+        # unwrapped
+        logicTree = logicTreeThe.value
         if (logicTree.name in self.NamesBooleanCollators):
             #! with a negate end, invert, etc.
             collatorIsAND = (logicTree.name == 'and')
@@ -1723,7 +1740,9 @@ class BuilderAPIX64(BuilderAPI):
             # backwards. We let the NOT trickle into the arguments, but 
             # must switch AND/OR e.g. NOT(AND(1 2)) = OR(NOT(1) NOT(2))
             if (compareNot):
-                collatorIsAND = not()
+                #? this, surely
+                collatorIsAND = not(collatorIsAND)
+                #collatorIsAND = not()
                 
             # - we set invertToFalse by the function. This 
             # introduces the shortcut behaviour. AND jumps to the false
@@ -1751,10 +1770,12 @@ class BuilderAPIX64(BuilderAPI):
             # Must be a Comparison
             # Resolve whatever has been sent
             #! can comp operate with relative addresses on both sides?
-            self.oneRegEnsure(b, logicTree.args[0], logicTree.args[1])
-            arg0 = self.litOrVarValueSnippet(logicTree.args[0])
-            arg1 = self.litOrVarValueSnippet(logicTree.args[1])
-            b._code.append("cmp {}, {}".format(arg0, arg1))            
+            arg0 = logicTree.args[0].value
+            arg1 = logicTree.args[1].value
+            self.oneRegEnsure(b, arg0, arg1)
+            argSnippet0 = self.litOrVarValueSnippet(arg0)
+            argSnippet1 = self.litOrVarValueSnippet(arg1)
+            b._code.append("cmp {}, {}".format(argSnippet0, argSnippet1))            
             jumpOp = self.jumpOps[logicTree.name]
             label = trueLabel
             
@@ -1782,6 +1803,7 @@ class BuilderAPIX64(BuilderAPI):
         # Start with no enabled NOT, compareNot = False
         #! Won't work on two literal numbers
         #! and wont work with literals on first parameter  
+        print(f"logicTree: {logicTree}")
         self._logicBuilder(b, logicTree, True, False, trueLabel, falseLabel)
     
     
@@ -1844,6 +1866,7 @@ class BuilderAPIX64(BuilderAPI):
             ))
         return mo
             
+
     # Like an if
     # This has the problem we need a Boolean type, probably.
     # And to go with it, a compare flag location.
@@ -1858,7 +1881,8 @@ class BuilderAPIX64(BuilderAPI):
         #! insist targetVar is a varReg
         # ZF is what we want Flag -> reg
         targetVar = args[0].value
-        booleanFunc = args[1].value
+        print(f".....targetvar:{targetVar}")
+        booleanFunc = args[1] #.value
 
         # zero the targetVar
         # b._code.append('xor {}, {}'.format(
@@ -2050,7 +2074,7 @@ class BuilderAPIX64(BuilderAPI):
         until
             advances until before this number
             
-            [strVal(), intVal(), intOrVarNumeric()]            
+            [strVal(), intVal(), valOrVarInt()]            
         '''
         # From a given numeric point to a given numeric point. Beats a 
         # for...next loop, no probs...
@@ -2126,7 +2150,7 @@ class BuilderAPIX64(BuilderAPI):
         '''
             [ProtoSymbol register containerOffsetVar]
         '''
-        protoSymbolLabel = args[0].value.toString()
+        protoSymbolLabel = args[0].value
 
         # Choice of genvar register...
         varGenRegister =  args[1].value
@@ -2257,7 +2281,7 @@ class BuilderAPIX64(BuilderAPI):
         # So the DataVar is allowed to be anywhere. 
         # The counter and the varGen in seperate registers. They could 
         # be push/pulled, but that's tweaky.
-        protoSymbolLabel = args[0].value.toString()
+        protoSymbolLabel = args[0].value
 
         # Choice of genvar register...
         varGenRegister =  args[1].value

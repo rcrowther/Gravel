@@ -35,55 +35,91 @@ funcMain()
     #registersPop()
     #registersVolatilePush()
     #registersPop()
-    # prints warning
-    #registersPush(('rbx', 'r99'))
-    #registersPop()
-    # throws error
+    # print warning
     #registersPush(('rbx'))
+    #registersPop()
+    # throw error
+    #registersPush(('rbx', 'r99'))
     #registersPop()
 
 #- Alloc/set//define
 #-- RO Global
-#-- ROStr
-    #println(ro1)
+
 
 #-- ROData
+    # print 797
     #println(ro2)
 
+#-- ROStr
+    # print ""In a Silent Way"
+    #println(ro1)
+
 #-- ROUTF
-    # println(utf1)
+    #print ""C⁂fé"
+    #println(utf1)
 
 #-- Reg
 #-- Reg Named
+    # prrint 777
     #regNamedDefine(@reg1 'rbx' 777 Bit64)
     #println(reg1)
+
+#-- Reg Named
+    # print 333
     #regNamedDefine(@reg2 'rbx' 333 Bit64)
     #println(reg2)
 
 #-- regDefine
+    # print 333
     #regDefine(@var1 333 Bit64)
     #println(var1)
 
 #--heap
 #-- heapAlloc
+    # Nothing
     #heapAlloc(@heap1 Array(Bit8 3))
 
 #-- heapSet1
+    # print 333
     #heapAlloc(@var1 Bit64)
-    #heapSet(var1 [333 55])
+    #heapSet(var1 333)
     #println(var1)
 
 #-- heapSet2
-    heapAlloc(@var1 Array(Clutch(Bit8 Bit64) 3))
-    #heapSet(var1 [33 77 55 ])
-    heapSet(var1 [[* [[33 77]] ]])
-    println(var1)
+    # error
+    #heapAlloc(@var1 Bit64)
+    #heapSet(var1 [[333]])
+    #println(var1)
+
+#-- heapSet2
+    # nothing
+    #heapAlloc(@var1 Array(Bit64 3))
+    #heapSet(var1 [[333 555 777]])
+    #xprintln(var1)
 
 #-- heapSet3
-    #heapAlloc(@var1 Bit64)
-    # parses, but fails
-    #heapSet(var1 [jepp ~> 888])
-    #println(var1)
+    # error
+    #heapAlloc(@var1 Array(Bit64 3))
+    #heapSet(var1 [[333 555]])
+    #xprintln(var1)
+
+#-- heapSet4
+    # nothing
+    #heapAlloc(@var1 Array(Clutch(Bit8 Bit64) 3))
+    #heapSet(var1 [[ [[33 55]] [[33 55]] [[33 55]] ]])
+    #xprintln(var1)
+
+#-- heapSet5
+    # nothing
+    #heapAlloc(@var1 Array(Clutch(Bit8 Bit64) 3))
+    #heapSet(var1 [[* [[55 77]] ]])
+    #xprintln(var1)
+
+#-- heapSet6
+    # error
+    heapAlloc(@var1 Array(Bit64 1))
+    heapSet(var1 [[jepp ~> 888]])
+    #xprintln(var1)
 
 #-- heapStringDefine
     # No. What we will do here is define our string handling library
@@ -267,10 +303,11 @@ funcMain()
     #    ifEnd()
 
 #-- cmp
-    #regNamedDefine(@rbx1 'rbx' 77 Bit64)
-    #regNamedDefine(@rcx2 'rcx' 3 Bit64)
-    #cmp(rbx1 lt(rcx2 5) )
-    #println(rbx1)
+    # logic needs full testing
+    #regNamedDefine(@result 'rbx' 77 Bit64)
+    #regNamedDefine(@var1 'rbx' 3 Bit64)
+    #cmp(result lt(var1 5) )
+    #println(result)
 
 #-- cmp2
     #stackAllocSlots(2)
